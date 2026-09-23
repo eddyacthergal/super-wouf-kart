@@ -1,0 +1,172 @@
+@import 'tailwindcss';
+
+/*
+ * Wouf Kart — thème « jardin » : verts, ciel bleu, touches jaunes et orange.
+ * Contrastes vérifiés (WCAG AA) : blanc sur leaf-700 = 6,5:1 ; leaf-900 sur sun-400 = 8,3:1 ;
+ * leaf-900 sur leaf-100 = 10:1 ; moss-700 sur leaf-100 = 6,9:1.
+ */
+@theme {
+  --font-sans:
+    ui-rounded, 'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Quicksand, Comfortaa, Manjari, 'Arial Rounded MT',
+    'Arial Rounded MT Bold', Calibri, source-sans-pro, system-ui, sans-serif;
+
+  --color-leaf-50: #f1faeb;
+  --color-leaf-100: #e3f5d8;
+  --color-leaf-200: #c6e9b2;
+  --color-leaf-300: #9fd784;
+  --color-leaf-500: #4a9e3f;
+  --color-leaf-700: #1d6b34;
+  --color-leaf-800: #175a2b;
+  --color-leaf-900: #0f3d1f;
+  --color-moss-700: #2f5a3a;
+
+  --color-azure-100: #dff1ff;
+  --color-azure-200: #bfe3ff;
+
+  --color-sun-200: #fff1b8;
+  --color-sun-300: #ffe07a;
+  --color-sun-400: #ffcf3f;
+  --color-sun-500: #f5b700;
+
+  --color-carrot-400: #f6a04d;
+  --color-carrot-500: #f08a24;
+
+  --color-night-900: #0f172a;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  color: var(--color-leaf-900);
+  background-color: var(--color-azure-100);
+  background-image: linear-gradient(
+    180deg,
+    var(--color-azure-200) 0%,
+    var(--color-azure-100) 45%,
+    var(--color-leaf-100) 70%,
+    var(--color-leaf-200) 100%
+  );
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Focus clavier très visible sur fond clair comme sur fond sombre : anneau sombre bordé de blanc et de jaune. */
+:focus-visible:not([tabindex='-1']) {
+  outline: 3px solid var(--color-leaf-900);
+  outline-offset: 2px;
+  box-shadow:
+    0 0 0 2px #fff,
+    0 0 0 8px var(--color-sun-400);
+}
+
+/* Titres qui reçoivent le focus par programme (navigation, résultats) : pas d'anneau, ce ne sont pas des commandes. */
+[tabindex='-1']:focus {
+  outline: none;
+}
+
+/* Grands boutons arrondis (liens ou boutons), déclinés en trois couleurs. */
+@layer components {
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 3.25rem;
+    padding: 0.75rem 1.75rem;
+    border: 3px solid transparent;
+    border-radius: 9999px;
+    font-size: 1.125rem;
+    font-weight: 800;
+    line-height: 1.2;
+    text-decoration: none;
+    cursor: pointer;
+    box-shadow: 0 4px 0 rgb(15 61 31 / 0.35);
+    transition:
+      transform 120ms ease,
+      background-color 120ms ease;
+  }
+
+  .btn:hover {
+    transform: translateY(-2px);
+  }
+
+  .btn:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 rgb(15 61 31 / 0.35);
+  }
+
+  .btn-primary {
+    background-color: var(--color-leaf-700);
+    color: #fff;
+  }
+
+  .btn-primary:hover {
+    background-color: var(--color-leaf-800);
+  }
+
+  .btn-sun {
+    background-color: var(--color-sun-400);
+    color: var(--color-leaf-900);
+  }
+
+  .btn-sun:hover {
+    background-color: var(--color-sun-300);
+  }
+
+  .btn-light {
+    background-color: #fff;
+    border-color: var(--color-leaf-700);
+    color: var(--color-leaf-900);
+  }
+
+  .btn-light:hover {
+    background-color: var(--color-leaf-50);
+  }
+
+  /* Panneau du HUD : texte blanc sur fond sombre semi-opaque (contraste AA quel que soit le décor). */
+  .hud-panel {
+    border-radius: 1rem;
+    background-color: rgb(15 23 42 / 0.82);
+    color: #fff;
+    padding: 0.4rem 0.8rem;
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.25);
+  }
+
+  /* Carte claire du thème jardin. */
+  .card {
+    border: 3px solid var(--color-leaf-200);
+    border-radius: 1.75rem;
+    background-color: rgb(255 255 255 / 0.9);
+    box-shadow: 0 6px 0 rgb(15 61 31 / 0.12);
+  }
+}
+
+kbd {
+  display: inline-block;
+  min-width: 1.9em;
+  padding: 0.1em 0.45em;
+  border: 1px solid var(--color-moss-700);
+  border-bottom-width: 3px;
+  border-radius: 0.45em;
+  background: #fff;
+  color: var(--color-leaf-900);
+  font-family: inherit;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
