@@ -456,6 +456,11 @@ describe('RacePage — commandes tactiles', () => {
     expect(game.last.handle.steerCalls).toEqual([-1, 0]);
     // HUD dégagé des coins du bas, aux pouces.
     expect(element.querySelector('app-minimap')?.className).toContain('bottom-36');
+    // Jauge de dérapage et vitesse en haut, compactes : le bas de l'écran reste au kart et à la piste.
+    const gauges = element.querySelector('app-hud-drift')?.parentElement;
+    expect(gauges?.className).toContain('top-3');
+    expect(gauges?.className).not.toContain('bottom-3');
+    expect(element.querySelector('app-hud-speed .text-xl')).not.toBeNull();
 
     game.last.handle.pause();
     await settle(fixture);
@@ -475,6 +480,8 @@ describe('RacePage — commandes tactiles', () => {
     await race(fixture);
     expect(element.querySelector('app-touch-controls')).toBeNull();
     expect(element.querySelector('app-minimap')?.className).not.toContain('bottom-36');
+    expect(element.querySelector('app-hud-drift')?.parentElement?.className).toContain('bottom-3');
+    expect(element.querySelector('app-hud-speed .text-4xl')).not.toBeNull();
   });
 
   it('sans paramètre : d’après l’appareil (pointeur « doigt »)', async () => {

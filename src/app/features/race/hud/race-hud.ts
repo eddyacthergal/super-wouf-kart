@@ -13,7 +13,8 @@ import { WrongWayBanner } from './wrong-way-banner';
  * Disposition du HUD autour du canvas (non interactif : les clics traversent vers le jeu).
  * Avec les commandes tactiles (`touch`), les coins du bas sont aux pouces : la mini-carte remonte
  * au-dessus du pavé de direction (masquée si l'écran manque de place : téléphone, portrait) et la
- * jauge de dérapage et le compteur passent au centre, entre les deux pouces (au-dessus en portrait).
+ * jauge de dérapage et le compteur passent en haut au centre, en version compacte, pour ne cacher ni le
+ * kart ni la piste (empilés en portrait, où la largeur manque).
  */
 @Component({
   selector: 'app-race-hud',
@@ -44,13 +45,14 @@ import { WrongWayBanner } from './wrong-way-banner';
       />
     }
 
-    <div class="absolute flex flex-col gap-2" [class]="touch() ? gaugesTouchClass : gaugesClass">
+    <div class="absolute flex gap-2" [class]="touch() ? gaugesTouchClass : gaugesClass">
       <app-hud-drift
         [drifting]="hud().drifting"
         [tier]="hud().driftTier"
         [boosting]="hud().boosting"
+        [compact]="touch()"
       />
-      <app-hud-speed [kmh]="hud().speedKmh" />
+      <app-hud-speed [kmh]="hud().speedKmh" [compact]="touch()" />
     </div>
   `,
 })
@@ -63,7 +65,8 @@ export class RaceHud {
   protected readonly minimapClass = 'bottom-3 sm:bottom-5';
   protected readonly minimapTouchClass =
     'bottom-36 portrait:hidden [@media(max-height:560px)]:hidden';
-  protected readonly gaugesClass = 'right-3 bottom-3 items-end sm:right-5 sm:bottom-5';
+  protected readonly gaugesClass = 'right-3 bottom-3 flex-col items-end sm:right-5 sm:bottom-5';
+  /** En haut au centre, compactes : le bas de l'écran reste à la piste, au kart et aux pouces. */
   protected readonly gaugesTouchClass =
-    'bottom-3 left-1/2 -translate-x-1/2 items-center portrait:bottom-48';
+    'top-3 left-1/2 -translate-x-1/2 flex-row items-center portrait:flex-col';
 }
