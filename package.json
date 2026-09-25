@@ -1,6 +1,6 @@
 {
   "name": "test-opus-5-5",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "scripts": {
     "ng": "ng",
     "build-info": "node scripts/build-info.mjs",
