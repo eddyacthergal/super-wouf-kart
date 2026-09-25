@@ -20,7 +20,7 @@ import { PilotSummary } from './pilot-summary';
       </header>
 
       <nav aria-label="Menu principal" class="flex flex-wrap justify-center gap-4">
-        <a routerLink="/course" class="btn btn-primary px-12 text-2xl">Jouer</a>
+        <a routerLink="/circuits" class="btn btn-primary px-12 text-2xl">Jouer</a>
         <a routerLink="/garage" class="btn btn-sun px-10 text-2xl">Garage</a>
       </nav>
 

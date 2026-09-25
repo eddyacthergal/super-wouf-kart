@@ -16,7 +16,7 @@ import {
 } from '../core/vec2';
 import { createCircleTrack } from '../testing/fake-track';
 import { createTestRace } from '../testing/fixtures';
-import { GARDEN_CONTROL_POINTS } from './garden-layout';
+import { GARDEN_CONTROL_POINTS } from './circuits/grand-jardin';
 import { Track, createGardenTrack, trackOutline } from './track';
 
 const DEG = Math.PI / 180;

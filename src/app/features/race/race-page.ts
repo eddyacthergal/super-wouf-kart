@@ -13,6 +13,7 @@ import {
 } from '@angular/core';
 import { Router } from '@angular/router';
 import type { RaceSetup } from '../../../game/game-api';
+import { findTrack } from '../../../game/track/catalog';
 import { GameSessionService } from '../../core/game-session.service';
 import { SettingsStore } from '../../core/settings.store';
 import { blockBrowserGestures } from '../../shared/block-browser-gestures';
@@ -52,7 +53,7 @@ export function isFlagOn(value: string | undefined): boolean {
   ],
   template: `
     <main #main class="fixed inset-0 overflow-hidden bg-azure-200">
-      <h1 #heading tabindex="-1" class="sr-only">Course</h1>
+      <h1 #heading tabindex="-1" class="sr-only">Course : {{ trackName() }}</h1>
 
       <!-- Un canvas neuf à chaque partie (on alterne deux blocs) : le contexte WebGL d'une partie terminée n'est jamais réutilisé. -->
       <!-- touch-none : sur écran tactile, ni défilement ni zoom pendant la course. -->
@@ -84,7 +85,7 @@ export function isFlagOn(value: string | undefined): boolean {
       <!-- Région de statut présente dès le départ : son contenu (chargement) est annoncé quand il apparaît. -->
       <div role="status" class="pointer-events-none absolute inset-0 grid place-items-center">
         @if (session.loading()) {
-          <p class="hud-panel px-6 py-3 text-2xl font-black">Chargement du jardin…</p>
+          <p class="hud-panel px-6 py-3 text-2xl font-black">Chargement : {{ trackName() }}…</p>
         }
       </div>
 
@@ -127,6 +128,9 @@ export class RacePage {
   private readonly router = inject(Router);
   private readonly injector = inject(Injector);
   private readonly view = inject(DOCUMENT).defaultView;
+
+  /** Nom du circuit choisi, affiché pendant le chargement. */
+  protected readonly trackName = computed(() => findTrack(this.settings.track()).name);
 
   private readonly canvas = viewChild<ElementRef<HTMLCanvasElement>>('canvas');
   private readonly heading = viewChild.required<ElementRef<HTMLHeadingElement>>('heading');
@@ -210,6 +214,7 @@ export class RacePage {
     return {
       playerBreed: this.settings.breed(),
       playerSkins: this.settings.skins(),
+      trackId: this.settings.track(),
       muted: this.settings.muted(),
       reducedMotion: prefersReducedMotion(this.view),
       autopilot: isFlagOn(this.autopilot()),

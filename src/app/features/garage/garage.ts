@@ -43,7 +43,7 @@ const SLOTS: ReadonlyArray<{ id: SkinSlot; label: string }> = [
             <h2 id="preview-title" class="text-2xl font-extrabold">Aperçu</h2>
             <app-dog-preview [breed]="settings.breed()" [skins]="settings.skins()" />
           </div>
-          <a routerLink="/course" class="btn btn-primary w-full text-xl">Lancer la course</a>
+          <a routerLink="/circuits" class="btn btn-primary w-full text-xl">Choisir le circuit</a>
         </section>
       </div>
     </main>

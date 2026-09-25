@@ -32,6 +32,7 @@ describe('SettingsStore', () => {
     expect(store.breed()).toBe('chihuahua');
     expect(store.skins()).toEqual(EMPTY_SKINS);
     expect(store.muted()).toBe(false);
+    expect(store.track()).toBe('grand-jardin');
   });
 
   it('enregistre chaque changement et le relit au démarrage suivant', () => {
@@ -46,6 +47,7 @@ describe('SettingsStore', () => {
       breed: 'teckel',
       skins: { head: 'crown', neck: 'bandana', body: null },
       muted: true,
+      track: 'grand-jardin',
     });
 
     TestBed.resetTestingModule();
@@ -62,6 +64,16 @@ describe('SettingsStore', () => {
     expect(store.skins().head).toBe('cap');
     store.setSkin('head', null);
     expect(store.skins().head).toBeNull();
+  });
+
+  it('mémorise le circuit choisi et ignore un circuit inconnu', () => {
+    const storage = new MemoryStorage();
+    storage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ track: 'lune' }));
+    const store = createStore(storage);
+    expect(store.track()).toBe('grand-jardin');
+    store.setTrack('lune');
+    expect(store.track()).toBe('grand-jardin');
+    expect(storage.getItem(SETTINGS_STORAGE_KEY)).toBe(JSON.stringify({ track: 'lune' }));
   });
 
   it('ignore une race inconnue', () => {

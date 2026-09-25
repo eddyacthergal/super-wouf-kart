@@ -39,7 +39,8 @@ import { createRoster } from './race/roster';
 import { RaceSimulation } from './race/simulation';
 import { RaceRenderer } from './render/race-renderer';
 import type { RaceSceneOptions } from './render/race-scene';
-import { createGardenTrack, trackOutline } from './track/track';
+import { findTrack } from './track/catalog';
+import { createTrack, trackOutline } from './track/track';
 
 /** Intervalle de publication du HUD (s). */
 const HUD_INTERVAL = 0.1;
@@ -134,15 +135,18 @@ function startRace(
 ): GameHandle {
   const seed = setup.seed ?? randomSeed(deps.random ?? Math.random);
   const rng = createRng(seed);
-  const track = createGardenTrack();
+  const definition = findTrack(setup.trackId);
+  const track = createTrack(definition);
   const entries = createRoster(setup.playerBreed, setup.playerSkins, rng);
-  const sim = new RaceSimulation(track, entries, { laps: setup.laps ?? RACE_LAPS, rng });
+  const laps = setup.laps ?? definition.laps ?? RACE_LAPS;
+  const sim = new RaceSimulation(track, entries, { laps, rng });
   const state = sim.state;
   const player = state.racers.find((racer) => racer.id === state.playerId);
   const log = createLogger(setup.debug === true);
 
   const renderer = deps.createRenderer(canvas, track, state.racers, {
     reducedMotion: setup.reducedMotion,
+    decor: definition.decor,
   });
   cleanups.push(() => renderer.dispose());
 
@@ -370,6 +374,8 @@ function startRace(
   };
 
   const info: RaceInfo = {
+    trackId: definition.id,
+    trackName: definition.name,
     laps: state.laps,
     racers: state.racers.map((racer) => ({
       id: racer.id,
@@ -381,7 +387,7 @@ function startRace(
     trackOutline: trackOutline(track),
   };
   log(
-    `Course prête : ${state.racers.length} pilotes, ${state.laps} tour(s), graine ${seed}` +
+    `Course prête (${definition.name}) : ${state.racers.length} pilotes, ${state.laps} tour(s), graine ${seed}` +
       (setup.autopilot ? ', pilote automatique' : ''),
   );
   callbacks.onReady(info);

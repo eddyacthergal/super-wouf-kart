@@ -13,6 +13,11 @@ export const routes: Routes = [
     loadComponent: () => import('./features/garage/garage').then((m) => m.Garage),
   },
   {
+    path: 'circuits',
+    title: 'Circuits · Wouf Kart',
+    loadComponent: () => import('./features/circuits/circuit-select').then((m) => m.CircuitSelect),
+  },
+  {
     path: 'course',
     title: 'Course · Wouf Kart',
     loadComponent: () => import('./features/race/race-page').then((m) => m.RacePage),

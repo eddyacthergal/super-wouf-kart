@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import type { GameEvent, RaceState, RacerState, TrackQuery } from '../core/types';
 import { clamp } from '../core/vec2';
+import type { TrackDecorHints } from '../track/track-definition';
 import { CameraRig, CHASE, type CameraTarget } from './camera-rig';
 import { Effects } from './effects';
 import { buildGardenWorld, type GardenWorld } from './garden-world';
@@ -18,6 +19,8 @@ import { buildSkyDome, FOG_FAR, FOG_NEAR } from './sky';
 export interface RaceSceneOptions {
   /** « Réduire les animations » : ni secousse, ni variation du champ de vision. */
   reducedMotion: boolean;
+  /** Repères du décor propres au circuit (Grand Jardin par défaut). */
+  decor?: TrackDecorHints;
 }
 
 /** Plans de découpe de la caméra (m) : proche assez loin pour une bonne précision de profondeur. */
@@ -57,7 +60,7 @@ export class RaceScene {
     let world: GardenWorld | null = null;
     let racerVisuals: RacerVisuals | null = null;
     try {
-      world = buildGardenWorld(track);
+      world = buildGardenWorld(track, options.decor);
       racerVisuals = new RacerVisuals(racers, this.bag);
       this.world = world;
       this.racers = racerVisuals;

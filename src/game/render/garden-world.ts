@@ -4,6 +4,7 @@
  */
 import * as THREE from 'three';
 import type { TrackQuery } from '../core/types';
+import type { TrackDecorHints } from '../track/track-definition';
 import { buildDecor } from './decor';
 import { planDecor } from './decor-plan';
 import { buildHedges } from './hedges';
@@ -37,7 +38,8 @@ function buildLawn(centerX: number, centerZ: number, bag: DisposalBag): THREE.Me
   return lawn;
 }
 
-export function buildGardenWorld(track: TrackQuery): GardenWorld {
+/** Monde du thème jardin autour de `track`, avec les indications de décor du circuit. */
+export function buildGardenWorld(track: TrackQuery, decorHints?: TrackDecorHints): GardenWorld {
   const bag = new DisposalBag();
   const bounds = trackBounds(track, 0);
   const centerX = (bounds.minX + bounds.maxX) / 2;
@@ -45,7 +47,7 @@ export function buildGardenWorld(track: TrackQuery): GardenWorld {
 
   const root = new THREE.Group();
   root.name = 'garden-world';
-  const decor = buildDecor(planDecor(track), bag);
+  const decor = buildDecor(planDecor(track, decorHints), bag);
   const clouds = buildClouds(bag, centerX, centerZ);
   root.add(
     buildLawn(centerX, centerZ, bag),

@@ -90,7 +90,7 @@ describe('Garage', () => {
       link.textContent?.replace('←', '').trim(),
       link.getAttribute('href'),
     ]);
-    expect(links).toContainEqual(['Lancer la course', '/course']);
+    expect(links).toContainEqual(['Choisir le circuit', '/circuits']);
     expect(links).toContainEqual(['Retour', '/']);
   });
 });

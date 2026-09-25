@@ -2,6 +2,7 @@ import { DOCUMENT, InjectionToken, Service, computed, inject, signal } from '@an
 import { EMPTY_SKINS, type BreedId, type SkinSelection, type SkinSlot } from '../../game/core/types';
 import { BREEDS } from '../../game/dogs/breeds';
 import { isSkinInSlot, sanitizeSkins } from '../../game/dogs/skins-catalog';
+import { DEFAULT_TRACK_ID, isTrackId } from '../../game/track/catalog';
 
 export const SETTINGS_STORAGE_KEY = 'wouf-kart.settings.v1';
 
@@ -24,9 +25,16 @@ export interface Settings {
   breed: BreedId;
   skins: SkinSelection;
   muted: boolean;
+  /** Circuit choisi (identifiant du catalogue). */
+  track: string;
 }
 
-export const DEFAULT_SETTINGS: Settings = { breed: 'chihuahua', skins: EMPTY_SKINS, muted: false };
+export const DEFAULT_SETTINGS: Settings = {
+  breed: 'chihuahua',
+  skins: EMPTY_SKINS,
+  muted: false,
+  track: DEFAULT_TRACK_ID,
+};
 
 export function isBreedId(value: unknown): value is BreedId {
   return typeof value === 'string' && Object.hasOwn(BREEDS, value);
@@ -47,10 +55,11 @@ export function parseSettings(raw: string | null): Settings {
     breed: isBreedId(record['breed']) ? record['breed'] : DEFAULT_SETTINGS.breed,
     skins: sanitizeSkins(record['skins']),
     muted: typeof record['muted'] === 'boolean' ? record['muted'] : DEFAULT_SETTINGS.muted,
+    track: isTrackId(record['track']) ? record['track'] : DEFAULT_SETTINGS.track,
   };
 }
 
-/** Choix du joueur (race, accessoires, son), mémorisés dans localStorage. */
+/** Choix du joueur (race, accessoires, son, circuit), mémorisés dans localStorage. */
 @Service()
 export class SettingsStore {
   private readonly storage = inject(SETTINGS_STORAGE);
@@ -59,6 +68,7 @@ export class SettingsStore {
   readonly breed = computed(() => this.state().breed);
   readonly skins = computed(() => this.state().skins);
   readonly muted = computed(() => this.state().muted);
+  readonly track = computed(() => this.state().track);
 
   setBreed(id: BreedId): void {
     if (!isBreedId(id) || id === this.state().breed) return;
@@ -75,6 +85,12 @@ export class SettingsStore {
   setMuted(muted: boolean): void {
     if (muted === this.state().muted) return;
     this.update({ muted });
+  }
+
+  /** Choisit un circuit du catalogue (identifiant inconnu ignoré). */
+  setTrack(id: string): void {
+    if (!isTrackId(id) || id === this.state().track) return;
+    this.update({ track: id });
   }
 
   private update(patch: Partial<Settings>): void {

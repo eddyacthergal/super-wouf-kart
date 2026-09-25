@@ -7,7 +7,9 @@ Construit avec **Angular 22** pour l'interface et **three.js** pour la 3D.
 
 ## Fonctionnalités
 
-- **1 circuit « jardin »** de 911 m : épingle de la niche, chicane, grande courbe, longue ligne droite de départ.
+- **2 circuits** au choix, après « Jouer » (choix mémorisé) :
+  - **Grand Jardin** (911 m) : épingle de la niche, chicane, grande courbe, longue ligne droite de départ ;
+  - **Potager** (763 m) : plus court et sinueux, un S au fond du jardin et l'épingle des salades.
 - **Course de 3 tours à 8 pilotes** : toi contre 7 chiens pilotés par l'ordinateur, compte à rebours, classement en direct, écran de résultats.
 - **4 races**, chacune avec ses statistiques :
 
@@ -111,12 +113,13 @@ src/
     core/              ← SettingsStore (préférences), GameSessionService (pont vers le jeu, en signals)
     features/
       home/            ← accueil, rappel des commandes
+      circuits/        ← choix du circuit, aperçu du tracé
       garage/          ← choix de la race, accessoires, aperçu 3D
       race/            ← canvas, HUD, compte à rebours, pause, résultats
     shared/            ← formatage (temps, rangs), préférence « réduire les animations »
   game/                ← moteur de jeu, sans aucune dépendance à Angular
     core/              ← contrats partagés : types, vecteurs 2D, constantes de réglage, RNG déterministe
-    track/             ← circuit (spline Catmull-Rom), projection sur la piste
+    track/             ← circuits (données), catalogue, validateur, spline Catmull-Rom, projection
     kart/              ← physique arcade, dérapage, mini-turbo
     items/             ← boîtes à objets, tirage, projectiles, pièges, impacts
     ai/                ← pilotes IA (trajectoire, freinage, dérapage, objets)
@@ -142,7 +145,7 @@ Principes :
 ## Tests et vérification
 
 - **Tests unitaires** (`npm test`) : ils couvrent chaque module du moteur (circuit, physique, dérapage, objets, IA, course, rendu sans WebGL, audio sans AudioContext, boucle, clavier) et l'interface (services, composants, pages).
-- **Course d'intégration** : une course complète à 8 IA sur le vrai circuit, simulée dans les tests. Elle vérifie que tous les pilotes finissent, que personne ne sort de la piste et que la simulation est déterministe.
+- **Course d'intégration** : une course complète à 8 IA sur chaque circuit du catalogue, simulée dans les tests. Elle vérifie que tous les pilotes finissent, que personne ne sort de la piste et que la simulation est déterministe.
 - **Vérifications réelles** : des courses complètes jouées dans Chrome headless (`/course?autopilot=1&debug=1`), avec captures d'écran, lecture de la console et audit d'accessibilité **axe-core** (0 violation visée).
 
 ## Accessibilité
@@ -156,13 +159,14 @@ L'interface vise **WCAG AA** et **0 violation AXE** :
 ## Documentation
 
 - Spec de conception : [`docs/superpowers/specs/2026-09-23-wouf-kart-design.md`](docs/superpowers/specs/2026-09-23-wouf-kart-design.md)
+- Circuits (fonctionnement, ajout d'un circuit) : [`docs/circuits.md`](docs/circuits.md)
 - Règles de code Angular du projet : [`CLAUDE.md`](CLAUDE.md)
 
 ## Limites et pistes
 
-Hors du périmètre du prototype : multijoueur (écran partagé ou en ligne), manette, circuits supplémentaires, musique, progression et déblocages.
+Hors du périmètre du prototype : multijoueur (écran partagé ou en ligne), manette, musique, progression et déblocages. Les thèmes plage, parc enneigé et cuisine géante sont prévus.
 
 La structure permet de les ajouter progressivement :
 - **une nouvelle race** : une entrée de données dans `src/game/dogs/breeds.ts` ;
 - **un nouvel accessoire** : une entrée dans `skins-catalog.ts` et son constructeur dans `skin-models.ts` ;
-- **un nouveau circuit** : une liste de points de contrôle, sur le modèle de `src/game/track/garden-layout.ts`.
+- **un nouveau circuit** : une définition de données dans `src/game/track/circuits/`, inscrite au catalogue (voir [`docs/circuits.md`](docs/circuits.md)).

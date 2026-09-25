@@ -5,6 +5,8 @@
  */
 import { createRng, type Rng } from '../core/rng';
 import type { TrackQuery } from '../core/types';
+import { GRAND_JARDIN } from '../track/circuits/grand-jardin';
+import type { TrackDecorHints } from '../track/track-definition';
 import { headingOf } from '../core/vec2';
 import { type Bounds, corridorClearance, trackBounds } from './track-geometry';
 
@@ -50,25 +52,6 @@ const FENCE_MARGIN = 36;
 /** Écart minimal (m) entre deux objets de décor. */
 const DECOR_GAP = 1;
 const DECOR_SEED = 0x60f1d;
-
-interface Landmark {
-  kind: DecorKind;
-  x: number;
-  z: number;
-  radius: number;
-}
-
-/** Pièces uniques, positions pensées pour le jardin (validées et déplacées au besoin). */
-const LANDMARKS: readonly Landmark[] = [
-  { kind: 'doghouse', x: -40, z: -114, radius: 5.5 },
-  { kind: 'kibble-bowl', x: 47, z: 58, radius: 4.4 },
-  { kind: 'watering-can', x: 72, z: -50, radius: 6.2 },
-  // Rayon = portée des jets d'eau tournants (~7,4 m), pas seulement le pied de l'arroseur.
-  { kind: 'sprinkler', x: -8, z: -46, radius: 7.6 },
-  { kind: 'giant-bone', x: -64, z: -46, radius: 6.5 },
-  { kind: 'gnome', x: -3, z: 30, radius: 2.8 },
-  { kind: 'gnome', x: 112, z: 42, radius: 2.8 },
-];
 
 interface ScatterRule {
   kind: DecorKind;
@@ -141,16 +124,38 @@ const SCATTER: readonly ScatterRule[] = [
 /** Arbres de fond, hors de la clôture. */
 const OUTER_TREES = { count: 46, size: [18, 30] as const, inner: 8, outer: 80 };
 
-/** Pierres de gué : un chemin sinueux qui traverse la pelouse centrale. */
-const STEPPING_PATH = {
-  from: { x: -94, z: -30 },
-  to: { x: 114, z: -24 },
-  spacing: 2.9,
-  wave: 6,
-  radius: 1.25,
-};
+/** Pierres de gué : espacement, ondulation et taille, le long du chemin indiqué par le circuit. */
+const STEPPING_PATH = { spacing: 2.9, wave: 6, radius: 1.25 };
 
-export function planDecor(track: TrackQuery, seed = DECOR_SEED): DecorPlan {
+const DECOR_KINDS: ReadonlySet<string> = new Set<DecorKind>([
+  'daisy',
+  'tulip',
+  'sunflower',
+  'tennis-ball',
+  'doghouse',
+  'watering-can',
+  'kibble-bowl',
+  'giant-bone',
+  'gnome',
+  'sprinkler',
+  'tree',
+  'bush',
+  'stepping-stone',
+]);
+
+function isDecorKind(kind: string): kind is DecorKind {
+  return DECOR_KINDS.has(kind);
+}
+
+/**
+ * Décor du thème jardin autour de `track`. Les pièces uniques et le chemin de pierres viennent des
+ * indications du circuit (`hints`, celles du Grand Jardin par défaut) ; types inconnus ignorés.
+ */
+export function planDecor(
+  track: TrackQuery,
+  hints: TrackDecorHints = GRAND_JARDIN.decor ?? {},
+  seed = DECOR_SEED,
+): DecorPlan {
   const rng = createRng(seed);
   const fence = trackBounds(track, track.wallHalfWidth + FENCE_MARGIN);
   const placements: DecorPlacement[] = [];
@@ -179,24 +184,28 @@ export function planDecor(track: TrackQuery, seed = DECOR_SEED): DecorPlan {
   };
 
   // 1. Pièces uniques : position prévue, sinon recherche en spirale autour.
-  for (const landmark of LANDMARKS) {
+  for (const landmark of hints.landmarks ?? []) {
+    const kind = landmark.kind;
+    if (!isDecorKind(kind)) continue;
     const spot = spiralSearch(landmark.x, landmark.z, (x, z) => accepts(x, z, landmark.radius));
     if (!spot) continue;
     placements.push({
-      kind: landmark.kind,
+      kind,
       x: spot.x,
       z: spot.z,
       radius: landmark.radius,
       size: 1,
       rotation: facing(spot.x, spot.z),
-      variant: placements.filter((p) => p.kind === landmark.kind).length,
+      variant: placements.filter((p) => p.kind === kind).length,
     });
   }
 
-  // 2. Pierres de gué.
-  const { from, to, spacing, wave, radius } = STEPPING_PATH;
+  // 2. Pierres de gué, si le circuit indique un chemin.
+  const { spacing, wave, radius } = STEPPING_PATH;
+  const from = hints.path?.from ?? { x: 0, z: 0 };
+  const to = hints.path?.to ?? from;
   const pathLength = Math.hypot(to.x - from.x, to.z - from.z);
-  const stones = Math.floor(pathLength / spacing);
+  const stones = hints.path && pathLength > spacing ? Math.floor(pathLength / spacing) : -1;
   for (let i = 0; i <= stones; i++) {
     const t = i / stones;
     const x = from.x + (to.x - from.x) * t + rng.range(-0.3, 0.3);

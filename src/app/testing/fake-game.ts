@@ -91,6 +91,8 @@ export class FakeGame {
 }
 
 export const FAKE_INFO: RaceInfo = {
+  trackId: 'grand-jardin',
+  trackName: 'Grand Jardin',
   laps: 3,
   racers: [
     { id: 0, name: 'Toi', breed: 'chihuahua', kartColor: '#d7322e', isPlayer: true },
