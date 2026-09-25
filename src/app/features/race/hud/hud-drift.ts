@@ -12,13 +12,24 @@ const TIERS: Readonly<Record<Exclude<DriftTier, 0>, { color: string; name: strin
   3: { color: '#c084fc', name: 'violet' },
 };
 
-/** Jauge de dérapage : trois segments remplis selon le palier, dans la couleur du palier. */
+/**
+ * Jauge de dérapage : allumée dès que le joueur dérape (avant le premier palier), puis trois segments
+ * remplis selon le palier, dans la couleur du palier.
+ */
 @Component({
   selector: 'app-hud-drift',
   host: { class: 'block' },
   template: `
-    <div role="img" [attr.aria-label]="label()" class="hud-panel flex items-center gap-2">
-      <span class="text-sm font-bold">Dérapage</span>
+    <div
+      role="img"
+      [attr.aria-label]="label()"
+      class="hud-panel flex items-center gap-2 outline-2 outline-offset-2"
+      [class.outline-sun-400]="drifting()"
+      [class.outline-transparent]="!drifting()"
+    >
+      <span class="text-sm font-bold" [class.text-sun-400]="drifting()">
+        {{ drifting() ? 'Dérapage !' : 'Dérapage' }}
+      </span>
       <span class="flex gap-1">
         @for (filled of segments(); track $index) {
           <span
@@ -34,6 +45,8 @@ const TIERS: Readonly<Record<Exclude<DriftTier, 0>, { color: string; name: strin
   `,
 })
 export class HudDrift {
+  /** Vrai pendant tout le dérapage, y compris avant le premier palier. */
+  readonly drifting = input(false);
   readonly tier = input<DriftTier>(0);
   readonly boosting = input(false);
 
@@ -44,7 +57,12 @@ export class HudDrift {
   protected readonly segments = computed(() => [1, 2, 3].map((level) => level <= this.tier()));
   protected readonly label = computed(() => {
     const tier = this.tier();
-    const charge = tier === 0 ? 'Dérapage : pas de charge' : `Dérapage : palier ${tier} sur 3 (${TIERS[tier].name})`;
+    const charge =
+      tier > 0
+        ? `Dérapage : palier ${tier} sur 3 (${TIERS[tier].name})`
+        : this.drifting()
+          ? 'Dérapage en cours : pas encore de charge'
+          : 'Dérapage : pas de charge';
     return this.boosting() ? `${charge}, turbo actif` : charge;
   });
 }

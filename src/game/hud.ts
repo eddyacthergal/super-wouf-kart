@@ -59,6 +59,7 @@ export function buildHudSnapshot(state: RaceState, wrongWay: boolean): HudSnapsh
     raceTime: state.time,
     item: player?.item ?? null,
     itemRolling: (player?.itemRoulette ?? 0) > 0,
+    drifting: kart?.drift.active ?? false,
     driftTier: kart?.drift.active ? kart.drift.tier : 0,
     boosting: (kart?.boostTime ?? 0) > 0,
     wrongWay,

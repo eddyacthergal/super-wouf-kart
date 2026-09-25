@@ -15,8 +15,11 @@ const GLOW_CAPACITY = 1200;
 const SOFT_CAPACITY = 800;
 const STARS_PER_KART = 3;
 /** Étincelles par roue et par seconde : palier 0 (sans charge) puis paliers 1 à 3. */
-const SPARK_RATE_IDLE = 14;
+const SPARK_RATE_IDLE = 30;
 const SPARK_RATE_CHARGED = 42;
+/** Taille des étincelles (m) : plus petites tant que le dérapage n'est pas chargé. */
+const SPARK_SIZE_IDLE: readonly [number, number] = [0.09, 0.13];
+const SPARK_SIZE_CHARGED: readonly [number, number] = [0.12, 0.19];
 const DUST_RATE = 12;
 const FLAME_GLOW_RATE = 30;
 const MIN_SPARK_SPEED = 4;
@@ -38,10 +41,10 @@ const PUFF = color('#f4f1ea');
 const HIT = color('#ffe066');
 const LEAF = color('#4caf3c');
 
-const SPARK_IDLE: ParticleOptions = { gravity: -16, opacity: 0.55, drag: 1 };
 /**
- * Étincelle chargée : cœur opaque (mélange normal) qui garde la couleur du palier même sur le
- * gravier clair, où le seul mélange additif la délavait en blanc, et halo additif autour.
+ * Étincelle : cœur opaque (mélange normal) qui garde la couleur du palier même sur le gravier
+ * clair, où le seul mélange additif la délavait en blanc, et halo additif autour. Dès le début du
+ * dérapage (palier 0, jaune) : le joueur doit voir tout de suite qu'il dérape.
  */
 const SPARK_CORE: ParticleOptions = { gravity: -16, opacity: 1, drag: 1 };
 const SPARK_HALO: ParticleOptions = { gravity: -16, opacity: 0.45, drag: 1 };
@@ -327,12 +330,9 @@ export class Effects {
       const vy = rng.range(1.5, 4.2);
       const vz = -forwardZ * back - Math.sin(visual.heading) * out;
       const life = rng.range(0.2, 0.42);
-      if (tier === 0) {
-        this.glow.emit(this.point.x, y, this.point.z, vx, vy, vz, tint, 0.1, life, SPARK_IDLE);
-        continue;
-      }
       // Même trajectoire pour le cœur et le halo : ils avancent ensemble.
-      const size = rng.range(0.12, 0.19);
+      const [minSize, maxSize] = tier === 0 ? SPARK_SIZE_IDLE : SPARK_SIZE_CHARGED;
+      const size = rng.range(minSize, maxSize);
       this.soft.emit(this.point.x, y, this.point.z, vx, vy, vz, tint, size, life, SPARK_CORE);
       this.glow.emit(
         this.point.x,

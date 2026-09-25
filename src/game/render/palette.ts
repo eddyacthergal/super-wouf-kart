@@ -26,5 +26,5 @@ export const PALETTE = {
   cloud: '#ffffff',
 } as const;
 
-/** Paliers de dérapage : 0 blanc léger, 1 bleu, 2 orange, 3 violet. */
-export const DRIFT_TIER_COLORS = ['#fff8e8', '#3fa9ff', '#ff9f1c', '#c77dff'] as const;
+/** Paliers de dérapage : 0 jaune (dérapage pas encore chargé), 1 bleu, 2 orange, 3 violet. */
+export const DRIFT_TIER_COLORS = ['#ffd84a', '#3fa9ff', '#ff9f1c', '#c77dff'] as const;

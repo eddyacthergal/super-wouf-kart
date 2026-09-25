@@ -72,10 +72,9 @@ describe('Effects', () => {
       const glow = liveParticles(context.effects.glow);
       const cores = liveParticles(context.effects.soft);
       expect(glow.length, `palier ${tier}`).toBeGreaterThan(2);
-      // Paliers chargés : cœur opaque (mélange normal) en plus du halo additif, pour que la couleur
-      // reste lisible sur le gravier clair ; sans charge, simples scintillements additifs.
-      if (tier === 0) expect(cores).toHaveLength(0);
-      else expect(cores.length, `palier ${tier}`).toBe(glow.length);
+      // Cœur opaque (mélange normal) en plus du halo additif, pour que la couleur reste lisible sur
+      // le gravier clair, dès le palier 0 : le dérapage se voit dès qu'il commence.
+      expect(cores.length, `palier ${tier}`).toBe(glow.length);
       const expected = new THREE.Color(DRIFT_TIER_COLORS[tier]);
       const forward = forwardOf(kart.heading);
       for (const { position, tint } of [...glow, ...cores]) {

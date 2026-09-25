@@ -39,7 +39,11 @@ import { WrongWayBanner } from './wrong-way-banner';
     }
 
     <div class="absolute right-3 bottom-3 flex flex-col items-end gap-2 sm:right-5 sm:bottom-5">
-      <app-hud-drift [tier]="hud().driftTier" [boosting]="hud().boosting" />
+      <app-hud-drift
+        [drifting]="hud().drifting"
+        [tier]="hud().driftTier"
+        [boosting]="hud().boosting"
+      />
       <app-hud-speed [kmh]="hud().speedKmh" />
     </div>
   `,

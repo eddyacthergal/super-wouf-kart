@@ -57,6 +57,8 @@ export interface HudSnapshot {
   item: ItemKind | null;
   /** Vrai pendant la roulette de l'objet. */
   itemRolling: boolean;
+  /** Vrai dès que le joueur dérape, avant même le premier palier. */
+  drifting: boolean;
   driftTier: DriftTier;
   boosting: boolean;
   /** Vrai si le joueur roule dans le mauvais sens depuis un moment. */
