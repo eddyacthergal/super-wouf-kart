@@ -27,19 +27,33 @@ const TIERS: Readonly<Record<Exclude<DriftTier, 0>, { color: string; name: strin
       [class.outline-sun-400]="drifting()"
       [class.outline-transparent]="!drifting()"
     >
-      <span class="text-sm font-bold" [class.text-sun-400]="drifting()">
+      <span
+        class="font-bold"
+        [class.text-sm]="!compact()"
+        [class.text-xs]="compact()"
+        [class.text-sun-400]="drifting()"
+      >
         {{ drifting() ? 'Dérapage !' : 'Dérapage' }}
       </span>
       <span class="flex gap-1">
         @for (filled of segments(); track $index) {
           <span
-            class="h-3 w-7 rounded-full border-2 border-white/80"
+            class="rounded-full border-2 border-white/80"
+            [class.h-3]="!compact()"
+            [class.w-7]="!compact()"
+            [class.h-2]="compact()"
+            [class.w-4]="compact()"
             [style.background-color]="filled ? color() : 'transparent'"
           ></span>
         }
       </span>
       @if (boosting()) {
-        <span class="text-sm font-black text-sun-400">Turbo !</span>
+        <span
+          class="font-black text-sun-400"
+          [class.text-sm]="!compact()"
+          [class.text-xs]="compact()"
+          >Turbo !</span
+        >
       }
     </div>
   `,
@@ -49,6 +63,8 @@ export class HudDrift {
   readonly drifting = input(false);
   readonly tier = input<DriftTier>(0);
   readonly boosting = input(false);
+  /** Version réduite, pour laisser la piste visible sur petit écran. */
+  readonly compact = input(false);
 
   protected readonly color = computed(() => {
     const tier = this.tier();

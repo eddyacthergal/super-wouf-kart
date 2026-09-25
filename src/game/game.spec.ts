@@ -54,6 +54,7 @@ class FakeRenderer implements RendererLike {
 }
 
 class FakeAudio implements AudioLike {
+  running = false;
   resumeCalls = 0;
   readonly mutedCalls: boolean[] = [];
   /** Lots d'événements reçus (copiés : le jeu réutilise son tableau), avec l'état du joueur. */
@@ -344,6 +345,64 @@ describe('createGameWithDeps — démarrage', () => {
   });
 });
 
+describe('createGameWithDeps — commandes tactiles', () => {
+  /** Kart du joueur d'après le dernier état rendu. */
+  const playerKart = (h: Harness) => {
+    const state = h.renderer.lastState;
+    if (!state) throw new Error('Aucun rendu.');
+    return state.racers[state.playerId].kart;
+  };
+
+  /** Frames accélérées jusqu'au départ (fin du compte à rebours). */
+  const untilRacing = (h: Harness): void => {
+    let frames = 0;
+    while (h.rec.phases.at(-1) !== 'racing' && frames++ < 200) h.frames.frame(FAST_FRAME_MS);
+    expect(h.rec.phases.at(-1)).toBe('racing');
+  };
+
+  it('joystick et boutons à l’écran s’ajoutent au clavier : direction analogique, frein qui l’emporte sur les gaz', () => {
+    const h = harness();
+    const game = start(h, { touchControls: true });
+    untilRacing(h);
+
+    game.setTouchSteer(-1);
+    h.frames.frames(20);
+    expect(playerKart(h).steer).toBeLessThan(-0.9);
+    game.setTouchSteer(0.5);
+    h.frames.frames(20);
+    expect(playerKart(h).steer).toBeCloseTo(0.5, 2);
+    game.setTouchSteer(0);
+    h.frames.frames(20);
+    expect(Math.abs(playerKart(h).steer)).toBeLessThan(0.05);
+
+    h.frames.frames(40);
+    const cruising = playerKart(h).speed;
+    expect(cruising).toBeGreaterThan(5);
+    // Le clavier factice tient les gaz : le frein tactile doit quand même ralentir le kart.
+    game.setTouchControl('brake', true);
+    h.frames.frames(20);
+    expect(playerKart(h).speed).toBeLessThan(cruising - 3);
+  });
+
+  it('sans commandes tactiles, ou en pause, les appuis sont ignorés', () => {
+    const keyboardOnly = harness();
+    const game = start(keyboardOnly);
+    untilRacing(keyboardOnly);
+    game.setTouchSteer(-1);
+    keyboardOnly.frames.frames(20);
+    expect(playerKart(keyboardOnly).steer).toBe(0);
+
+    const paused = harness();
+    const touchGame = start(paused, { touchControls: true });
+    untilRacing(paused);
+    touchGame.pause();
+    touchGame.setTouchSteer(-1);
+    touchGame.resume();
+    paused.frames.frames(20);
+    expect(playerKart(paused).steer).toBe(0);
+  });
+});
+
 describe('createGameWithDeps — boucle', () => {
   it('rend chaque frame et publie le HUD environ toutes les 100 ms', () => {
     const h = harness();
@@ -514,16 +573,66 @@ describe('createGameWithDeps — pause, reprise, libération', () => {
     expect(h.rec.pauses).toEqual([true]);
   });
 
-  it('autorise le son au premier geste de l’utilisateur, une seule fois', () => {
+  it('réautorise le son à chaque geste tant qu’il ne joue pas, relâchement du doigt compris', () => {
     const h = harness();
     const game = start(h);
     expect(h.audio.resumeCalls).toBe(1);
-    document.dispatchEvent(new Event('keydown'));
-    expect(h.audio.resumeCalls).toBe(2);
     document.dispatchEvent(new Event('pointerdown'));
+    document.dispatchEvent(new Event('pointerup'));
+    document.dispatchEvent(new Event('touchend'));
+    expect(h.audio.resumeCalls).toBe(4);
+    // Le son joue : plus besoin de le réautoriser.
+    h.audio.running = true;
+    document.dispatchEvent(new Event('click'));
     document.dispatchEvent(new Event('keydown'));
-    expect(h.audio.resumeCalls).toBe(2);
+    expect(h.audio.resumeCalls).toBe(4);
+    // Coupé par le navigateur (autre application) : le prochain geste le relance.
+    h.audio.running = false;
+    document.dispatchEvent(new Event('click'));
+    expect(h.audio.resumeCalls).toBe(5);
     expect(game.paused).toBe(false);
+  });
+
+  it('iPhone : son même en mode silencieux (session « lecture », boucle muette), libéré à la fin', () => {
+    const audioSession = { type: 'auto' };
+    const elements: { paused: boolean; plays: number }[] = [];
+    class FakeAudioElement {
+      src = '';
+      loop = false;
+      paused = true;
+      plays = 0;
+      constructor() {
+        elements.push(this);
+      }
+      play(): Promise<void> {
+        this.plays++;
+        this.paused = false;
+        return Promise.resolve();
+      }
+      pause(): void {
+        this.paused = true;
+      }
+      removeAttribute(): void {}
+      load(): void {}
+      setAttribute(): void {}
+    }
+    vi.stubGlobal('navigator', {
+      userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15',
+      audioSession,
+    });
+    vi.stubGlobal('Audio', FakeAudioElement);
+
+    const h = harness();
+    const game = start(h);
+    expect(audioSession.type).toBe('playback');
+    expect(elements).toHaveLength(1);
+    expect(elements[0].plays).toBe(1);
+    // Déjà en lecture : un geste ne la relance pas.
+    document.dispatchEvent(new Event('touchend'));
+    expect(elements[0].plays).toBe(1);
+
+    game.dispose();
+    expect(elements[0].paused).toBe(true);
   });
 
   it('setMuted est relayé à l’audio', () => {

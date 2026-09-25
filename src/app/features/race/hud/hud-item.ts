@@ -1,15 +1,18 @@
 import { Component, computed, input } from '@angular/core';
 import type { ItemKind } from '../../../../game/core/types';
-import { itemName } from '../../../shared/format';
+import { itemHint, itemName } from '../../../shared/format';
 import { ItemIcon } from './item-icon';
 
 const ROULETTE: readonly ItemKind[] = ['bone', 'tennis-ball', 'mud', 'kibble-turbo'];
 
-/** Case d'objet : icône de l'objet tenu, ou roulette pendant le tirage (« ? » fixe si animations réduites). */
+/**
+ * Case d'objet : icône de l'objet tenu, ou roulette pendant le tirage (« ? » fixe si animations réduites).
+ * Sous la case, le nom de l'objet tenu et son effet en quelques mots.
+ */
 @Component({
   selector: 'app-hud-item',
   imports: [ItemIcon],
-  host: { class: 'block' },
+  host: { class: 'flex flex-col items-end gap-1' },
   template: `
     <div
       role="img"
@@ -41,6 +44,13 @@ const ROULETTE: readonly ItemKind[] = ['bone', 'tennis-ball', 'mud', 'kibble-tur
         </svg>
       }
     </div>
+    @if (caption(); as text) {
+      <p class="hud-panel max-w-48 text-right leading-tight">
+        <!-- Le nom est déjà dans le libellé de la case : seul l'effet est lu ici. -->
+        <span class="block font-black" aria-hidden="true">{{ text.name }}</span>
+        <span class="block text-xs font-bold">{{ text.hint }}</span>
+      </p>
+    }
   `,
   styles: `
     .roulette-strip {
@@ -69,6 +79,11 @@ export class HudItem {
   readonly rolling = input(false);
 
   protected readonly roulette = ROULETTE;
+  /** Nom et effet de l'objet tenu (rien pendant le tirage ni sans objet). */
+  protected readonly caption = computed(() => {
+    const item = this.item();
+    return item && !this.rolling() ? { name: itemName(item), hint: itemHint(item) } : null;
+  });
   protected readonly label = computed(() => {
     if (this.rolling()) return 'Objet : tirage en cours';
     const item = this.item();

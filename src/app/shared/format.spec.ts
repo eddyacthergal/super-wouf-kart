@@ -8,6 +8,7 @@ import {
   formatRaceTime,
   formatRank,
   formatRankDisplay,
+  itemHint,
   itemName,
   joinWithEt,
   skinName,
@@ -67,6 +68,7 @@ describe('noms', () => {
     expect(skinName('cap')).toBe('Casquette');
     expect(skinName('inconnu')).toBe('inconnu');
     expect(itemName('tennis-ball')).toBe('Balle de tennis');
+    expect(itemHint('mud')).toBe('Déposée derrière toi');
   });
 
   it('joinWithEt énumère à la française', () => {

@@ -7,7 +7,8 @@ import { breedName, formatPlace, formatRaceTime, formatRank, formatRankDisplay }
 @Component({
   selector: 'app-race-results',
   imports: [RouterLink],
-  host: { class: 'absolute inset-0 block overflow-y-auto bg-slate-900/55' },
+  // data-scrollable : l'écran des résultats défile au doigt, même quand la course bloque les gestes.
+  host: { class: 'absolute inset-0 block overflow-y-auto bg-slate-900/55', 'data-scrollable': '' },
   template: `
     <section
       class="flex min-h-full items-center justify-center p-4"

@@ -48,8 +48,12 @@ interface AudioGraph {
   noise: AudioBuffer;
 }
 
-const defaultCreateContext = (): AudioContext | null =>
-  typeof AudioContext !== 'undefined' ? new AudioContext() : null;
+/** Contexte audio du navigateur (nom préfixé sur les anciens Safari). */
+const defaultCreateContext = (): AudioContext | null => {
+  const scope = globalThis as typeof globalThis & { webkitAudioContext?: typeof AudioContext };
+  const Context = typeof AudioContext !== 'undefined' ? AudioContext : scope.webkitAudioContext;
+  return Context ? new Context() : null;
+};
 
 export class AudioEngine {
   private graph: AudioGraph | null;
@@ -74,6 +78,11 @@ export class AudioEngine {
 
   get muted(): boolean {
     return this.isMuted;
+  }
+
+  /** Vrai quand le contexte audio joue (autorisé par le navigateur et pas suspendu depuis). */
+  get running(): boolean {
+    return this.graph?.ctx.state === 'running';
   }
 
   /** Autorise le son ; à appeler après une interaction utilisateur. Ne rejette jamais. */

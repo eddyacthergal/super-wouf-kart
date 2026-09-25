@@ -70,12 +70,32 @@ Pour déclencher un mini-turbo, maintiens **Espace** en tournant : le kart se me
 Garde **Espace** enfoncé dans le virage (flèche vers l'intérieur pour serrer, vers l'extérieur pour élargir), puis
 relâche quand les étincelles passent du jaune au bleu (≈ 0,6 s), à l'orange (≈ 1,2 s) ou au violet (≈ 2 s).
 
+## Commandes de jeu (téléphone, tablette)
+
+Sur un écran tactile, des commandes apparaissent en course ; tiens l'appareil **à l'horizontale**.
+
+| Action | Commande |
+|---|---|
+| Accélérer | automatique |
+| Tourner | joystick : pose le pouce gauche n'importe où sur la moitié gauche de l'écran, puis glisse à gauche ou à droite (plus tu t'écartes, plus tu tournes) |
+| Sauter, déraper (maintenir en virage) | bouton **Saut** |
+| Utiliser l'objet | bouton **Objet** |
+| Freiner, reculer | bouton **Frein** (coupe l'accélération) |
+| Pause | bouton pause en haut à droite |
+
+Les commandes tactiles s'affichent d'elles-mêmes quand le pointeur principal est un doigt (media query
+`pointer: coarse`) ; le clavier reste utilisable en même temps. Pendant la course, le pincement, le double
+appui et le défilement du navigateur sont bloqués (pas de zoom involontaire). Le son démarre au premier
+appui sur l'écran ; sur iPhone et iPad, il passe même en mode silencieux (session audio « lecture »,
+comme une vidéo).
+
 ### Paramètres d'URL (développement)
 
 | URL | Effet |
 |---|---|
 | `/course?autopilot=1` | Ton kart est piloté par l'IA (démo, vérifications automatiques) |
 | `/course?debug=1` | Journalise les événements clés dans la console, préfixés par `[WoufKart]` |
+| `/course?touch=1` | Force les commandes tactiles (pour les essayer à la souris sur ordinateur) ; `touch=0` les retire |
 
 ## Scripts
 
@@ -157,7 +177,7 @@ L'interface vise **WCAG AA** et **0 violation AXE** :
 
 ## Limites et pistes
 
-Hors du périmètre du prototype : multijoueur (écran partagé ou en ligne), manette, mobile tactile, circuits supplémentaires, musique, progression et déblocages.
+Hors du périmètre du prototype : multijoueur (écran partagé ou en ligne), manette, circuits supplémentaires, musique, progression et déblocages.
 
 La structure permet de les ajouter progressivement :
 - **une nouvelle race** : une entrée de données dans `src/game/dogs/breeds.ts` ;

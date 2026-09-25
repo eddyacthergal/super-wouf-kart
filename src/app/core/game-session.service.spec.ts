@@ -58,7 +58,7 @@ describe('GameSessionService', () => {
     expect(session.paused()).toBe(false);
   });
 
-  it('transmet pause, reprise et son au handle', async () => {
+  it('transmet pause, reprise, son et commandes tactiles au handle', async () => {
     await session.start(canvas, SETUP);
     const { handle } = game.last;
 
@@ -72,6 +72,15 @@ describe('GameSessionService', () => {
 
     session.setMuted(true);
     expect(handle.mutedCalls).toEqual([true]);
+
+    session.setTouchControl('drift', true);
+    session.setTouchControl('drift', false);
+    expect(handle.touchCalls).toEqual([
+      { action: 'drift', pressed: true },
+      { action: 'drift', pressed: false },
+    ]);
+    session.setTouchSteer(-0.5);
+    expect(handle.steerCalls).toEqual([-0.5]);
   });
 
   it('stop libère la partie, réinitialise l’état et ignore les rappels tardifs', async () => {

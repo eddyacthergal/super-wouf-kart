@@ -430,6 +430,17 @@ describe('AudioEngine avec un contexte', () => {
     expect(masterGain(ctx).gain.value).toBeCloseTo(0.6);
   });
 
+  it('running suit l’état du contexte (autorisé, puis suspendu par le navigateur), faux après dispose', async () => {
+    const { engine, ctx } = createEngine();
+    expect(engine.running).toBe(false);
+    await engine.resume();
+    expect(engine.running).toBe(true);
+    ctx.state = 'suspended';
+    expect(engine.running).toBe(false);
+    engine.dispose();
+    expect(engine.running).toBe(false);
+  });
+
   it('aucun son avant resume()', () => {
     const { engine, ctx } = createEngine();
     engine.handleEvents(ALL_EVENTS, PLAYER);

@@ -2,13 +2,15 @@
  * Caméra de poursuite : derrière le kart suivi, cap lissé (elle tourne moins que le kart en dérapage),
  * champ de vision élargi en boost, petite secousse sur les chocs. Léger travelling pendant le compte
  * à rebours, lente orbite après l'arrivée. « Réduire les animations » : ni FOV variable, ni secousse,
- * ni travelling.
+ * ni travelling. En portrait (téléphone tenu droit), le champ vertical s'élargit pour garder la route
+ * dans l'image.
  */
 import * as THREE from 'three';
 import { COUNTDOWN_SECONDS } from '../core/constants';
 import type { RacePhase } from '../core/types';
 import { clamp, lerpAngle } from '../core/vec2';
 import { smoothTowards } from './resources';
+import { fitFovToAspect } from './viewport-fov';
 
 export const CHASE = {
   distance: 7,
@@ -52,7 +54,7 @@ export class CameraRig {
     readonly camera: THREE.PerspectiveCamera,
     private readonly reducedMotion: boolean,
   ) {
-    camera.fov = CHASE.fov;
+    camera.fov = fitFovToAspect(CHASE.fov, camera.aspect);
     camera.updateProjectionMatrix();
   }
 
@@ -140,12 +142,13 @@ export class CameraRig {
 
     if (!this.reducedMotion) {
       const targetFov = target.boosting ? CHASE.boostFov : CHASE.fov;
-      const fov = smoothTowards(this.fov, targetFov, CHASE.fovRate, dt);
-      if (Math.abs(fov - this.fov) > 1e-4) {
-        this.fov = fov;
-        camera.fov = fov;
-        camera.updateProjectionMatrix();
-      }
+      this.fov = smoothTowards(this.fov, targetFov, CHASE.fovRate, dt);
+    }
+    // Suit aussi les changements d'orientation de l'écran (rapport largeur / hauteur).
+    const fov = fitFovToAspect(this.fov, camera.aspect);
+    if (Math.abs(fov - camera.fov) > 1e-4) {
+      camera.fov = fov;
+      camera.updateProjectionMatrix();
     }
   }
 }

@@ -10,13 +10,13 @@ import { Component, ElementRef, afterRenderEffect, input, output, viewChild } fr
     <dialog
       #dialog
       aria-labelledby="pause-title"
-      class="m-auto w-[min(92vw,26rem)] rounded-[2rem] border-4 border-leaf-200 bg-white p-8 text-leaf-900 shadow-2xl backdrop:bg-slate-900/60"
+      class="m-auto w-[min(92vw,26rem)] rounded-[2rem] border-4 border-leaf-200 bg-white p-8 text-leaf-900 shadow-2xl backdrop:bg-slate-900/60 [@media(max-height:500px)]:p-5"
       (cancel)="onCancel($event)"
       (close)="onClose()"
       (keydown)="onKeydown($event)"
     >
-      <h2 id="pause-title" class="text-center text-4xl font-black">Pause</h2>
-      <div class="mt-6 flex flex-col gap-3">
+      <h2 id="pause-title" class="text-center text-4xl font-black [@media(max-height:500px)]:text-3xl">Pause</h2>
+      <div class="mt-6 flex flex-col gap-3 [@media(max-height:500px)]:mt-3 [@media(max-height:500px)]:gap-2">
         <button #resumeButton type="button" class="btn btn-primary" (click)="resumeRequested.emit()">Reprendre</button>
         <button type="button" class="btn btn-sun" (click)="restartRequested.emit()">Recommencer</button>
         <button type="button" class="btn btn-light" (click)="quitRequested.emit()">Quitter</button>

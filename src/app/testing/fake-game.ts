@@ -10,6 +10,7 @@ import type {
   RaceInfo,
   RaceResultEntry,
   RaceSetup,
+  TouchAction,
 } from '../../game/game-api';
 
 export class FakeGameHandle implements GameHandle {
@@ -18,6 +19,8 @@ export class FakeGameHandle implements GameHandle {
   resumeCalls = 0;
   disposeCalls = 0;
   mutedCalls: boolean[] = [];
+  touchCalls: { action: TouchAction; pressed: boolean }[] = [];
+  steerCalls: number[] = [];
 
   constructor(private readonly callbacks: GameCallbacks) {}
 
@@ -37,6 +40,14 @@ export class FakeGameHandle implements GameHandle {
 
   setMuted(muted: boolean): void {
     this.mutedCalls.push(muted);
+  }
+
+  setTouchControl(action: TouchAction, pressed: boolean): void {
+    this.touchCalls.push({ action, pressed });
+  }
+
+  setTouchSteer(steer: number): void {
+    this.steerCalls.push(steer);
   }
 
   dispose(): void {

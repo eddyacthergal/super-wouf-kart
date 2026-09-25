@@ -114,6 +114,8 @@ describe('RacePage', () => {
     expect(text()).toContain('87 km/h');
     expect(text()).toContain('Contre-sens !');
     expect(element.querySelector('[aria-label="Objet : Os"]')).not.toBeNull();
+    // Nom et effet de l'objet sous sa case.
+    expect(text()).toContain('Lancé devant (derrière en freinant)');
     expect(
       element.querySelector('[aria-label="Dérapage : palier 2 sur 3 (orange), turbo actif"]'),
     ).not.toBeNull();
@@ -391,6 +393,111 @@ describe('RacePage et les paramètres d’URL', () => {
     await new Promise((resolve) => setTimeout(resolve));
     expect(game.last.setup.autopilot).toBe(true);
     expect(game.last.setup.debug).toBe(true);
+  });
+});
+
+describe('RacePage — commandes tactiles', () => {
+  let game: FakeGame;
+
+  async function create(
+    touch?: string,
+  ): Promise<{ fixture: ComponentFixture<RacePage>; element: HTMLElement }> {
+    game = new FakeGame();
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        { provide: GAME_LOADER, useValue: game.loader },
+        { provide: SETTINGS_STORAGE, useValue: new MemoryStorage() },
+      ],
+    });
+    const fixture = TestBed.createComponent(RacePage);
+    if (touch !== undefined) fixture.componentRef.setInput('touch', touch);
+    await settle(fixture);
+    return { fixture, element: fixture.nativeElement as HTMLElement };
+  }
+
+  async function race(fixture: ComponentFixture<RacePage>): Promise<void> {
+    game.last.callbacks.onReady(FAKE_INFO);
+    game.last.callbacks.onPhase('racing');
+    game.last.callbacks.onHud(fakeHud());
+    await settle(fixture);
+  }
+
+  /** Appui synthétique (MouseEvent + pointerId : jsdom n'a pas toujours PointerEvent). */
+  function pointer(target: Element, type: string, pointerId: number, clientX = 0): void {
+    const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX });
+    Object.defineProperty(event, 'pointerId', { value: pointerId });
+    target.dispatchEvent(event);
+  }
+
+  afterEach(() => {
+    Reflect.deleteProperty(window, 'matchMedia');
+  });
+
+  it('« ?touch=1 » : joystick et boutons affichés pendant la course et relayés au jeu, masqués en pause', async () => {
+    const { fixture, element } = await create('1');
+    expect(game.last.setup.touchControls).toBe(true);
+    // Rien à piloter pendant le chargement.
+    expect(element.querySelector('app-touch-controls')).toBeNull();
+
+    await race(fixture);
+    const drift = element.querySelector('app-touch-controls [data-control="drift"]');
+    expect(drift).not.toBeNull();
+    pointer(drift!, 'pointerdown', 1);
+    pointer(drift!, 'pointerup', 1);
+    expect(game.last.handle.touchCalls).toEqual([
+      { action: 'drift', pressed: true },
+      { action: 'drift', pressed: false },
+    ]);
+    const stick = element.querySelector('app-touch-controls [data-control="steer"]')!;
+    pointer(stick, 'pointerdown', 2, 200);
+    pointer(stick, 'pointermove', 2, 100);
+    pointer(stick, 'pointerup', 2, 100);
+    expect(game.last.handle.steerCalls).toEqual([-1, 0]);
+    // HUD dégagé des coins du bas, aux pouces.
+    expect(element.querySelector('app-minimap')?.className).toContain('bottom-36');
+    // Jauge de dérapage et vitesse en haut, compactes : le bas de l'écran reste au kart et à la piste.
+    const gauges = element.querySelector('app-hud-drift')?.parentElement;
+    expect(gauges?.className).toContain('top-3');
+    expect(gauges?.className).not.toContain('bottom-3');
+    expect(element.querySelector('app-hud-speed .text-xl')).not.toBeNull();
+
+    game.last.handle.pause();
+    await settle(fixture);
+    expect(element.querySelector('app-touch-controls')).toBeNull();
+    game.last.handle.resume();
+    await settle(fixture);
+    expect(element.querySelector('app-touch-controls')).not.toBeNull();
+  });
+
+  it('« ?touch=0 » : clavier seul, même sur un appareil tactile', async () => {
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: () => ({ matches: true }),
+    });
+    const { fixture, element } = await create('0');
+    expect(game.last.setup.touchControls).toBe(false);
+    await race(fixture);
+    expect(element.querySelector('app-touch-controls')).toBeNull();
+    expect(element.querySelector('app-minimap')?.className).not.toContain('bottom-36');
+    expect(element.querySelector('app-hud-drift')?.parentElement?.className).toContain('bottom-3');
+    expect(element.querySelector('app-hud-speed .text-4xl')).not.toBeNull();
+  });
+
+  it('sans paramètre : d’après l’appareil (pointeur « doigt »)', async () => {
+    const queries: string[] = [];
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: (query: string) => {
+        queries.push(query);
+        return { matches: query === '(pointer: coarse)' };
+      },
+    });
+    const { fixture, element } = await create();
+    expect(queries).toContain('(pointer: coarse)');
+    expect(game.last.setup.touchControls).toBe(true);
+    await race(fixture);
+    expect(element.querySelector('app-touch-controls')).not.toBeNull();
   });
 });
 

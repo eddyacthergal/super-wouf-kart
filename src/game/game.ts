@@ -26,9 +26,15 @@ import type {
   RaceResultEntry,
   RaceSetup,
 } from './game-api';
+import { isAppleTouchDevice, requestPlaybackSession, SilentLoop } from './audio/audio-session';
 import { buildHudSnapshot, WrongWayTracker } from './hud';
 import { KeyboardInput } from './input/keyboard-input';
-import { PlayerController, type DriverInputSource } from './input/player-controller';
+import {
+  combineInputSources,
+  PlayerController,
+  type DriverInputSource,
+} from './input/player-controller';
+import { TouchInput } from './input/touch-input';
 import { createRoster } from './race/roster';
 import { RaceSimulation } from './race/simulation';
 import { RaceRenderer } from './render/race-renderer';
@@ -52,6 +58,8 @@ export interface RendererLike {
 }
 
 export interface AudioLike {
+  /** Vrai quand le son joue (le navigateur l'a autorisé et ne l'a pas coupé depuis). */
+  readonly running: boolean;
   resume(): Promise<void> | void;
   setMuted(muted: boolean): void;
   handleEvents(events: readonly GameEvent[], playerId: number): void;
@@ -138,6 +146,14 @@ function startRace(
   });
   cleanups.push(() => renderer.dispose());
 
+  // iPhone, iPad : le son du jeu doit passer même en mode silencieux (voir audio-session).
+  const nav = typeof navigator === 'undefined' ? undefined : navigator;
+  requestPlaybackSession(nav);
+  const silentLoop =
+    isAppleTouchDevice(nav) && typeof Audio === 'function'
+      ? new SilentLoop(() => new Audio())
+      : null;
+  if (silentLoop) cleanups.push(() => silentLoop.dispose());
   const audio = deps.createAudio();
   cleanups.push(() => audio.dispose());
   audio.setMuted(setup.muted);
@@ -149,6 +165,9 @@ function startRace(
   const keyboard = deps.createKeyboard({ onPauseRequest: () => requestPause() });
   keyboard.attach();
   cleanups.push(() => keyboard.detach());
+  // Boutons à l'écran (téléphone, tablette), en plus du clavier.
+  const touch = setup.touchControls === true ? new TouchInput() : null;
+  const playerInput: DriverInputSource = touch ? combineInputSources([keyboard, touch]) : keyboard;
 
   const controllers = new Map<number, DriverController>();
   for (const racer of state.racers) {
@@ -157,7 +176,7 @@ function startRace(
       racer.id,
       byAi
         ? new AiController(racer.id, createAiPersonality(rng, racer.id), rng)
-        : new PlayerController(racer.id, keyboard),
+        : new PlayerController(racer.id, playerInput),
     );
   }
 
@@ -261,6 +280,7 @@ function startRace(
     paused = true;
     loop.stop();
     keyboard.reset();
+    touch?.reset();
     audio.updatePlayer(playerAudio(false));
     log('Pause');
     callbacks.onPauseChange(true);
@@ -271,6 +291,7 @@ function startRace(
     paused = false;
     // Touches enfoncées pendant la pause (menu) : oubliées, la répétition les rétablit si besoin.
     keyboard.reset();
+    touch?.reset();
     loop.start();
     log('Reprise');
     callbacks.onPauseChange(false);
@@ -310,17 +331,18 @@ function startRace(
       // Son refusé : la course reste jouable en silence.
     }
   };
-  const onFirstGesture = (): void => {
-    removeGestureListeners();
-    if (!disposed) resumeAudio();
+  // Tant que le son ne joue pas, chaque geste le réautorise : sur écran tactile, le navigateur ne
+  // l'accepte qu'au relâchement du doigt (pointerup, touchend, click), et il peut le couper en cours
+  // de partie (appel, passage à une autre application).
+  const onGesture = (): void => {
+    if (disposed) return;
+    silentLoop?.play();
+    if (!audio.running) resumeAudio();
   };
-  const removeGestureListeners = (): void => {
-    doc.removeEventListener('keydown', onFirstGesture, true);
-    doc.removeEventListener('pointerdown', onFirstGesture, true);
-  };
-  doc.addEventListener('keydown', onFirstGesture, true);
-  doc.addEventListener('pointerdown', onFirstGesture, true);
-  cleanups.push(removeGestureListeners);
+  for (const type of GESTURE_EVENTS) doc.addEventListener(type, onGesture, true);
+  cleanups.push(() => {
+    for (const type of GESTURE_EVENTS) doc.removeEventListener(type, onGesture, true);
+  });
 
   // --- Handle et démarrage ---------------------------------------------------
 
@@ -332,6 +354,13 @@ function startRace(
     resume,
     setMuted: (muted) => {
       if (!disposed) audio.setMuted(muted);
+    },
+    setTouchControl: (action, pressed) => {
+      // En pause, les appuis sont ignorés : la reprise repart de commandes relâchées.
+      if (!disposed && !paused) touch?.set(action, pressed);
+    },
+    setTouchSteer: (steer) => {
+      if (!disposed && !paused) touch?.setSteer(steer);
     },
     dispose: () => {
       if (disposed) return;
@@ -358,6 +387,8 @@ function startRace(
   callbacks.onReady(info);
   callbacks.onPhase(state.phase);
   publishHud();
+  // Souvent encore dans le geste qui a lancé la course (bouton « Jouer ») : autant essayer tout de suite.
+  silentLoop?.play();
   resumeAudio();
   loop.start();
   return handle;
@@ -383,12 +414,17 @@ function randomSeed(random: () => number): number {
 }
 
 /** Handle d'une partie qui n'a pas pu démarrer : toutes les méthodes sont sans effet. */
+/** Gestes de l'utilisateur qui autorisent le son (le relâchement du doigt compte sur écran tactile). */
+const GESTURE_EVENTS = ['keydown', 'pointerdown', 'pointerup', 'touchend', 'click'] as const;
+
 function inertHandle(): GameHandle {
   return {
     paused: false,
     pause: () => undefined,
     resume: () => undefined,
     setMuted: () => undefined,
+    setTouchControl: () => undefined,
+    setTouchSteer: () => undefined,
     dispose: () => undefined,
   };
 }
