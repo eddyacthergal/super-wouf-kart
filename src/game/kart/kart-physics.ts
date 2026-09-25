@@ -12,8 +12,8 @@ import { approach, clamp, clone, headingOf, lerpAngle, wrapAngle } from '../core
 const SPIN_DECELERATION = 18;
 /** Vitesse de rotation visuelle pendant un tête-à-queue (rad/s). */
 const SPIN_YAW_RATE = 14;
-/** Convergence de la pose visuelle (visualYaw) vers sa cible (1/s). */
-const VISUAL_YAW_RESPONSE = 8;
+/** Convergence de la pose visuelle (visualYaw) vers sa cible (1/s) : le kart se met vite en travers. */
+const VISUAL_YAW_RESPONSE = 12;
 /** Retour vers la vitesse max effective quand on la dépasse (m/s²). */
 const OVERSPEED_DECELERATION = 12;
 /** Accélération dégressive : a × (1 − k × (v / vmax)²). */
@@ -108,9 +108,14 @@ export function stepKart(
   collideWithTrack(kart, track, dt, memory, emit);
 
   if (!spinning) {
-    const target = kart.drift.active ? -kart.drift.direction * DRIFT.visualYaw : 0;
+    const target = kart.drift.active ? driftVisualYaw(kart.drift.direction, kart.steer) : 0;
     kart.visualYaw += (target - kart.visualYaw) * Math.min(1, VISUAL_YAW_RESPONSE * dt);
   }
+}
+
+/** Angle de glisse visé en dérapage : plus prononcé en braquant dans le sens du dérapage. */
+function driftVisualYaw(direction: number, steer: number): number {
+  return -direction * (DRIFT.visualYaw + DRIFT.visualYawSteer * steer * direction);
 }
 
 function tickTimers(kart: KartState, dt: number): void {

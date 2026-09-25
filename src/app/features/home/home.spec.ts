@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { KEY_BINDINGS } from '../../../game/input/keyboard-input';
+import { APP_VERSION, BUILD_DATE_LOADER } from '../../core/build-info';
 import { SETTINGS_STORAGE, SettingsStore } from '../../core/settings.store';
 import { MemoryStorage } from '../../testing/memory-storage';
 import { keyTokens } from './controls-help';
@@ -10,12 +11,19 @@ import { Home } from './home';
 describe('Home', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideRouter([]), { provide: SETTINGS_STORAGE, useValue: new MemoryStorage() }],
+      providers: [
+        provideRouter([]),
+        { provide: SETTINGS_STORAGE, useValue: new MemoryStorage() },
+        { provide: BUILD_DATE_LOADER, useValue: () => Promise.resolve('2026-09-25T12:00:00.000Z') },
+      ],
     });
   });
 
   async function render(): Promise<HTMLElement> {
     const fixture = TestBed.createComponent(Home);
+    await fixture.whenStable();
+    // La date du build arrive de façon asynchrone (build-info.json).
+    fixture.detectChanges();
     await fixture.whenStable();
     return fixture.nativeElement as HTMLElement;
   }
@@ -41,7 +49,9 @@ describe('Home', () => {
     expect(terms).toHaveLength(KEY_BINDINGS.length);
     expect(terms).toContain('Accélérer');
     expect(terms).toContain('Pause');
-    const keys = Array.from(element.querySelectorAll('dl dd kbd')).map((kbd) => kbd.textContent?.trim());
+    const keys = Array.from(element.querySelectorAll('dl dd kbd')).map((kbd) =>
+      kbd.textContent?.trim(),
+    );
     expect(keys).toContain('Espace');
     expect(keys).toContain('Échap');
     // Les flèches ont un nom prononçable pour les lecteurs d'écran.
@@ -57,6 +67,15 @@ describe('Home', () => {
     const summary = element.querySelector('app-pilot-summary')?.textContent ?? '';
     expect(summary).toContain('Carlin');
     expect(summary).toContain('Accessoires : Casquette et Cape de héros');
+  });
+
+  it('affiche la version du projet et la date du build', async () => {
+    const element = await render();
+    const footer = element.querySelector('footer app-build-version');
+    expect(footer?.textContent).toContain(`Version ${APP_VERSION}`);
+    expect(footer?.querySelector('time')?.getAttribute('datetime')).toBe(
+      '2026-09-25T12:00:00.000Z',
+    );
   });
 
   it('indique l’absence d’accessoire', async () => {

@@ -69,11 +69,16 @@ const DRIFT_EXIT_LOOKAHEAD_SHARE = 0.5;
 const DRIFT_MAX_CURVE_SCAN = 80;
 const DRIFT_SPEED_MARGIN = 2;
 /**
- * Le virage (et la poursuite) doivent demander au moins cette fraction de la rotation minimale
- * en dérapage (DRIFT.steerMin × turnRate), sinon le kart tournerait trop et quitterait sa ligne.
+ * Rotation de référence (fraction du turnRate) sur laquelle l'IA règle ses dérapages : elle ne dérape
+ * que dans les virages serrés, même si la physique permet de déraper plus large (DRIFT.steerMin).
+ */
+const DRIFT_PLAN_TURN = 0.45;
+/**
+ * Le virage (et la poursuite) doivent demander au moins cette fraction de la rotation de référence,
+ * sinon le kart tournerait trop et quitterait sa ligne.
  */
 const DRIFT_FEASIBILITY = 0.9;
-/** En dessous de cette fraction de la rotation minimale, le dérapage tournerait bien trop : on relâche. */
+/** En dessous de cette fraction de la rotation de référence, le dérapage tournerait bien trop : on relâche. */
 const DRIFT_OVERTURN = 0.5;
 const DRIFT_START_STEER = 0.25;
 /**
@@ -297,7 +302,7 @@ export class AiController implements DriverController {
     }
     const kart = racer.kart;
     const curvature = meanCurvature(track, projection.index, DRIFT_WINDOW);
-    const minDriftTurn = DRIFT.steerMin * DRIFT_FEASIBILITY;
+    const minDriftTurn = DRIFT_PLAN_TURN * DRIFT_FEASIBILITY;
     const edgeLimit = projection.sample.halfWidth - DRIFT_EDGE_MARGIN;
     const laneError = Math.abs(projection.lateral - this.lane);
 
@@ -345,7 +350,7 @@ export class AiController implements DriverController {
     const release =
       Math.abs(headingError) > DRIFT_MAX_ERROR ||
       laneError > DRIFT_MAX_LANE_ERROR ||
-      pursuit * side < DRIFT.steerMin * DRIFT_OVERTURN ||
+      pursuit * side < DRIFT_PLAN_TURN * DRIFT_OVERTURN ||
       Math.abs(projection.lateral) > edgeLimit ||
       curveNow < DRIFT_EXIT_CURVATURE ||
       (kart.drift.tier >= this.personality.targetTier && curveAhead < DRIFT_EXIT_CURVATURE);

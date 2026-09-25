@@ -91,9 +91,12 @@ Règles :
 - **Haies** : si |lateral| > wallHalfWidth − KART_RADIUS, le kart est replacé à la limite, perd de la vitesse
   (`wallSpeedRetention`, pondéré par l'angle d'impact), son cap est ramené vers la tangente ; événement `wall`.
 - **Dérapage** : touche maintenue + braquage |steer| > 0,2 + vitesse ≥ 12 m/s ⇒ saut (hop) puis dérapage dans
-  le sens du braquage. Le braquage module le rayon entre `steerMin` (contre-braquage) et `steerMax` (serré).
-  Charge : paliers à 0,8 / 1,6 / 2,6 s (bleu / orange / violet). Relâcher ⇒ boost de 0,6 / 1,1 / 1,7 s
-  (×1,28). Sous 70 % de la vitesse mini, le dérapage s'annule sans boost. Pose visuelle : `visualYaw` ±0,35 rad.
+  le sens du braquage. Le braquage module le rayon entre `steerMin` (contre-braquage, ≈ 65 m à pleine vitesse)
+  et `steerMax` (serré, ≈ 12 m) : le dérapage tient dans tous les virages du jardin, même les plus doux.
+  Charge : paliers à 0,6 / 1,2 / 2,0 s (bleu / orange / violet), ×1,5 en braquant dans le sens du dérapage.
+  Relâcher ⇒ boost de 0,6 / 1,1 / 1,7 s (×1,28). Sous 70 % de la vitesse mini, le dérapage s'annule sans boost.
+  Pose visuelle : le kart se met en travers (`visualYaw` 0,7 rad ± 0,2 selon le braquage), châssis incliné
+  vers l'extérieur, roues avant en contre-braquage.
 - Touche maintenue sans braquage : simple saut, pas de dérapage.
 - **Tête-à-queue** (impact) : 1 s sans contrôle, vitesse ×0,3, rotation visuelle rapide.
 
@@ -161,7 +164,8 @@ Règles :
   balles géantes, arrosoir, clôture, pierres de gué, arche de départ en damier.
 - Ombres portées (lumière directionnelle qui suit le joueur), brouillard léger, ciel en dégradé.
 - Caméra de poursuite lissée ; champ de vision élargi en boost (désactivé si « réduire les animations »).
-- Effets : étincelles de dérapage (couleur du palier), flammes de boost, poussière hors piste, étoiles d'impact.
+- Effets : dérapage (étincelles et halo aux roues arrière de la couleur du palier — jaune avant le premier
+  palier —, fumée, traces de pneus au sol qui s'effacent), flammes de boost, poussière hors piste, étoiles d'impact.
 
 ### Son (`audio/`)
 

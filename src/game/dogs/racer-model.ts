@@ -51,7 +51,10 @@ const ANIMATION = {
   /** Vitesse de référence pour normaliser les effets (m/s). */
   referenceSpeed: PHYSICS.maxSpeedBase + PHYSICS.maxSpeedPerPoint * 3,
   hopHeight: 0.35,
-  driftTilt: 0.09,
+  /** Roulis du châssis vers l'extérieur du virage pendant un dérapage (rad). */
+  driftTilt: 0.17,
+  /** Braquage (fraction) des roues avant en contre-braquage pendant un dérapage. */
+  driftCounterSteer: 0.85,
   steerSmoothing: 12,
   tiltSmoothing: 8,
   /** Lissage de la vitesse perçue (oreilles, cape) : pas de saut quand la vitesse chute (impact). */
@@ -104,6 +107,7 @@ export function buildRacerModel(options: RacerModelOptions): RacerModel {
 
   let time = 0;
   let steer = 0;
+  let wheelSteer = 0;
   let tilt = 0;
   let frontSpin = 0;
   let rearSpin = 0;
@@ -137,13 +141,17 @@ export function buildRacerModel(options: RacerModelOptions): RacerModel {
     kart.wheelSpins[2].rotation.x = rearSpin;
     kart.wheelSpins[3].rotation.x = rearSpin;
     steer = smoothTowards(steer, clamp(state.steer || 0, -1, 1), ANIMATION.steerSmoothing, step);
-    for (const pivot of kart.frontPivots) pivot.rotation.y = -steer * MAX_WHEEL_STEER;
+    // Dérapage : le kart glisse nez vers l'intérieur, les roues avant contre-braquent vers l'extérieur.
+    const driftDirection = clamp(state.driftDirection || 0, -1, 1);
+    const wheelTarget =
+      driftDirection === 0 ? steer : -driftDirection * ANIMATION.driftCounterSteer;
+    wheelSteer = smoothTowards(wheelSteer, wheelTarget, ANIMATION.steerSmoothing, step);
+    for (const pivot of kart.frontPivots) pivot.rotation.y = -wheelSteer * MAX_WHEEL_STEER;
     kart.steeringSpinner.rotation.z = steer * ANIMATION.steeringWheelTurn;
 
     // Saut, inclinaison en dérapage, vibration du moteur.
     kart.lift.position.y = clamp(state.hop || 0, 0, 1) * ANIMATION.hopHeight;
     // Dérapage à droite (+1) : le châssis roule vers l'extérieur du virage (+X, la gauche).
-    const driftDirection = clamp(state.driftDirection || 0, -1, 1);
     tilt = smoothTowards(
       tilt,
       -driftDirection * ANIMATION.driftTilt,

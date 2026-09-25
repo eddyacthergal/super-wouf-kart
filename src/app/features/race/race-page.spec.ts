@@ -94,6 +94,7 @@ describe('RacePage', () => {
         rank: 3,
         lap: 2,
         item: 'bone',
+        drifting: true,
         driftTier: 2,
         boosting: true,
         wrongWay: true,

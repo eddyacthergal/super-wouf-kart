@@ -261,7 +261,8 @@ describe('stepKart — dérapage', () => {
 
   it('relâcher avant le palier 1 ne donne rien', () => {
     const kart = kartOn(OPEN, 0, 0, 25);
-    run(kart, 0.5, { throttle: true, drift: true, steer: 1 }, { track: OPEN });
+    // Braquage dans le sens du dérapage : charge ×1,5 ; on relâche à 80 % du premier seuil.
+    run(kart, (0.8 * DRIFT.tierThresholds[0]) / 1.5, { throttle: true, drift: true, steer: 1 }, { track: OPEN });
     const events = step(kart, { throttle: true }, OPEN);
     expect(events).toEqual([]);
     expect(kart.boostTime).toBe(0);
@@ -325,10 +326,17 @@ describe('stepKart — dérapage', () => {
     expect(tight).toBeCloseTo(-direction * TEST_TUNING.turnRate * DRIFT.steerMax * 0.25, 6);
   });
 
-  it.each([1, -1] as const)('pose visuelle (sens %d) : visualYaw tend vers -direction × DRIFT.visualYaw puis revient à 0', (direction) => {
+  it.each([1, -1] as const)('pose visuelle (sens %d) : le kart glisse nez vers l’intérieur, selon le braquage, puis revient à 0', (direction) => {
     const kart = kartOn(OPEN, 0, 0, 25);
-    run(kart, 1, { throttle: true, drift: true, steer: direction }, { track: OPEN });
+    step(kart, { throttle: true, drift: true, steer: direction }, OPEN);
+    run(kart, 1, { throttle: true, drift: true, steer: 0 }, { track: OPEN });
     expect(kart.visualYaw).toBeCloseTo(-direction * DRIFT.visualYaw, 3);
+    run(kart, 1, { throttle: true, drift: true, steer: direction }, { track: OPEN });
+    expect(kart.visualYaw).toBeCloseTo(-direction * (DRIFT.visualYaw + DRIFT.visualYawSteer), 3);
+    run(kart, 1, { throttle: true, drift: true, steer: -direction }, { track: OPEN });
+    expect(kart.visualYaw).toBeCloseTo(-direction * (DRIFT.visualYaw - DRIFT.visualYawSteer), 3);
+    // Glisse nettement visible (plus de 20°) quel que soit le braquage.
+    expect(Math.abs(kart.visualYaw)).toBeGreaterThan((20 * Math.PI) / 180);
     run(kart, 1.5, { throttle: true }, { track: OPEN });
     expect(Math.abs(kart.visualYaw)).toBeLessThan(1e-3);
   });

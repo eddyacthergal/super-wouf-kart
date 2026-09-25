@@ -112,6 +112,7 @@ describe('buildHudSnapshot', () => {
       raceTime: 42.5,
       item: 'bone',
       itemRolling: true,
+      drifting: true,
       driftTier: 2,
       boosting: true,
       wrongWay: true,
@@ -130,6 +131,7 @@ describe('buildHudSnapshot', () => {
     kart.drift = { active: false, direction: 0, charge: 0, tier: 3 };
     kart.speed = 27.9;
     const hud = buildHudSnapshot(race, false);
+    expect(hud.drifting).toBe(false);
     expect(hud.driftTier).toBe(0);
     expect(hud.itemRolling).toBe(false);
     expect(hud.boosting).toBe(false);

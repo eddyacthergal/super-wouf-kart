@@ -48,18 +48,30 @@ export const PHYSICS = {
 /** Dérapage et mini-turbo. */
 export const DRIFT = {
   minSpeed: 12,
-  /** Durée de dérapage (s) pour atteindre les paliers 1 (bleu), 2 (orange), 3 (violet). */
-  tierThresholds: [0.8, 1.6, 2.6],
+  /**
+   * Durée de dérapage (s) pour atteindre les paliers 1 (bleu), 2 (orange), 3 (violet), sans braquer ;
+   * un tiers plus vite en braquant dans le sens du dérapage.
+   */
+  tierThresholds: [0.6, 1.2, 2.0],
   /** Durée du boost (s) selon le palier atteint (index = palier). */
   boostDurations: [0, 0.6, 1.1, 1.7],
   /** Multiplicateur de vitesse max pendant un boost de dérapage. */
   boostStrength: 1.28,
-  /** Rotation visuelle supplémentaire du kart pendant le dérapage (rad). */
-  visualYaw: 0.35,
+  /**
+   * Angle de glisse visuel du kart pendant le dérapage (rad) : le nez pointe vers l'intérieur du
+   * virage, l'arrière part vers l'extérieur, comme dans Mario Kart.
+   */
+  visualYaw: 0.7,
+  /** Variation de cet angle selon le braquage : +/- en braquant dans le sens du dérapage / en contre-braquant. */
+  visualYawSteer: 0.2,
   hopDuration: 0.25,
-  /** Taux de virage en dérapage, en fraction du turnRate : large (contre-braquage) → serré. */
-  steerMin: 0.45,
-  steerMax: 1.15,
+  /**
+   * Taux de virage en dérapage, en fraction du turnRate : large (contre-braquage) → serré. À pleine
+   * vitesse (stats moyennes), rayon ≈ 65 m en contre-braquant, 20 m sans braquer, 12 m en braquant :
+   * le dérapage tient dans tous les virages du jardin, même les plus doux.
+   */
+  steerMin: 0.2,
+  steerMax: 1.1,
 } as const;
 
 export const ITEMS = {

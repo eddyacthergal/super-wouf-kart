@@ -1,12 +1,13 @@
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { BuildVersion } from './build-version';
 import { ControlsHelp } from './controls-help';
 import { PilotSummary } from './pilot-summary';
 
-/** Écran d'accueil : titre, accès au jeu et au garage, pilote choisi et commandes. */
+/** Écran d'accueil : titre, accès au jeu et au garage, pilote choisi, commandes et version. */
 @Component({
   selector: 'app-home',
-  imports: [RouterLink, PilotSummary, ControlsHelp],
+  imports: [RouterLink, PilotSummary, ControlsHelp, BuildVersion],
   template: `
     <main class="mx-auto flex min-h-dvh max-w-5xl flex-col items-center gap-10 px-4 py-10 sm:py-14">
       <header class="flex flex-col items-center text-center">
@@ -36,6 +37,10 @@ import { PilotSummary } from './pilot-summary';
         <app-pilot-summary />
         <app-controls-help />
       </div>
+
+      <footer class="mt-auto text-center">
+        <app-build-version />
+      </footer>
     </main>
   `,
 })
