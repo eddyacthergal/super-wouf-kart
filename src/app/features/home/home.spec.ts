@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { BREEDS } from '../../../game/dogs/breeds';
 import { KEY_BINDINGS } from '../../../game/input/keyboard-input';
 import { APP_VERSION, BUILD_DATE_LOADER } from '../../core/build-info';
 import { SETTINGS_STORAGE, SettingsStore } from '../../core/settings.store';
@@ -62,6 +63,18 @@ describe('Home', () => {
     expect(keys).toContain('Échap');
     // Les flèches ont un nom prononçable pour les lecteurs d'écran.
     expect(element.querySelector('table tbody kbd .sr-only')?.textContent).toBe('Flèche haut');
+  });
+
+  it('le portrait de l’en-tête et du résumé représente la race choisie au garage', async () => {
+    TestBed.inject(SettingsStore).setBreed('teckel');
+    const element = await render();
+    const fills = (selector: string): (string | null)[] =>
+      Array.from(element.querySelectorAll(`${selector} [fill]`)).map((node) =>
+        node.getAttribute('fill'),
+      );
+    expect(fills('header app-dog-portrait')).toContain(BREEDS.teckel.look.furColor);
+    expect(fills('app-pilot-summary app-dog-portrait')).toContain(BREEDS.teckel.look.furColor);
+    expect(fills('header app-dog-portrait')).not.toContain(BREEDS.chihuahua.look.furColor);
   });
 
   it('résume le pilote choisi', async () => {
