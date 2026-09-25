@@ -593,6 +593,48 @@ describe('createGameWithDeps — pause, reprise, libération', () => {
     expect(game.paused).toBe(false);
   });
 
+  it('iPhone : son même en mode silencieux (session « lecture », boucle muette), libéré à la fin', () => {
+    const audioSession = { type: 'auto' };
+    const elements: { paused: boolean; plays: number }[] = [];
+    class FakeAudioElement {
+      src = '';
+      loop = false;
+      paused = true;
+      plays = 0;
+      constructor() {
+        elements.push(this);
+      }
+      play(): Promise<void> {
+        this.plays++;
+        this.paused = false;
+        return Promise.resolve();
+      }
+      pause(): void {
+        this.paused = true;
+      }
+      removeAttribute(): void {}
+      load(): void {}
+      setAttribute(): void {}
+    }
+    vi.stubGlobal('navigator', {
+      userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15',
+      audioSession,
+    });
+    vi.stubGlobal('Audio', FakeAudioElement);
+
+    const h = harness();
+    const game = start(h);
+    expect(audioSession.type).toBe('playback');
+    expect(elements).toHaveLength(1);
+    expect(elements[0].plays).toBe(1);
+    // Déjà en lecture : un geste ne la relance pas.
+    document.dispatchEvent(new Event('touchend'));
+    expect(elements[0].plays).toBe(1);
+
+    game.dispose();
+    expect(elements[0].paused).toBe(true);
+  });
+
   it('setMuted est relayé à l’audio', () => {
     const h = harness();
     const game = start(h);

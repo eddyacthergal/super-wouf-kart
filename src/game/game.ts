@@ -26,6 +26,7 @@ import type {
   RaceResultEntry,
   RaceSetup,
 } from './game-api';
+import { isAppleTouchDevice, requestPlaybackSession, SilentLoop } from './audio/audio-session';
 import { buildHudSnapshot, WrongWayTracker } from './hud';
 import { KeyboardInput } from './input/keyboard-input';
 import {
@@ -145,6 +146,14 @@ function startRace(
   });
   cleanups.push(() => renderer.dispose());
 
+  // iPhone, iPad : le son du jeu doit passer même en mode silencieux (voir audio-session).
+  const nav = typeof navigator === 'undefined' ? undefined : navigator;
+  requestPlaybackSession(nav);
+  const silentLoop =
+    isAppleTouchDevice(nav) && typeof Audio === 'function'
+      ? new SilentLoop(() => new Audio())
+      : null;
+  if (silentLoop) cleanups.push(() => silentLoop.dispose());
   const audio = deps.createAudio();
   cleanups.push(() => audio.dispose());
   audio.setMuted(setup.muted);
@@ -326,7 +335,9 @@ function startRace(
   // l'accepte qu'au relâchement du doigt (pointerup, touchend, click), et il peut le couper en cours
   // de partie (appel, passage à une autre application).
   const onGesture = (): void => {
-    if (!disposed && !audio.running) resumeAudio();
+    if (disposed) return;
+    silentLoop?.play();
+    if (!audio.running) resumeAudio();
   };
   for (const type of GESTURE_EVENTS) doc.addEventListener(type, onGesture, true);
   cleanups.push(() => {
@@ -376,6 +387,8 @@ function startRace(
   callbacks.onReady(info);
   callbacks.onPhase(state.phase);
   publishHud();
+  // Souvent encore dans le geste qui a lancé la course (bouton « Jouer ») : autant essayer tout de suite.
+  silentLoop?.play();
   resumeAudio();
   loop.start();
   return handle;

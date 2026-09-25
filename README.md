@@ -86,7 +86,8 @@ Sur un écran tactile, des commandes apparaissent en course ; tiens l'appareil *
 Les commandes tactiles s'affichent d'elles-mêmes quand le pointeur principal est un doigt (media query
 `pointer: coarse`) ; le clavier reste utilisable en même temps. Pendant la course, le pincement, le double
 appui et le défilement du navigateur sont bloqués (pas de zoom involontaire). Le son démarre au premier
-appui sur l'écran ; sur iPhone, le bouton « silencieux » de l'appareil coupe aussi le son du jeu.
+appui sur l'écran ; sur iPhone et iPad, il passe même en mode silencieux (session audio « lecture »,
+comme une vidéo).
 
 ### Paramètres d'URL (développement)
 
