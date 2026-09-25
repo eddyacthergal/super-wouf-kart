@@ -58,7 +58,7 @@ export class HudDrift {
   protected readonly label = computed(() => {
     const tier = this.tier();
     const charge =
-      tier > 0
+      tier !== 0
         ? `Dérapage : palier ${tier} sur 3 (${TIERS[tier].name})`
         : this.drifting()
           ? 'Dérapage en cours : pas encore de charge'
