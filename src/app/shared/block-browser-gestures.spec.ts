@@ -33,7 +33,7 @@ describe('blockBrowserGestures', () => {
     expect(touch(plain, 'touchstart', 2).defaultPrevented).toBe(true);
     expect(touch(plain, 'touchstart', 1).defaultPrevented).toBe(false);
     expect(touch(plain, 'touchmove', 2).defaultPrevented).toBe(true);
-    const gesture = new Event('gesturestart', { cancelable: true });
+    const gesture = new Event('gesturestart', { bubbles: true, cancelable: true });
     plain.dispatchEvent(gesture);
     expect(gesture.defaultPrevented).toBe(true);
   });
