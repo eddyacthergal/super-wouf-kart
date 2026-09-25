@@ -51,9 +51,10 @@ const ANIMATION = {
   /** Vitesse de référence pour normaliser les effets (m/s). */
   referenceSpeed: PHYSICS.maxSpeedBase + PHYSICS.maxSpeedPerPoint * 3,
   hopHeight: 0.35,
-  driftTilt: 0.09,
+  /** Roulis du châssis vers l'extérieur du virage pendant un dérapage (rad). */
+  driftTilt: 0.17,
   /** Braquage (fraction) des roues avant en contre-braquage pendant un dérapage. */
-  driftCounterSteer: 0.6,
+  driftCounterSteer: 0.85,
   steerSmoothing: 12,
   tiltSmoothing: 8,
   /** Lissage de la vitesse perçue (oreilles, cape) : pas de saut quand la vitesse chute (impact). */

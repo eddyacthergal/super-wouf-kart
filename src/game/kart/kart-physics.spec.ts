@@ -261,7 +261,8 @@ describe('stepKart — dérapage', () => {
 
   it('relâcher avant le palier 1 ne donne rien', () => {
     const kart = kartOn(OPEN, 0, 0, 25);
-    run(kart, 0.5, { throttle: true, drift: true, steer: 1 }, { track: OPEN });
+    // Braquage dans le sens du dérapage : charge ×1,5 ; on relâche à 80 % du premier seuil.
+    run(kart, (0.8 * DRIFT.tierThresholds[0]) / 1.5, { throttle: true, drift: true, steer: 1 }, { track: OPEN });
     const events = step(kart, { throttle: true }, OPEN);
     expect(events).toEqual([]);
     expect(kart.boostTime).toBe(0);

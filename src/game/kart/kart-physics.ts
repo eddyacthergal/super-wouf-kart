@@ -12,8 +12,8 @@ import { approach, clamp, clone, headingOf, lerpAngle, wrapAngle } from '../core
 const SPIN_DECELERATION = 18;
 /** Vitesse de rotation visuelle pendant un tête-à-queue (rad/s). */
 const SPIN_YAW_RATE = 14;
-/** Convergence de la pose visuelle (visualYaw) vers sa cible (1/s). */
-const VISUAL_YAW_RESPONSE = 8;
+/** Convergence de la pose visuelle (visualYaw) vers sa cible (1/s) : le kart se met vite en travers. */
+const VISUAL_YAW_RESPONSE = 12;
 /** Retour vers la vitesse max effective quand on la dépasse (m/s²). */
 const OVERSPEED_DECELERATION = 12;
 /** Accélération dégressive : a × (1 − k × (v / vmax)²). */

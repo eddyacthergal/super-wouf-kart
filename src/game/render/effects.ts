@@ -1,7 +1,8 @@
 /**
- * Effets visuels : étincelles de dérapage (couleur du palier), flammes de boost aux pots,
- * poussière hors piste, étoiles au-dessus d'un kart en tête-à-queue, bouffées et éclats
- * (objet utilisé, impact, boîte ramassée, haie touchée). Particules en réserve préallouée.
+ * Effets visuels : dérapage (étincelles et halo aux roues de la couleur du palier, fumée, traces
+ * de pneus au sol), flammes de boost aux pots, poussière hors piste, étoiles au-dessus d'un kart
+ * en tête-à-queue, bouffées et éclats (objet utilisé, impact, boîte ramassée, haie touchée).
+ * Particules et traces en réserve préallouée.
  */
 import * as THREE from 'three';
 import { createRng } from '../core/rng';
@@ -10,25 +11,43 @@ import { DRIFT_TIER_COLORS } from './palette';
 import { type ParticleOptions, ParticlePool } from './particles';
 import type { RacerVisual, RacerVisuals } from './racer-visuals';
 import type { DisposalBag } from './resources';
+import { SkidMarks } from './skid-marks';
 
-const GLOW_CAPACITY = 1200;
-const SOFT_CAPACITY = 800;
+const GLOW_CAPACITY = 1600;
+const SOFT_CAPACITY = 1200;
 const STARS_PER_KART = 3;
-/** Étincelles par roue et par seconde : palier 0 (sans charge) puis paliers 1 à 3. */
-const SPARK_RATE_IDLE = 30;
-const SPARK_RATE_CHARGED = 42;
+/** Gerbes d'étincelles par seconde (une par roue arrière) : palier 0 (sans charge) puis paliers 1 à 3. */
+const SPARK_RATE_IDLE = 36;
+const SPARK_RATE_CHARGED = 56;
 /** Taille des étincelles (m) : plus petites tant que le dérapage n'est pas chargé. */
-const SPARK_SIZE_IDLE: readonly [number, number] = [0.09, 0.13];
-const SPARK_SIZE_CHARGED: readonly [number, number] = [0.12, 0.19];
+const SPARK_SIZE_IDLE: readonly [number, number] = [0.12, 0.18];
+const SPARK_SIZE_CHARGED: readonly [number, number] = [0.18, 0.28];
+/**
+ * Halo aux roues arrière pendant tout le dérapage (m) : réémis à chaque image, il vit
+ * WHEEL_GLOW_FRAMES images et laisse une courte traînée derrière la roue.
+ */
+const WHEEL_GLOW_SIZE_IDLE = 0.55;
+const WHEEL_GLOW_SIZE_CHARGED = 0.85;
+const WHEEL_GLOW_FRAMES = 2.6;
+/** Bouffées de fumée par seconde (une par roue arrière) pendant un dérapage. */
+const SMOKE_RATE = 12;
 const DUST_RATE = 12;
 const FLAME_GLOW_RATE = 30;
 const MIN_SPARK_SPEED = 4;
 const MIN_DUST_SPEED = 3;
+/** Traces de pneus : nombre de tronçons, pas minimal entre deux points, saut au-delà duquel on recommence. */
+const SKID_CAPACITY = 1600;
+const SKID_MIN_STEP = 0.35;
+const SKID_MAX_STEP = 5;
+const SKID_COLOR = '#2b2622';
 
 interface Emitter {
   spark: number;
   dust: number;
   flame: number;
+  smoke: number;
+  /** Dernier point au sol (x, z) de chaque roue arrière, NaN hors dérapage. */
+  skid: Float64Array;
 }
 
 const color = (hex: string): THREE.Color => new THREE.Color(hex);
@@ -38,6 +57,7 @@ const DUST = color('#b98f5f');
 const FLAME = color('#ff8a1f');
 const FLAME_CORE = color('#ffd35a');
 const PUFF = color('#f4f1ea');
+const SMOKE = color('#ece8e0');
 const HIT = color('#ffe066');
 const LEAF = color('#4caf3c');
 
@@ -49,6 +69,9 @@ const LEAF = color('#4caf3c');
 const SPARK_CORE: ParticleOptions = { gravity: -16, opacity: 1, drag: 1 };
 const SPARK_HALO: ParticleOptions = { gravity: -16, opacity: 0.45, drag: 1 };
 const SPARK_HALO_SCALE = 1.9;
+const WHEEL_GLOW_CORE: ParticleOptions = { opacity: 0.9 };
+const WHEEL_GLOW_HALO: ParticleOptions = { opacity: 0.75 };
+const SMOKE_OPTIONS: ParticleOptions = { gravity: 0.8, growth: 0.9, drag: 2.5, opacity: 0.32 };
 const DUST_OPTIONS: ParticleOptions = { gravity: -0.6, growth: 1.4, drag: 2, opacity: 0.5 };
 const FLAME_OPTIONS: ParticleOptions = { gravity: 0, growth: -0.6, drag: 3, opacity: 0.9 };
 
@@ -82,6 +105,7 @@ export class Effects {
   readonly group = new THREE.Group();
   readonly glow: ParticlePool;
   readonly soft: ParticlePool;
+  readonly skids: SkidMarks;
   private readonly stars: THREE.InstancedMesh;
   /** Flammes de chaque pilote : un groupe par pot d'échappement. */
   private readonly flames = new Map<number, THREE.Group[]>();
@@ -103,7 +127,8 @@ export class Effects {
     this.group.name = 'effects';
     this.glow = new ParticlePool(GLOW_CAPACITY, true, bag);
     this.soft = new ParticlePool(SOFT_CAPACITY, false, bag);
-    this.group.add(this.soft.points, this.glow.points);
+    this.skids = new SkidMarks(SKID_CAPACITY, SKID_COLOR, bag);
+    this.group.add(this.skids.mesh, this.soft.points, this.glow.points);
 
     const capacity = Math.max(1, racers.list.length * STARS_PER_KART);
     this.stars = new THREE.InstancedMesh(
@@ -142,7 +167,13 @@ export class Effects {
         return flame;
       });
       this.flames.set(visual.id, groups);
-      this.emitters.set(visual.id, { spark: 0, dust: 0, flame: 0 });
+      this.emitters.set(visual.id, {
+        spark: 0,
+        dust: 0,
+        flame: 0,
+        smoke: 0,
+        skid: new Float64Array(4).fill(Number.NaN),
+      });
     }
   }
 
@@ -233,15 +264,26 @@ export class Effects {
       const kart = racer.kart;
       const speed = Math.abs(kart.speed);
 
-      // Étincelles de dérapage aux roues arrière.
+      // Dérapage : étincelles, halo et fumée aux roues arrière, traces de pneus au sol.
       if (kart.drift.active && speed > MIN_SPARK_SPEED) {
         emitter.spark += (kart.drift.tier === 0 ? SPARK_RATE_IDLE : SPARK_RATE_CHARGED) * dt;
         while (emitter.spark >= 1) {
           emitter.spark -= 1;
           this.emitSparks(visual, kart.drift.tier);
         }
+        emitter.smoke += SMOKE_RATE * dt;
+        while (emitter.smoke >= 1) {
+          emitter.smoke -= 1;
+          this.emitSmoke(visual);
+        }
+        this.emitWheelGlow(visual, kart.drift.tier, dt, time);
+        // Pendant le saut, les roues ne touchent pas le sol : la trace commence à l'atterrissage.
+        if (kart.hopTime > 0) emitter.skid.fill(Number.NaN);
+        else this.traceSkids(visual, emitter.skid);
       } else {
         emitter.spark = 0;
+        emitter.smoke = 0;
+        emitter.skid.fill(Number.NaN);
       }
 
       // Poussière sur le bas-côté.
@@ -303,6 +345,7 @@ export class Effects {
 
     this.glow.update(dt);
     this.soft.update(dt);
+    this.skids.update(dt);
   }
 
   dispose(): void {
@@ -329,7 +372,7 @@ export class Effects {
       const vx = -forwardX * back + Math.cos(visual.heading) * out;
       const vy = rng.range(1.5, 4.2);
       const vz = -forwardZ * back - Math.sin(visual.heading) * out;
-      const life = rng.range(0.2, 0.42);
+      const life = rng.range(0.25, 0.5);
       // Même trajectoire pour le cœur et le halo : ils avancent ensemble.
       const [minSize, maxSize] = tier === 0 ? SPARK_SIZE_IDLE : SPARK_SIZE_CHARGED;
       const size = rng.range(minSize, maxSize);
@@ -346,6 +389,81 @@ export class Effects {
         life,
         SPARK_HALO,
       );
+    }
+  }
+
+  /**
+   * Halo vif aux roues arrière, de la couleur du palier, pendant tout le dérapage : cœur opaque
+   * (lisible sur le gravier clair) et halo additif, immobiles, réémis à chaque image.
+   */
+  private emitWheelGlow(visual: RacerVisual, tier: number, dt: number, time: number): void {
+    const life = dt * WHEEL_GLOW_FRAMES;
+    if (!(life > 0)) return;
+    const tint = TIER_COLORS[tier] ?? TIER_COLORS[0];
+    const base = tier === 0 ? WHEEL_GLOW_SIZE_IDLE : WHEEL_GLOW_SIZE_CHARGED;
+    const wheels = visual.model.rearWheels;
+    for (let w = 0; w < wheels.length; w++) {
+      wheels[w].getWorldPosition(this.point);
+      const size = base * (1 + Math.sin(time * 53 + w * 2.1 + visual.id) * 0.18);
+      const y = Math.max(0.08, this.point.y - 0.18);
+      this.soft.emit(
+        this.point.x,
+        y,
+        this.point.z,
+        0,
+        0,
+        0,
+        tint,
+        size * 0.45,
+        life,
+        WHEEL_GLOW_CORE,
+      );
+      this.glow.emit(this.point.x, y, this.point.z, 0, 0, 0, tint, size, life, WHEEL_GLOW_HALO);
+    }
+  }
+
+  /** Petites bouffées de fumée claire qui s'élèvent derrière les roues arrière. */
+  private emitSmoke(visual: RacerVisual): void {
+    const rng = this.rng;
+    const forwardX = Math.sin(visual.heading);
+    const forwardZ = Math.cos(visual.heading);
+    for (const wheel of visual.model.rearWheels) {
+      wheel.getWorldPosition(this.point);
+      const back = rng.range(1, 2.5);
+      this.soft.emit(
+        this.point.x,
+        0.15,
+        this.point.z,
+        -forwardX * back + rng.range(-0.5, 0.5),
+        rng.range(0.3, 0.9),
+        -forwardZ * back + rng.range(-0.5, 0.5),
+        SMOKE,
+        rng.range(0.28, 0.4),
+        rng.range(0.4, 0.6),
+        SMOKE_OPTIONS,
+      );
+    }
+  }
+
+  /**
+   * Prolonge la trace de chaque roue arrière depuis son dernier point au sol (x, z dans `last`).
+   * Premier point, ou saut trop grand (image très longue) : on repart de la position actuelle.
+   */
+  private traceSkids(visual: RacerVisual, last: Float64Array): void {
+    const wheels = visual.model.rearWheels;
+    const count = Math.min(wheels.length, last.length / 2);
+    for (let w = 0; w < count; w++) {
+      wheels[w].getWorldPosition(this.point);
+      const x = this.point.x;
+      const z = this.point.z;
+      const lastX = last[w * 2];
+      const lastZ = last[w * 2 + 1];
+      // NaN sans point précédent : les deux comparaisons sont fausses, on pose juste le point.
+      const step = Math.hypot(x - lastX, z - lastZ);
+      if (step < SKID_MIN_STEP) continue;
+      if (step <= SKID_MAX_STEP) this.skids.add(lastX, lastZ, x, z);
+      last[w * 2] = x;
+      last[w * 2 + 1] = z;
     }
   }
 

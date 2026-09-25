@@ -508,7 +508,8 @@ describe('AiController', () => {
 
     it('une IA qui vise le palier 2 tient son dérapage plus longtemps que celle qui vise le palier 1', () => {
       const releases = (targetTier: 1 | 2): { tier: number; at: number }[] => {
-        const track = createSegmentTrack(stadium(100, 20));
+        // Épingles de 13 m de rayon : le palier 2 n'arrive qu'en toute fin de virage.
+        const track = createSegmentTrack(stadium(100, 13));
         const racer = placeRacer(track, 1, 10, 0, { speed: 20 });
         const race = raceOf(track, [racer]);
         const result: { tier: number; at: number }[] = [];

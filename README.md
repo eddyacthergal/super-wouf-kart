@@ -24,7 +24,7 @@ Construit avec **Angular 22** pour l'interface et **three.js** pour la 3D.
   - corps : pull rayé, cape de héros.
 
   Tes choix sont mémorisés.
-- **Dérapage et mini-turbo** : 3 paliers (étincelles bleues, orange, violettes).
+- **Dérapage et mini-turbo** : kart en travers, traces de pneus et étincelles jaunes, puis 3 paliers (bleu, orange, violet).
 - **4 objets canins**, tirés dans les boîtes à objets :
 
   | Objet | Effet |
@@ -66,7 +66,9 @@ Les touches sont physiques : **ZQSD** sur un clavier AZERTY correspond à **WASD
 | Utiliser l'objet | E ou Maj |
 | Pause | Échap ou P |
 
-Pour déclencher un mini-turbo, maintiens **Espace** en tournant, puis relâche quand les étincelles changent de couleur.
+Pour déclencher un mini-turbo, maintiens **Espace** en tournant : le kart se met en travers et laisse des traces.
+Garde **Espace** enfoncé dans le virage (flèche vers l'intérieur pour serrer, vers l'extérieur pour élargir), puis
+relâche quand les étincelles passent du jaune au bleu (≈ 0,6 s), à l'orange (≈ 1,2 s) ou au violet (≈ 2 s).
 
 ### Paramètres d'URL (développement)
 
