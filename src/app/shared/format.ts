@@ -58,6 +58,18 @@ export function itemName(kind: ItemKind): string {
   return ITEM_NAMES[kind];
 }
 
+/** Effet de chaque objet, en quelques mots (affiché sous la case d'objet du HUD). */
+const ITEM_HINTS: Readonly<Record<ItemKind, string>> = {
+  bone: 'Lancé devant (derrière en freinant)',
+  'tennis-ball': 'Poursuit le kart devant toi',
+  mud: 'Déposée derrière toi',
+  'kibble-turbo': 'Coup de turbo',
+};
+
+export function itemHint(kind: ItemKind): string {
+  return ITEM_HINTS[kind];
+}
+
 /** Énumération à la française : « a », « a et b », « a, b et c ». */
 export function joinWithEt(items: readonly string[]): string {
   if (items.length <= 1) return items[0] ?? '';

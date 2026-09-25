@@ -114,6 +114,8 @@ describe('RacePage', () => {
     expect(text()).toContain('87 km/h');
     expect(text()).toContain('Contre-sens !');
     expect(element.querySelector('[aria-label="Objet : Os"]')).not.toBeNull();
+    // Nom et effet de l'objet sous sa case.
+    expect(text()).toContain('Lancé devant (derrière en freinant)');
     expect(
       element.querySelector('[aria-label="Dérapage : palier 2 sur 3 (orange), turbo actif"]'),
     ).not.toBeNull();
