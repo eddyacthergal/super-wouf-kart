@@ -6,9 +6,27 @@ import * as THREE from 'three';
 import { createRng } from '../core/rng';
 import { PALETTE } from './palette';
 import type { DisposalBag } from './resources';
+import type { CloudStyle, SkyStyle } from './scene-theme';
 
-/** Direction du soleil (du sol vers le soleil) : dans le dos de la caméra sur la ligne droite de départ. */
-export const SUN_DIRECTION = new THREE.Vector3(0.45, 0.8, -0.38).normalize();
+/** Ciel d'été du jardin : soleil dans le dos de la caméra sur la ligne droite de départ. */
+export const SUMMER_SKY: SkyStyle = {
+  top: PALETTE.skyTop,
+  horizon: PALETTE.skyHorizon,
+  sun: PALETTE.sun,
+  sunDirection: [0.45, 0.8, -0.38],
+  sunGlow: 1,
+};
+
+/** Nuages blancs du jardin. */
+export const SUMMER_CLOUDS: CloudStyle = { color: PALETTE.cloud, emissive: '#dfefff' };
+
+/** Direction normalisée (du sol vers le soleil) d'un ciel. */
+export function sunDirectionOf(sky: SkyStyle): THREE.Vector3 {
+  return new THREE.Vector3(...sky.sunDirection).normalize();
+}
+
+/** Direction du soleil du jardin. */
+export const SUN_DIRECTION = sunDirectionOf(SUMMER_SKY);
 
 export const FOG_NEAR = 160;
 export const FOG_FAR = 700;
@@ -27,26 +45,30 @@ const fragmentShader = /* glsl */ `
   uniform vec3 horizonColor;
   uniform vec3 sunColor;
   uniform vec3 sunDirection;
+  uniform float sunGlow;
   varying vec3 vDirection;
   void main() {
     vec3 direction = normalize(vDirection);
     float height = max(direction.y, 0.0);
     vec3 color = mix(horizonColor, topColor, pow(height, 0.5));
     float facing = max(dot(direction, sunDirection), 0.0);
-    color += sunColor * (smoothstep(0.9991, 0.9995, facing) * 2.0 + pow(facing, 80.0) * 0.35 + pow(facing, 8.0) * 0.08);
+    // Disque, halo proche et halo large ; sunGlow > 1 agrandit le tout (soleil couchant).
+    float disk = smoothstep(0.9991 - 0.0007 * (sunGlow - 1.0), 0.9995 - 0.0005 * (sunGlow - 1.0), facing);
+    color += sunColor * (disk * 2.0 + pow(facing, 80.0 / sunGlow) * 0.35 + pow(facing, 8.0 / sunGlow) * 0.08 * sunGlow);
     gl_FragColor = vec4(color, 1.0);
     #include <colorspace_fragment>
   }
 `;
 
-export function buildSkyDome(bag: DisposalBag): THREE.Mesh {
+export function buildSkyDome(bag: DisposalBag, sky: SkyStyle = SUMMER_SKY): THREE.Mesh {
   const material = bag.add(
     new THREE.ShaderMaterial({
       uniforms: {
-        topColor: { value: new THREE.Color(PALETTE.skyTop) },
-        horizonColor: { value: new THREE.Color(PALETTE.skyHorizon) },
-        sunColor: { value: new THREE.Color(PALETTE.sun) },
-        sunDirection: { value: SUN_DIRECTION.clone() },
+        topColor: { value: new THREE.Color(sky.top) },
+        horizonColor: { value: new THREE.Color(sky.horizon) },
+        sunColor: { value: new THREE.Color(sky.sun) },
+        sunDirection: { value: sunDirectionOf(sky) },
+        sunGlow: { value: sky.sunGlow },
       },
       vertexShader,
       fragmentShader,
@@ -67,8 +89,13 @@ export interface Clouds {
   update(time: number): void;
 }
 
-/** Nuages ronds et lointains, qui dérivent très lentement autour du jardin. */
-export function buildClouds(bag: DisposalBag, centerX: number, centerZ: number): Clouds {
+/** Nuages ronds et lointains, qui dérivent très lentement autour du circuit. */
+export function buildClouds(
+  bag: DisposalBag,
+  centerX: number,
+  centerZ: number,
+  style: CloudStyle = SUMMER_CLOUDS,
+): Clouds {
   const rng = createRng(0xc10d);
   const matrices: THREE.Matrix4[] = [];
   for (let c = 0; c < 14; c++) {
@@ -98,8 +125,8 @@ export function buildClouds(bag: DisposalBag, centerX: number, centerZ: number):
   }
   const material = bag.add(
     new THREE.MeshStandardMaterial({
-      color: PALETTE.cloud,
-      emissive: '#dfefff',
+      color: style.color,
+      emissive: style.emissive,
       emissiveIntensity: 0.45,
       roughness: 1,
       fog: false,

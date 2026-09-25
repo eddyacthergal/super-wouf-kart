@@ -146,6 +146,7 @@ function startRace(
 
   const renderer = deps.createRenderer(canvas, track, state.racers, {
     reducedMotion: setup.reducedMotion,
+    theme: definition.theme,
     decor: definition.decor,
   });
   cleanups.push(() => renderer.dispose());

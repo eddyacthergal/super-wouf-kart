@@ -7,15 +7,15 @@ import * as THREE from 'three';
 import { createRng } from '../core/rng';
 import { PALETTE } from './palette';
 
-type Rgb = [number, number, number];
+export type Rgb = [number, number, number];
 
-function hexToRgb(hex: string): Rgb {
+export function hexToRgb(hex: string): Rgb {
   const value = Number.parseInt(hex.slice(1), 16);
   return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
 }
 
 /** Hachage entier → [0, 1[ (bruit déterministe). */
-function hash2(x: number, y: number, seed: number): number {
+export function hash2(x: number, y: number, seed: number): number {
   let h = Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(seed, 144665);
   h = Math.imul(h ^ (h >>> 13), 1274126177);
   h ^= h >>> 16;
@@ -23,7 +23,7 @@ function hash2(x: number, y: number, seed: number): number {
 }
 
 /** Bruit de valeur lissé et raccordable (période `cells` sur [0, 1[). */
-function tileNoise(u: number, v: number, cells: number, seed: number): number {
+export function tileNoise(u: number, v: number, cells: number, seed: number): number {
   const x = u * cells;
   const y = v * cells;
   const x0 = Math.floor(x);
@@ -40,7 +40,8 @@ function tileNoise(u: number, v: number, cells: number, seed: number): number {
   return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
 }
 
-class PixelCanvas {
+/** Image RGBA en mémoire, raccordable sur ses bords (motifs répétés). */
+export class PixelCanvas {
   readonly data: Uint8Array;
 
   constructor(readonly size: number) {
@@ -119,7 +120,7 @@ class PixelCanvas {
   }
 }
 
-function toTexture(canvas: PixelCanvas, nearest = false): THREE.DataTexture {
+export function toTexture(canvas: PixelCanvas, nearest = false): THREE.DataTexture {
   const texture = new THREE.DataTexture(canvas.data, canvas.size, canvas.size, THREE.RGBAFormat);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.wrapS = THREE.RepeatWrapping;

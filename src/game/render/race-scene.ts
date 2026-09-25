@@ -5,20 +5,22 @@
 import * as THREE from 'three';
 import type { GameEvent, RaceState, RacerState, TrackQuery } from '../core/types';
 import { clamp } from '../core/vec2';
-import type { TrackDecorHints } from '../track/track-definition';
+import type { TrackDecorHints, TrackThemeId } from '../track/track-definition';
 import { CameraRig, CHASE, type CameraTarget } from './camera-rig';
 import { Effects } from './effects';
-import { buildGardenWorld, type GardenWorld } from './garden-world';
 import { ItemVisuals } from './item-visuals';
-import { GardenLighting } from './lighting';
-import { PALETTE } from './palette';
+import { SceneLighting } from './lighting';
 import { RacerVisuals } from './racer-visuals';
 import { DisposalBag } from './resources';
-import { buildSkyDome, FOG_FAR, FOG_NEAR } from './sky';
+import type { ThemeWorld } from './scene-theme';
+import { buildSkyDome, sunDirectionOf } from './sky';
+import { SCENE_THEMES } from './themes';
 
 export interface RaceSceneOptions {
   /** « Réduire les animations » : ni secousse, ni variation du champ de vision. */
   reducedMotion: boolean;
+  /** Thème de rendu du circuit (jardin par défaut). */
+  theme?: TrackThemeId;
   /** Repères du décor propres au circuit (Grand Jardin par défaut). */
   decor?: TrackDecorHints;
 }
@@ -38,8 +40,8 @@ export class RaceScene {
   readonly scene = new THREE.Scene();
   readonly camera = new THREE.PerspectiveCamera(CHASE.fov, 16 / 9, CAMERA_NEAR, CAMERA_FAR);
   private readonly bag = new DisposalBag();
-  private readonly lighting = new GardenLighting();
-  private readonly world: GardenWorld;
+  private readonly lighting: SceneLighting;
+  private readonly world: ThemeWorld;
   private readonly sky: THREE.Mesh;
   private readonly racers: RacerVisuals;
   private readonly items: ItemVisuals;
@@ -51,20 +53,22 @@ export class RaceScene {
 
   constructor(track: TrackQuery, racers: readonly RacerState[], options: RaceSceneOptions) {
     this.scene.name = 'race-scene';
-    this.scene.background = new THREE.Color(PALETTE.skyHorizon);
-    this.scene.fog = new THREE.Fog(PALETTE.skyHorizon, FOG_NEAR, FOG_FAR);
+    const theme = SCENE_THEMES[options.theme ?? 'garden'] ?? SCENE_THEMES.garden;
+    this.scene.background = new THREE.Color(theme.fog.color);
+    this.scene.fog = new THREE.Fog(theme.fog.color, theme.fog.near, theme.fog.far);
+    this.lighting = new SceneLighting(theme.light, sunDirectionOf(theme.sky));
     this.camera.name = 'chase-camera';
     this.rig = new CameraRig(this.camera, options.reducedMotion);
     this.lighting.addTo(this.scene);
 
-    let world: GardenWorld | null = null;
+    let world: ThemeWorld | null = null;
     let racerVisuals: RacerVisuals | null = null;
     try {
-      world = buildGardenWorld(track, options.decor);
+      world = theme.buildWorld(track, options.decor);
       racerVisuals = new RacerVisuals(racers, this.bag);
       this.world = world;
       this.racers = racerVisuals;
-      this.sky = buildSkyDome(this.bag);
+      this.sky = buildSkyDome(this.bag, theme.sky);
       this.items = new ItemVisuals(this.bag);
       this.effects = new Effects(racerVisuals, this.bag, track);
     } catch (error) {
