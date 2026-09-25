@@ -12,14 +12,16 @@ describe('TouchInput', () => {
     expect(touch.readDriverInput().throttle).toBe(true);
   });
 
-  it('tourne à gauche ou à droite, tout droit si les deux sont appuyés', () => {
+  it('joystick : braquage analogique borné à [-1, 1], tout droit si la valeur est invalide', () => {
     const touch = new TouchInput();
-    touch.set('left', true);
-    expect(touch.readDriverInput().steer).toBe(-1);
-    touch.set('right', true);
-    expect(touch.readDriverInput().steer).toBe(0);
-    touch.set('left', false);
+    touch.setSteer(-0.4);
+    expect(touch.readDriverInput().steer).toBe(-0.4);
+    touch.setSteer(3);
     expect(touch.readDriverInput().steer).toBe(1);
+    touch.setSteer(-3);
+    expect(touch.readDriverInput().steer).toBe(-1);
+    touch.setSteer(Number.NaN);
+    expect(touch.readDriverInput().steer).toBe(0);
   });
 
   it('dérape tant que le bouton est maintenu', () => {
@@ -42,9 +44,9 @@ describe('TouchInput', () => {
     expect(touch.readDriverInput().useItem).toBe(true);
   });
 
-  it('reset relâche tout et oublie l’objet en attente', () => {
+  it('reset relâche tout, recentre le joystick et oublie l’objet en attente', () => {
     const touch = new TouchInput();
-    touch.set('left', true);
+    touch.setSteer(-1);
     touch.set('brake', true);
     touch.set('drift', true);
     touch.set('item', true);

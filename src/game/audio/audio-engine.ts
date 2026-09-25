@@ -76,6 +76,11 @@ export class AudioEngine {
     return this.isMuted;
   }
 
+  /** Vrai quand le contexte audio joue (autorisé par le navigateur et pas suspendu depuis). */
+  get running(): boolean {
+    return this.graph?.ctx.state === 'running';
+  }
+
   /** Autorise le son ; à appeler après une interaction utilisateur. Ne rejette jamais. */
   async resume(): Promise<void> {
     const graph = this.graph;

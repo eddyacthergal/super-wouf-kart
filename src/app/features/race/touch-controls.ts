@@ -1,4 +1,4 @@
-import { Component, output, signal } from '@angular/core';
+import { Component, computed, output, signal } from '@angular/core';
 import type { TouchAction } from '../../../game/game-api';
 
 export interface TouchControlChange {
@@ -6,72 +6,73 @@ export interface TouchControlChange {
   pressed: boolean;
 }
 
-type Side = 'left' | 'right';
-type ButtonAction = Exclude<TouchAction, Side>;
+/** Joystick affiché : coin haut gauche de sa base (px, dans la zone de direction) et décalage du bouton. */
+interface Stick {
+  left: number;
+  top: number;
+  dx: number;
+  dy: number;
+}
 
-const ACTIONS: readonly TouchAction[] = ['left', 'right', 'brake', 'drift', 'item'];
+const ACTIONS: readonly TouchAction[] = ['brake', 'drift', 'item'];
 
-/** Zone morte au centre du pavé de direction (fraction de sa largeur) : on roule tout droit. */
+/** Course du bouton du joystick (px) : le braquage est maximal à cette distance du centre. */
+export const STICK_RADIUS = 56;
+/** Demi-côté de la base du joystick (px), cf. `.touch-stick-base` (8rem) dans styles.css. */
+const STICK_BASE_HALF = 64;
+/** Zone morte (fraction de la course) : un pouce qui tremble ne fait pas zigzaguer le kart. */
 const DEAD_ZONE = 0.12;
 
 /**
- * Commandes tactiles de la course (téléphone, tablette). Pouce gauche : pavé de direction, on
- * glisse d'un côté à l'autre. Pouce droit : Saut (maintenu = dérapage), Objet, Frein. Accélération
- * automatique. Plusieurs doigts à la fois ; chaque doigt est capturé par sa commande, qui reçoit
- * donc toujours son relâchement. Réservées au toucher : masquées aux technologies d'assistance,
- * le clavier offre les mêmes commandes.
+ * Commandes tactiles de la course (téléphone, tablette), sur le modèle des jeux mobiles.
+ * Pouce gauche : joystick flottant, qui apparaît là où le pouce se pose dans la moitié gauche de
+ * l'écran ; le braquage suit l'écart horizontal (analogique). Pouce droit : Saut (maintenu =
+ * dérapage), Objet, Frein. Accélération automatique. Chaque doigt est capturé par sa commande, qui
+ * reçoit donc toujours son relâchement. Réservées au toucher : masquées aux technologies
+ * d'assistance, le clavier offre les mêmes commandes.
  */
 @Component({
   selector: 'app-touch-controls',
   host: {
-    class:
-      'pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between gap-4 select-none ' +
-      'pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] ' +
-      'pl-[max(1rem,env(safe-area-inset-left))]',
+    class: 'pointer-events-none absolute inset-0 select-none',
     'aria-hidden': 'true',
     '(contextmenu)': '$event.preventDefault()',
   },
   template: `
+    <!-- Zone de direction : moitié gauche, sous la barre du haut (HUD). -->
     <div
       data-control="steer"
-      class="touch-surface pointer-events-auto flex h-24 w-44 overflow-hidden rounded-full border-2 border-white/80 bg-slate-900/75 text-white shadow-lg portrait:w-36"
-      (pointerdown)="steerDown($event)"
-      (pointermove)="steerMove($event)"
-      (pointerup)="steerUp($event)"
-      (pointercancel)="steerUp($event)"
-      (lostpointercapture)="steerUp($event)"
+      class="touch-surface pointer-events-auto absolute bottom-0 left-0 top-24 w-1/2"
+      (pointerdown)="stickDown($event)"
+      (pointermove)="stickMove($event)"
+      (pointerup)="stickUp($event)"
+      (pointercancel)="stickUp($event)"
+      (lostpointercapture)="stickUp($event)"
     >
-      <span class="grid flex-1 place-items-center" [class.touch-held]="held().has('left')">
-        <svg viewBox="0 0 24 24" class="size-10" focusable="false">
-          <path
-            d="M15 5 8 12l7 7"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="3"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-        </svg>
-      </span>
-      <span class="w-0.5 bg-white/40"></span>
-      <span class="grid flex-1 place-items-center" [class.touch-held]="held().has('right')">
-        <svg viewBox="0 0 24 24" class="size-10" focusable="false">
-          <path
-            d="m9 5 7 7-7 7"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="3"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-        </svg>
-      </span>
+      @if (stick(); as current) {
+        <div
+          class="touch-stick-base absolute"
+          [style.left.px]="current.left"
+          [style.top.px]="current.top"
+        >
+          <div class="touch-stick-knob" [style.transform]="knobTransform()"></div>
+        </div>
+      } @else {
+        <!-- Repère au repos : où poser le pouce. -->
+        <div
+          class="touch-stick-base absolute bottom-[max(1.5rem,env(safe-area-inset-bottom))] left-[max(1.5rem,env(safe-area-inset-left))] opacity-60"
+        >
+          <div class="touch-stick-knob"></div>
+        </div>
+      }
     </div>
 
-    <div class="grid grid-cols-[auto_auto] items-end gap-3">
+    <div
+      class="absolute right-0 bottom-0 grid grid-cols-[auto_auto] items-end gap-3 pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))]"
+    >
       <div
         data-control="item"
-        class="touch-surface touch-button col-start-2 size-16 justify-self-center"
+        class="touch-surface touch-button col-start-2 size-18 justify-self-center"
         [class.touch-held]="held().has('item')"
         (pointerdown)="buttonDown('item', $event)"
         (pointerup)="buttonUp($event)"
@@ -102,7 +103,7 @@ const DEAD_ZONE = 0.12;
       </div>
       <div
         data-control="brake"
-        class="touch-surface touch-button col-start-1 row-start-2 size-16"
+        class="touch-surface touch-button col-start-1 row-start-2 size-18"
         [class.touch-held]="held().has('brake')"
         (pointerdown)="buttonDown('brake', $event)"
         (pointerup)="buttonUp($event)"
@@ -123,7 +124,7 @@ const DEAD_ZONE = 0.12;
       </div>
       <div
         data-control="drift"
-        class="touch-surface touch-button col-start-2 row-start-2 size-22 border-sun-400"
+        class="touch-surface touch-button col-start-2 row-start-2 size-24 border-sun-400"
         [class.touch-held]="held().has('drift')"
         (pointerdown)="buttonDown('drift', $event)"
         (pointerup)="buttonUp($event)"
@@ -146,60 +147,84 @@ const DEAD_ZONE = 0.12;
   `,
 })
 export class TouchControls {
-  /** Appui ou relâchement d'une commande (une émission par changement d'état). */
+  /** Appui ou relâchement d'un bouton (une émission par changement d'état). */
   readonly control = output<TouchControlChange>();
+  /** Braquage du joystick, de -1 (gauche) à +1 (droite) ; émis à chaque changement. */
+  readonly steer = output<number>();
 
-  /** Commandes actuellement appuyées (retour visuel). */
+  /** Boutons actuellement appuyés (retour visuel). */
   protected readonly held = signal<ReadonlySet<TouchAction>>(new Set<TouchAction>());
-  /** Doigts posés sur le pavé de direction, avec le côté visé (null : zone morte). */
-  private readonly steering = new Map<number, Side | null>();
+  /** Joystick sous le pouce, ou null au repos. */
+  protected readonly stick = signal<Stick | null>(null);
+  protected readonly knobTransform = computed(() => {
+    const current = this.stick();
+    return current ? `translate(${current.dx}px, ${current.dy}px)` : null;
+  });
+
+  /** Doigt qui tient le joystick (un seul à la fois). */
+  private stickPointer: number | null = null;
+  private stickOrigin = { x: 0, y: 0 };
+  private lastSteer = 0;
   /** Doigts posés sur un bouton. */
-  private readonly buttons = new Map<number, ButtonAction>();
+  private readonly buttons = new Map<number, TouchAction>();
 
-  protected steerDown(event: PointerEvent): void {
-    this.capture(event);
-    this.steering.set(event.pointerId, sideOf(event));
-    this.sync();
+  protected stickDown(event: PointerEvent): void {
+    if (this.stickPointer !== null) return;
+    capture(event);
+    this.stickPointer = event.pointerId;
+    const zone = zoneRect(event);
+    this.stickOrigin = { x: event.clientX, y: event.clientY };
+    // Base centrée sous le pouce.
+    this.stick.set({
+      left: event.clientX - zone.left - STICK_BASE_HALF,
+      top: event.clientY - zone.top - STICK_BASE_HALF,
+      dx: 0,
+      dy: 0,
+    });
+    this.emitSteer(0);
   }
 
-  protected steerMove(event: PointerEvent): void {
-    if (!this.steering.has(event.pointerId)) return;
-    this.steering.set(event.pointerId, sideOf(event));
-    this.sync();
+  protected stickMove(event: PointerEvent): void {
+    const current = this.stick();
+    if (event.pointerId !== this.stickPointer || !current) return;
+    let dx = event.clientX - this.stickOrigin.x;
+    let dy = event.clientY - this.stickOrigin.y;
+    // Le bouton reste dans le cercle de la base ; au-delà, seul son angle suit le doigt.
+    const distance = Math.hypot(dx, dy);
+    if (distance > STICK_RADIUS) {
+      dx = (dx / distance) * STICK_RADIUS;
+      dy = (dy / distance) * STICK_RADIUS;
+    }
+    this.stick.set({ ...current, dx, dy });
+    this.emitSteer(steerFor(dx));
   }
 
-  protected steerUp(event: PointerEvent): void {
-    if (this.steering.delete(event.pointerId)) this.sync();
+  protected stickUp(event: PointerEvent): void {
+    if (event.pointerId !== this.stickPointer) return;
+    this.stickPointer = null;
+    this.stick.set(null);
+    this.emitSteer(0);
   }
 
-  protected buttonDown(action: ButtonAction, event: PointerEvent): void {
-    this.capture(event);
+  protected buttonDown(action: TouchAction, event: PointerEvent): void {
+    capture(event);
     this.buttons.set(event.pointerId, action);
-    this.sync();
+    this.syncButtons();
   }
 
   protected buttonUp(event: PointerEvent): void {
-    if (this.buttons.delete(event.pointerId)) this.sync();
+    if (this.buttons.delete(event.pointerId)) this.syncButtons();
   }
 
-  /** Garde le doigt sur sa commande même s'il en sort, et évite les effets du navigateur (sélection, souris simulée). */
-  private capture(event: PointerEvent): void {
-    event.preventDefault();
-    const target = event.currentTarget;
-    if (target instanceof Element && typeof target.setPointerCapture === 'function') {
-      try {
-        target.setPointerCapture(event.pointerId);
-      } catch {
-        // Pointeur déjà relâché : son relâchement arrive quand même par pointerup.
-      }
-    }
+  private emitSteer(value: number): void {
+    if (value === this.lastSteer) return;
+    this.lastSteer = value;
+    this.steer.emit(value);
   }
 
-  /** Recalcule les commandes appuyées et signale celles qui changent. */
-  private sync(): void {
-    const next = new Set<TouchAction>();
-    for (const side of this.steering.values()) if (side) next.add(side);
-    for (const action of this.buttons.values()) next.add(action);
+  /** Recalcule les boutons appuyés et signale ceux qui changent. */
+  private syncButtons(): void {
+    const next = new Set<TouchAction>(this.buttons.values());
     const previous = this.held();
     for (const action of ACTIONS) {
       const pressed = next.has(action);
@@ -209,14 +234,33 @@ export class TouchControls {
   }
 }
 
-/** Côté du pavé visé par le doigt (null au centre, dans la zone morte). */
-function sideOf(event: PointerEvent): Side | null {
-  const pad = event.currentTarget;
-  if (!(pad instanceof Element)) return null;
-  const rect = pad.getBoundingClientRect();
-  const offset = event.clientX - (rect.left + rect.width / 2);
-  const dead = (rect.width * DEAD_ZONE) / 2;
-  if (offset < -dead) return 'left';
-  if (offset > dead) return 'right';
-  return null;
+/**
+ * Braquage (-1 à 1) pour un écart horizontal du bouton (px) : nul dans la zone morte, puis
+ * progressif jusqu'au bord de la course, arrondi au centième.
+ */
+export function steerFor(dx: number): number {
+  const ratio = Math.max(-1, Math.min(1, dx / STICK_RADIUS));
+  const magnitude = Math.abs(ratio);
+  if (!(magnitude > DEAD_ZONE)) return 0;
+  const scaled = (magnitude - DEAD_ZONE) / (1 - DEAD_ZONE);
+  return (Math.sign(ratio) * Math.round(scaled * 100)) / 100;
+}
+
+/** Garde le doigt sur sa commande même s'il en sort, et évite les effets du navigateur (sélection, souris simulée). */
+function capture(event: PointerEvent): void {
+  event.preventDefault();
+  const target = event.currentTarget;
+  if (target instanceof Element && typeof target.setPointerCapture === 'function') {
+    try {
+      target.setPointerCapture(event.pointerId);
+    } catch {
+      // Pointeur déjà relâché : son relâchement arrive quand même par pointerup.
+    }
+  }
+}
+
+/** Rectangle de la zone qui a reçu l'événement (origine nulle si indisponible). */
+function zoneRect(event: PointerEvent): { left: number; top: number } {
+  const target = event.currentTarget;
+  return target instanceof Element ? target.getBoundingClientRect() : { left: 0, top: 0 };
 }

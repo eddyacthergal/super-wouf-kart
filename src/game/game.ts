@@ -57,6 +57,8 @@ export interface RendererLike {
 }
 
 export interface AudioLike {
+  /** Vrai quand le son joue (le navigateur l'a autorisé et ne l'a pas coupé depuis). */
+  readonly running: boolean;
   resume(): Promise<void> | void;
   setMuted(muted: boolean): void;
   handleEvents(events: readonly GameEvent[], playerId: number): void;
@@ -320,17 +322,16 @@ function startRace(
       // Son refusé : la course reste jouable en silence.
     }
   };
-  const onFirstGesture = (): void => {
-    removeGestureListeners();
-    if (!disposed) resumeAudio();
+  // Tant que le son ne joue pas, chaque geste le réautorise : sur écran tactile, le navigateur ne
+  // l'accepte qu'au relâchement du doigt (pointerup, touchend, click), et il peut le couper en cours
+  // de partie (appel, passage à une autre application).
+  const onGesture = (): void => {
+    if (!disposed && !audio.running) resumeAudio();
   };
-  const removeGestureListeners = (): void => {
-    doc.removeEventListener('keydown', onFirstGesture, true);
-    doc.removeEventListener('pointerdown', onFirstGesture, true);
-  };
-  doc.addEventListener('keydown', onFirstGesture, true);
-  doc.addEventListener('pointerdown', onFirstGesture, true);
-  cleanups.push(removeGestureListeners);
+  for (const type of GESTURE_EVENTS) doc.addEventListener(type, onGesture, true);
+  cleanups.push(() => {
+    for (const type of GESTURE_EVENTS) doc.removeEventListener(type, onGesture, true);
+  });
 
   // --- Handle et démarrage ---------------------------------------------------
 
@@ -346,6 +347,9 @@ function startRace(
     setTouchControl: (action, pressed) => {
       // En pause, les appuis sont ignorés : la reprise repart de commandes relâchées.
       if (!disposed && !paused) touch?.set(action, pressed);
+    },
+    setTouchSteer: (steer) => {
+      if (!disposed && !paused) touch?.setSteer(steer);
     },
     dispose: () => {
       if (disposed) return;
@@ -397,6 +401,9 @@ function randomSeed(random: () => number): number {
 }
 
 /** Handle d'une partie qui n'a pas pu démarrer : toutes les méthodes sont sans effet. */
+/** Gestes de l'utilisateur qui autorisent le son (le relâchement du doigt compte sur écran tactile). */
+const GESTURE_EVENTS = ['keydown', 'pointerdown', 'pointerup', 'touchend', 'click'] as const;
+
 function inertHandle(): GameHandle {
   return {
     paused: false,
@@ -404,6 +411,7 @@ function inertHandle(): GameHandle {
     resume: () => undefined,
     setMuted: () => undefined,
     setTouchControl: () => undefined,
+    setTouchSteer: () => undefined,
     dispose: () => undefined,
   };
 }

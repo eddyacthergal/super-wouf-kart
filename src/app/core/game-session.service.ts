@@ -112,6 +112,11 @@ export class GameSessionService {
     this.handle?.setTouchControl(action, pressed);
   }
 
+  /** Relaie le braquage du joystick tactile (-1 à 1) à la partie en cours. */
+  setTouchSteer(steer: number): void {
+    this.handle?.setTouchSteer(steer);
+  }
+
   /** Arrête la partie, libère ses ressources et réinitialise l'état publié. */
   stop(): void {
     this.generation++;

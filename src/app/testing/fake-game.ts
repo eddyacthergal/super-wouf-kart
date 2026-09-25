@@ -20,6 +20,7 @@ export class FakeGameHandle implements GameHandle {
   disposeCalls = 0;
   mutedCalls: boolean[] = [];
   touchCalls: { action: TouchAction; pressed: boolean }[] = [];
+  steerCalls: number[] = [];
 
   constructor(private readonly callbacks: GameCallbacks) {}
 
@@ -43,6 +44,10 @@ export class FakeGameHandle implements GameHandle {
 
   setTouchControl(action: TouchAction, pressed: boolean): void {
     this.touchCalls.push({ action, pressed });
+  }
+
+  setTouchSteer(steer: number): void {
+    this.steerCalls.push(steer);
   }
 
   dispose(): void {

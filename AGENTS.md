@@ -63,9 +63,3 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 - The project version lives in `package.json` (semantic versioning) and is shown on the home page.
 - Every change MUST bump the version in the same branch / pull request, with `npm run release:patch` (bug fix), `npm run release:minor` (new feature) or `npm run release:major` (breaking change). These scripts update both `package.json` and `package-lock.json`.
 - Bump only once per pull request, from the version on `main`.
-
-## Versioning
-
-- The project version lives in `package.json` (semantic versioning) and is shown on the home page.
-- Every change MUST bump the version in the same branch / pull request, with `npm run release:patch` (bug fix), `npm run release:minor` (new feature) or `npm run release:major` (breaking change). These scripts update both `package.json` and `package-lock.json`.
-- Bump only once per pull request, from the version on `main`.

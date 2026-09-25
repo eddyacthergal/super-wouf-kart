@@ -79,6 +79,8 @@ describe('GameSessionService', () => {
       { action: 'drift', pressed: true },
       { action: 'drift', pressed: false },
     ]);
+    session.setTouchSteer(-0.5);
+    expect(handle.steerCalls).toEqual([-0.5]);
   });
 
   it('stop libère la partie, réinitialise l’état et ignore les rappels tardifs', async () => {

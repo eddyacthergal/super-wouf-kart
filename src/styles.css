@@ -180,6 +180,27 @@ body {
     box-shadow: 0 4px 12px rgb(0 0 0 / 0.3);
   }
 
+  /* Joystick tactile : base ronde translucide (8rem, cf. STICK_BASE_HALF) et bouton qui suit le pouce. */
+  .touch-stick-base {
+    display: grid;
+    place-items: center;
+    width: 8rem;
+    height: 8rem;
+    border: 3px solid rgb(255 255 255 / 0.7);
+    border-radius: 9999px;
+    background-color: rgb(15 23 42 / 0.35);
+    pointer-events: none;
+  }
+
+  .touch-stick-knob {
+    width: 3.5rem;
+    height: 3.5rem;
+    border: 3px solid #fff;
+    border-radius: 9999px;
+    background-color: rgb(15 23 42 / 0.8);
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.35);
+  }
+
   /* Commande tactile appuyée : jaune du thème, texte sombre (leaf-900 sur sun-400 = 8,3:1). */
   .touch-held {
     background-color: var(--color-sun-400);

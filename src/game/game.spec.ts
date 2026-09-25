@@ -54,6 +54,7 @@ class FakeRenderer implements RendererLike {
 }
 
 class FakeAudio implements AudioLike {
+  running = false;
   resumeCalls = 0;
   readonly mutedCalls: boolean[] = [];
   /** Lots d'événements reçus (copiés : le jeu réutilise son tableau), avec l'état du joueur. */
@@ -359,15 +360,18 @@ describe('createGameWithDeps — commandes tactiles', () => {
     expect(h.rec.phases.at(-1)).toBe('racing');
   };
 
-  it('les boutons à l’écran s’ajoutent au clavier : direction, puis frein qui l’emporte sur les gaz', () => {
+  it('joystick et boutons à l’écran s’ajoutent au clavier : direction analogique, frein qui l’emporte sur les gaz', () => {
     const h = harness();
     const game = start(h, { touchControls: true });
     untilRacing(h);
 
-    game.setTouchControl('left', true);
+    game.setTouchSteer(-1);
     h.frames.frames(20);
     expect(playerKart(h).steer).toBeLessThan(-0.9);
-    game.setTouchControl('left', false);
+    game.setTouchSteer(0.5);
+    h.frames.frames(20);
+    expect(playerKart(h).steer).toBeCloseTo(0.5, 2);
+    game.setTouchSteer(0);
     h.frames.frames(20);
     expect(Math.abs(playerKart(h).steer)).toBeLessThan(0.05);
 
@@ -384,7 +388,7 @@ describe('createGameWithDeps — commandes tactiles', () => {
     const keyboardOnly = harness();
     const game = start(keyboardOnly);
     untilRacing(keyboardOnly);
-    game.setTouchControl('left', true);
+    game.setTouchSteer(-1);
     keyboardOnly.frames.frames(20);
     expect(playerKart(keyboardOnly).steer).toBe(0);
 
@@ -392,7 +396,7 @@ describe('createGameWithDeps — commandes tactiles', () => {
     const touchGame = start(paused, { touchControls: true });
     untilRacing(paused);
     touchGame.pause();
-    touchGame.setTouchControl('left', true);
+    touchGame.setTouchSteer(-1);
     touchGame.resume();
     paused.frames.frames(20);
     expect(playerKart(paused).steer).toBe(0);
@@ -569,15 +573,23 @@ describe('createGameWithDeps — pause, reprise, libération', () => {
     expect(h.rec.pauses).toEqual([true]);
   });
 
-  it('autorise le son au premier geste de l’utilisateur, une seule fois', () => {
+  it('réautorise le son à chaque geste tant qu’il ne joue pas, relâchement du doigt compris', () => {
     const h = harness();
     const game = start(h);
     expect(h.audio.resumeCalls).toBe(1);
-    document.dispatchEvent(new Event('keydown'));
-    expect(h.audio.resumeCalls).toBe(2);
     document.dispatchEvent(new Event('pointerdown'));
+    document.dispatchEvent(new Event('pointerup'));
+    document.dispatchEvent(new Event('touchend'));
+    expect(h.audio.resumeCalls).toBe(4);
+    // Le son joue : plus besoin de le réautoriser.
+    h.audio.running = true;
+    document.dispatchEvent(new Event('click'));
     document.dispatchEvent(new Event('keydown'));
-    expect(h.audio.resumeCalls).toBe(2);
+    expect(h.audio.resumeCalls).toBe(4);
+    // Coupé par le navigateur (autre application) : le prochain geste le relance.
+    h.audio.running = false;
+    document.dispatchEvent(new Event('click'));
+    expect(h.audio.resumeCalls).toBe(5);
     expect(game.paused).toBe(false);
   });
 

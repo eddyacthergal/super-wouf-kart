@@ -77,14 +77,16 @@ Sur un écran tactile, des commandes apparaissent en course ; tiens l'appareil *
 | Action | Commande |
 |---|---|
 | Accélérer | automatique |
-| Tourner | pouce gauche sur le pavé : glisse à gauche ou à droite |
+| Tourner | joystick : pose le pouce gauche n'importe où sur la moitié gauche de l'écran, puis glisse à gauche ou à droite (plus tu t'écartes, plus tu tournes) |
 | Sauter, déraper (maintenir en virage) | bouton **Saut** |
 | Utiliser l'objet | bouton **Objet** |
 | Freiner, reculer | bouton **Frein** (coupe l'accélération) |
 | Pause | bouton pause en haut à droite |
 
 Les commandes tactiles s'affichent d'elles-mêmes quand le pointeur principal est un doigt (media query
-`pointer: coarse`) ; le clavier reste utilisable en même temps.
+`pointer: coarse`) ; le clavier reste utilisable en même temps. Pendant la course, le pincement, le double
+appui et le défilement du navigateur sont bloqués (pas de zoom involontaire). Le son démarre au premier
+appui sur l'écran ; sur iPhone, le bouton « silencieux » de l'appareil coupe aussi le son du jeu.
 
 ### Paramètres d'URL (développement)
 

@@ -1,17 +1,20 @@
 /**
- * Commandes tactiles du joueur (téléphone, tablette), alimentées par les boutons à l'écran.
- * L'accélération est automatique : le frein la coupe (et fait reculer à l'arrêt), comme dans
- * les jeux de kart sur mobile, ce qui laisse un pouce pour tourner et l'autre pour le reste.
+ * Commandes tactiles du joueur (téléphone, tablette), alimentées par l'écran : joystick de
+ * direction (analogique) et boutons. L'accélération est automatique : le frein la coupe (et fait
+ * reculer à l'arrêt), comme dans les jeux de kart sur mobile, ce qui laisse un pouce pour tourner
+ * et l'autre pour le reste.
  */
 import type { DriverInput } from '../core/types';
+import { clamp } from '../core/vec2';
 import type { TouchAction } from '../game-api';
 
 export class TouchInput {
   private readonly held = new Set<TouchAction>();
+  private steer = 0;
   /** Front montant du bouton d'objet, en attente de lecture. */
   private itemRequested = false;
 
-  /** Appui (`pressed`) ou relâchement d'une commande. */
+  /** Appui (`pressed`) ou relâchement d'un bouton. */
   set(action: TouchAction, pressed: boolean): void {
     if (pressed) {
       if (action === 'item' && !this.held.has('item')) this.itemRequested = true;
@@ -21,9 +24,15 @@ export class TouchInput {
     }
   }
 
+  /** Braquage du joystick, de -1 (gauche) à +1 (droite) ; une valeur invalide vaut « tout droit ». */
+  setSteer(steer: number): void {
+    this.steer = Number.isFinite(steer) ? clamp(steer, -1, 1) : 0;
+  }
+
   /** Relâche toutes les commandes et oublie l'appui d'objet en attente. */
   reset(): void {
     this.held.clear();
+    this.steer = 0;
     this.itemRequested = false;
   }
 
@@ -35,7 +44,7 @@ export class TouchInput {
     return {
       throttle: !brake,
       brake,
-      steer: (this.held.has('right') ? 1 : 0) - (this.held.has('left') ? 1 : 0),
+      steer: this.steer,
       drift: this.held.has('drift'),
       useItem,
     };

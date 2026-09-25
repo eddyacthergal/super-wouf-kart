@@ -422,8 +422,8 @@ describe('RacePage — commandes tactiles', () => {
   }
 
   /** Appui synthétique (MouseEvent + pointerId : jsdom n'a pas toujours PointerEvent). */
-  function pointer(target: Element, type: string, pointerId: number): void {
-    const event = new MouseEvent(type, { bubbles: true, cancelable: true });
+  function pointer(target: Element, type: string, pointerId: number, clientX = 0): void {
+    const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX });
     Object.defineProperty(event, 'pointerId', { value: pointerId });
     target.dispatchEvent(event);
   }
@@ -432,7 +432,7 @@ describe('RacePage — commandes tactiles', () => {
     Reflect.deleteProperty(window, 'matchMedia');
   });
 
-  it('« ?touch=1 » : commandes affichées pendant la course et relayées au jeu, masquées en pause', async () => {
+  it('« ?touch=1 » : joystick et boutons affichés pendant la course et relayés au jeu, masqués en pause', async () => {
     const { fixture, element } = await create('1');
     expect(game.last.setup.touchControls).toBe(true);
     // Rien à piloter pendant le chargement.
@@ -447,6 +447,11 @@ describe('RacePage — commandes tactiles', () => {
       { action: 'drift', pressed: true },
       { action: 'drift', pressed: false },
     ]);
+    const stick = element.querySelector('app-touch-controls [data-control="steer"]')!;
+    pointer(stick, 'pointerdown', 2, 200);
+    pointer(stick, 'pointermove', 2, 100);
+    pointer(stick, 'pointerup', 2, 100);
+    expect(game.last.handle.steerCalls).toEqual([-1, 0]);
     // HUD dégagé des coins du bas, aux pouces.
     expect(element.querySelector('app-minimap')?.className).toContain('bottom-36');
 
