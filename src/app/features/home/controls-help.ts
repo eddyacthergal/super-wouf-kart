@@ -1,15 +1,24 @@
 import { Component } from '@angular/core';
 import { KEY_BINDINGS, type GameAction } from '../../../game/input/keyboard-input';
 
-const ACTION_LABELS: Readonly<Record<GameAction, string>> = {
-  accelerate: 'Accélérer',
-  brake: 'Freiner, reculer',
-  left: 'Tourner à gauche',
-  right: 'Tourner à droite',
-  drift: 'Sauter, déraper',
-  item: 'Utiliser l’objet',
-  pause: 'Pause',
-};
+/**
+ * Une ligne par action, avec ses commandes au clavier (touches réelles du jeu, KEY_BINDINGS) et sur
+ * écran tactile. Tourner à gauche et à droite partagent une ligne, comme le joystick.
+ */
+interface ControlRow {
+  label: string;
+  actions: readonly GameAction[];
+  touch: string;
+}
+
+export const CONTROL_ROWS: readonly ControlRow[] = [
+  { label: 'Accélérer', actions: ['accelerate'], touch: 'Auto' },
+  { label: 'Tourner', actions: ['left', 'right'], touch: 'Joystick gauche' },
+  { label: 'Freiner', actions: ['brake'], touch: 'Frein' },
+  { label: 'Déraper', actions: ['drift'], touch: 'Saut (maintenir)' },
+  { label: 'Objet', actions: ['item'], touch: 'Objet' },
+  { label: 'Pause', actions: ['pause'], touch: 'Pause (en haut)' },
+];
 
 /** Nom prononcé des flèches (les glyphes seuls sont mal lus par les synthèses vocales). */
 const SPOKEN_KEYS: Readonly<Record<string, string>> = {
@@ -37,50 +46,90 @@ export function keyTokens(label: string): KeyToken[] {
   return tokens;
 }
 
-/** Aide des commandes : clavier (générée depuis les touches réelles du jeu) et écran tactile. */
+/** Séparateur entre deux groupes de touches d'une même ligne (gauche · droite). */
+const GROUP_SEPARATOR: KeyToken = { kind: 'separator', visual: ' · ', spoken: ' ; ' };
+
+/**
+ * Touches d'une ligne, en version courte : pour chaque action, ses touches séparées par un simple
+ * espace (lu « ou »), sans la variante QWERTY d'une lettre (« Z/W » → « Z », rappelé sous le tableau).
+ */
+export function rowTokens(actions: readonly GameAction[]): KeyToken[] {
+  return actions.flatMap((action, index) => {
+    const binding = KEY_BINDINGS.find((candidate) => candidate.action === action);
+    const tokens = binding ? shortTokens(keyTokens(binding.label)) : [];
+    return index > 0 && tokens.length > 0 ? [GROUP_SEPARATOR, ...tokens] : tokens;
+  });
+}
+
+/** Retire les variantes « /X » et remplace les « ou » affichés par un espace (toujours lus « ou »). */
+function shortTokens(tokens: readonly KeyToken[]): KeyToken[] {
+  const kept: KeyToken[] = [];
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+    if (token.kind === 'separator' && token.visual === '/') {
+      i++; // Saute aussi la touche qui suit la barre oblique.
+      continue;
+    }
+    kept.push(
+      token.kind === 'separator' ? { kind: 'separator', visual: '', spoken: ' ou ' } : token,
+    );
+  }
+  return kept;
+}
+
+/** Aide des commandes : un tableau, une ligne par action, clavier et écran tactile côte à côte. */
 @Component({
   selector: 'app-controls-help',
   template: `
     <section class="card h-full p-6" aria-labelledby="controls-title">
       <h2 id="controls-title" class="text-2xl font-extrabold">Commandes</h2>
-      <dl class="mt-4 grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-3">
-        @for (binding of bindings; track binding.action) {
-          <dt class="font-bold">{{ binding.label }}</dt>
-          <dd class="flex flex-wrap items-center gap-1 text-moss-700">
-            @for (token of binding.tokens; track $index) {
-              @if (token.kind === 'key') {
-                <kbd>
-                  @if (token.spoken) {
-                    <span aria-hidden="true">{{ token.text }}</span><span class="sr-only">{{ token.spoken }}</span>
-                  } @else {
-                    {{ token.text }}
+      <table class="mt-4 w-full border-collapse text-left text-sm sm:text-base">
+        <caption class="sr-only">
+          Commandes au clavier et sur écran tactile
+        </caption>
+        <thead>
+          <tr class="border-b-2 border-leaf-200">
+            <th scope="col" class="py-2 pr-2">Action</th>
+            <th scope="col" class="px-2 py-2">Clavier</th>
+            <th scope="col" class="py-2 pl-2">Écran tactile</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of rows; track row.label) {
+            <tr class="border-b border-leaf-100">
+              <th scope="row" class="py-2 pr-2 font-bold">{{ row.label }}</th>
+              <td class="px-2 py-2">
+                <span class="flex flex-wrap items-center gap-1 text-moss-700">
+                  @for (token of row.tokens; track $index) {
+                    @if (token.kind === 'key') {
+                      <kbd>
+                        @if (token.spoken) {
+                          <span aria-hidden="true">{{ token.text }}</span
+                          ><span class="sr-only">{{ token.spoken }}</span>
+                        } @else {
+                          {{ token.text }}
+                        }
+                      </kbd>
+                    } @else if (token.visual === token.spoken) {
+                      <span>{{ token.visual }}</span>
+                    } @else {
+                      <span aria-hidden="true">{{ token.visual }}</span
+                      ><span class="sr-only">{{ token.spoken }}</span>
+                    }
                   }
-                </kbd>
-              } @else if (token.visual === token.spoken) {
-                <span>{{ token.visual }}</span>
-              } @else {
-                <span aria-hidden="true">{{ token.visual }}</span><span class="sr-only">{{ token.spoken }}</span>
-              }
-            }
-          </dd>
-        }
-      </dl>
+                </span>
+              </td>
+              <td class="py-2 pl-2 text-moss-700">{{ row.touch }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
       <p class="mt-4 text-sm text-moss-700">
-        Les lettres suivent leur position sur le clavier : Z, Q, S, D en AZERTY ou W, A, S, D en QWERTY.
+        En QWERTY : W A S D au lieu de Z Q S D. Sur mobile : à l’horizontale.
       </p>
-      <h3 class="mt-6 text-lg font-extrabold">Sur téléphone ou tablette</h3>
-      <ul class="mt-2 list-disc space-y-1 pl-5 text-moss-700">
-        <li>Le kart accélère tout seul ; tiens l’appareil à l’horizontale.</li>
-        <li>Pouce gauche : pose-le n’importe où sur la moitié gauche de l’écran, un joystick apparaît ; glisse à gauche ou à droite pour tourner.</li>
-        <li>Pouce droit : maintiens <strong>Saut</strong> en tournant pour déraper, <strong>Objet</strong> pour l’utiliser, <strong>Frein</strong> pour freiner ou reculer.</li>
-      </ul>
     </section>
   `,
 })
 export class ControlsHelp {
-  protected readonly bindings = KEY_BINDINGS.map((binding) => ({
-    action: binding.action,
-    label: ACTION_LABELS[binding.action],
-    tokens: keyTokens(binding.label),
-  }));
+  protected readonly rows = CONTROL_ROWS.map((row) => ({ ...row, tokens: rowTokens(row.actions) }));
 }

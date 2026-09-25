@@ -52,42 +52,25 @@ Puis ouvre http://localhost:4200.
 > (`esbuild`, `lmdb`, `msgpackr-extract`, `@parcel/watcher`). Ce n'est pas bloquant : sur macOS et les plateformes
 > courantes, des binaires précompilés sont fournis et le projet fonctionne sans les approuver.
 
-## Commandes de jeu (clavier)
+## Commandes de jeu
 
-Les touches sont physiques : **ZQSD** sur un clavier AZERTY correspond à **WASD** sur un clavier QWERTY.
+| Action | Clavier | Écran tactile (téléphone, tablette) |
+|---|---|---|
+| Accélérer | ↑ ou Z / W | automatique |
+| Tourner | ← ou Q / A · → ou D | joystick : pouce gauche n'importe où sur la moitié gauche de l'écran, puis glisser à gauche ou à droite |
+| Freiner, reculer | ↓ ou S | bouton **Frein** |
+| Sauter, déraper (maintenir en tournant) | Espace | bouton **Saut** |
+| Utiliser l'objet | E ou Maj | bouton **Objet** |
+| Pause | Échap ou P | bouton pause en haut à droite |
 
-| Action | Touches |
-|---|---|
-| Accélérer | ↑ ou Z / W |
-| Freiner, reculer | ↓ ou S |
-| Tourner à gauche | ← ou Q / A |
-| Tourner à droite | → ou D |
-| Sauter, déraper (maintenir en virage) | Espace |
-| Utiliser l'objet | E ou Maj |
-| Pause | Échap ou P |
-
-Pour déclencher un mini-turbo, maintiens **Espace** en tournant : le kart se met en travers et laisse des traces.
-Garde **Espace** enfoncé dans le virage (flèche vers l'intérieur pour serrer, vers l'extérieur pour élargir), puis
-relâche quand les étincelles passent du jaune au bleu (≈ 0,6 s), à l'orange (≈ 1,2 s) ou au violet (≈ 2 s).
-
-## Commandes de jeu (téléphone, tablette)
-
-Sur un écran tactile, des commandes apparaissent en course ; tiens l'appareil **à l'horizontale**.
-
-| Action | Commande |
-|---|---|
-| Accélérer | automatique |
-| Tourner | joystick : pose le pouce gauche n'importe où sur la moitié gauche de l'écran, puis glisse à gauche ou à droite (plus tu t'écartes, plus tu tournes) |
-| Sauter, déraper (maintenir en virage) | bouton **Saut** |
-| Utiliser l'objet | bouton **Objet** |
-| Freiner, reculer | bouton **Frein** (coupe l'accélération) |
-| Pause | bouton pause en haut à droite |
-
-Les commandes tactiles s'affichent d'elles-mêmes quand le pointeur principal est un doigt (media query
-`pointer: coarse`) ; le clavier reste utilisable en même temps. Pendant la course, le pincement, le double
-appui et le défilement du navigateur sont bloqués (pas de zoom involontaire). Le son démarre au premier
-appui sur l'écran ; sur iPhone et iPad, il passe même en mode silencieux (session audio « lecture »,
-comme une vidéo).
+- **Clavier** : les touches sont physiques, **ZQSD** sur un clavier AZERTY correspond à **WASD** sur un clavier QWERTY.
+- **Écran tactile** : tiens l'appareil à l'horizontale. Les commandes s'affichent d'elles-mêmes quand le pointeur
+  principal est un doigt (media query `pointer: coarse`) ; le clavier reste utilisable en même temps. Pendant la
+  course, pincement, double appui et défilement du navigateur sont bloqués (pas de zoom involontaire). Le son démarre
+  au premier appui ; sur iPhone et iPad, il passe même en mode silencieux.
+- **Mini-turbo** : maintiens Saut en tournant ; le kart se met en travers et laisse des traces. Ajuste la courbe
+  (vers l'intérieur pour serrer, vers l'extérieur pour élargir), puis relâche quand les étincelles passent du jaune
+  au bleu (≈ 0,6 s), à l'orange (≈ 1,2 s) ou au violet (≈ 2 s).
 
 ### Paramètres d'URL (développement)
 
