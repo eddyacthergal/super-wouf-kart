@@ -108,9 +108,14 @@ export function stepKart(
   collideWithTrack(kart, track, dt, memory, emit);
 
   if (!spinning) {
-    const target = kart.drift.active ? -kart.drift.direction * DRIFT.visualYaw : 0;
+    const target = kart.drift.active ? driftVisualYaw(kart.drift.direction, kart.steer) : 0;
     kart.visualYaw += (target - kart.visualYaw) * Math.min(1, VISUAL_YAW_RESPONSE * dt);
   }
+}
+
+/** Angle de glisse visé en dérapage : plus prononcé en braquant dans le sens du dérapage. */
+function driftVisualYaw(direction: number, steer: number): number {
+  return -direction * (DRIFT.visualYaw + DRIFT.visualYawSteer * steer * direction);
 }
 
 function tickTimers(kart: KartState, dt: number): void {

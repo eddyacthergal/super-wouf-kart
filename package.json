@@ -1,12 +1,20 @@
 {
   "name": "test-opus-5-5",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "scripts": {
     "ng": "ng",
+    "build-info": "node scripts/build-info.mjs",
+    "prestart": "npm run build-info",
     "start": "ng serve",
+    "prebuild": "npm run build-info",
     "build": "ng build",
+    "prewatch": "npm run build-info",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "pretest": "npm run build-info",
+    "test": "ng test",
+    "release:patch": "npm version patch --no-git-tag-version",
+    "release:minor": "npm version minor --no-git-tag-version",
+    "release:major": "npm version major --no-git-tag-version"
   },
   "private": true,
   "packageManager": "npm@10.9.8",

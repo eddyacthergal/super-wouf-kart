@@ -54,8 +54,13 @@ export const DRIFT = {
   boostDurations: [0, 0.6, 1.1, 1.7],
   /** Multiplicateur de vitesse max pendant un boost de dérapage. */
   boostStrength: 1.28,
-  /** Rotation visuelle supplémentaire du kart pendant le dérapage (rad). */
-  visualYaw: 0.35,
+  /**
+   * Angle de glisse visuel du kart pendant le dérapage (rad) : le nez pointe vers l'intérieur du
+   * virage, l'arrière part vers l'extérieur, comme dans Mario Kart.
+   */
+  visualYaw: 0.6,
+  /** Variation de cet angle selon le braquage : +/- en braquant dans le sens du dérapage / en contre-braquant. */
+  visualYawSteer: 0.2,
   hopDuration: 0.25,
   /** Taux de virage en dérapage, en fraction du turnRate : large (contre-braquage) → serré. */
   steerMin: 0.45,

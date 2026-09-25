@@ -46,3 +46,6 @@ Thumbs.db
 
 .superpowers
 .claude
+
+# Généré au build (scripts/build-info.mjs)
+/src/app/core/build-info.ts

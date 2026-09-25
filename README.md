@@ -83,6 +83,15 @@ Pour déclencher un mini-turbo, maintiens **Espace** en tournant, puis relâche 
 | `npm run build` | Build de production dans `dist/` |
 | `npm test` | Tests unitaires (Vitest, via `ng test`) |
 | `npm run watch` | Build de développement en continu |
+| `npm run build-info` | Régénère `src/app/core/build-info.ts` (lancé automatiquement avant `start`, `build`, `watch` et `test`) |
+| `npm run release:patch` / `release:minor` / `release:major` | Incrémente la version (`package.json` et `package-lock.json`) |
+
+## Versionnage
+
+La version du jeu est celle de `package.json` (versionnage sémantique). Chaque build génère
+`src/app/core/build-info.ts` (non versionné) avec cette version et la date du build ; la page
+d'accueil les affiche en pied de page. Pour publier une nouvelle version : `npm run release:patch`
+(correctif), `release:minor` (fonctionnalité) ou `release:major` (rupture), puis committer.
 
 ## Architecture
 

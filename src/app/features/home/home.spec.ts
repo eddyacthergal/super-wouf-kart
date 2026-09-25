@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { KEY_BINDINGS } from '../../../game/input/keyboard-input';
+import { BUILD_INFO } from '../../core/build-info';
 import { SETTINGS_STORAGE, SettingsStore } from '../../core/settings.store';
 import { MemoryStorage } from '../../testing/memory-storage';
 import { keyTokens } from './controls-help';
@@ -57,6 +58,13 @@ describe('Home', () => {
     const summary = element.querySelector('app-pilot-summary')?.textContent ?? '';
     expect(summary).toContain('Carlin');
     expect(summary).toContain('Accessoires : Casquette et Cape de héros');
+  });
+
+  it('affiche la version du projet et la date du build', async () => {
+    const element = await render();
+    const footer = element.querySelector('footer app-build-version');
+    expect(footer?.textContent).toContain(`Version ${BUILD_INFO.version}`);
+    expect(footer?.querySelector('time')?.getAttribute('datetime')).toBe(BUILD_INFO.buildDate);
   });
 
   it('indique l’absence d’accessoire', async () => {
