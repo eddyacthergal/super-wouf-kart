@@ -19,6 +19,7 @@ describe('BuildVersion', () => {
     const time = element.querySelector('time');
     expect(time?.getAttribute('datetime')).toBe(iso);
     expect(time?.textContent?.trim()).toBe('05/09/2026 07:04:09');
+    expect(element.textContent?.replace(/\s+/g, ' ')).toContain('build 05/09/2026 07:04:09');
   });
 
   it('formatBuildDate complète chaque champ par des zéros', () => {

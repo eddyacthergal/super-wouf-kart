@@ -15,7 +15,7 @@ export function formatBuildDate(date: Date): string {
   selector: 'app-build-version',
   template: `
     <p class="text-sm text-moss-700">
-      Version {{ version() }} · build du
+      Version {{ version() }} · build
       <time [attr.datetime]="buildDate()">{{ buildDateLabel() }}</time>
     </p>
   `,
