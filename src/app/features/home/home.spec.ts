@@ -5,7 +5,7 @@ import { KEY_BINDINGS } from '../../../game/input/keyboard-input';
 import { APP_VERSION, BUILD_DATE_LOADER } from '../../core/build-info';
 import { SETTINGS_STORAGE, SettingsStore } from '../../core/settings.store';
 import { MemoryStorage } from '../../testing/memory-storage';
-import { keyTokens } from './controls-help';
+import { CONTROL_ROWS, keyTokens, rowTokens } from './controls-help';
 import { Home } from './home';
 
 describe('Home', () => {
@@ -43,19 +43,25 @@ describe('Home', () => {
     ]);
   });
 
-  it('génère l’aide des commandes depuis KEY_BINDINGS', async () => {
+  it('présente clavier et écran tactile dans un même tableau, touches tirées de KEY_BINDINGS', async () => {
     const element = await render();
-    const terms = Array.from(element.querySelectorAll('dl dt')).map((dt) => dt.textContent?.trim());
-    expect(terms).toHaveLength(KEY_BINDINGS.length);
-    expect(terms).toContain('Accélérer');
-    expect(terms).toContain('Pause');
-    const keys = Array.from(element.querySelectorAll('dl dd kbd')).map((kbd) =>
+    const headers = Array.from(element.querySelectorAll('table thead th')).map((th) =>
+      th.textContent?.trim(),
+    );
+    expect(headers).toEqual(['Action', 'Clavier', 'Écran tactile']);
+    const rows = Array.from(element.querySelectorAll('table tbody tr'));
+    expect(rows).toHaveLength(CONTROL_ROWS.length);
+    const labels = rows.map((row) => row.querySelector('th')?.textContent?.trim());
+    expect(labels).toContain('Accélérer');
+    expect(labels).toContain('Pause');
+    expect(rows[0].textContent).toContain('Automatique');
+    const keys = Array.from(element.querySelectorAll('table tbody kbd')).map((kbd) =>
       kbd.textContent?.trim(),
     );
     expect(keys).toContain('Espace');
     expect(keys).toContain('Échap');
     // Les flèches ont un nom prononçable pour les lecteurs d'écran.
-    expect(element.querySelector('dl dd kbd .sr-only')?.textContent).toBe('Flèche haut');
+    expect(element.querySelector('table tbody kbd .sr-only')?.textContent).toBe('Flèche haut');
   });
 
   it('résume le pilote choisi', async () => {
@@ -81,6 +87,20 @@ describe('Home', () => {
   it('indique l’absence d’accessoire', async () => {
     const element = await render();
     expect(element.querySelector('app-pilot-summary')?.textContent).toContain('Aucun accessoire');
+  });
+});
+
+describe('CONTROL_ROWS et rowTokens', () => {
+  it('couvrent toutes les actions du clavier, une seule fois', () => {
+    const covered = CONTROL_ROWS.flatMap((row) => row.actions);
+    expect([...covered].sort()).toEqual(KEY_BINDINGS.map((binding) => binding.action).sort());
+  });
+
+  it('réunissent gauche et droite sur une ligne, séparées par « · » (lu « ; »)', () => {
+    const tokens = rowTokens(['left', 'right']);
+    const keys = tokens.flatMap((token) => (token.kind === 'key' ? [token.text] : []));
+    expect(keys).toEqual(['←', 'Q', 'A', '→', 'D']);
+    expect(tokens).toContainEqual({ kind: 'separator', visual: ' · ', spoken: ' ; ' });
   });
 });
 
