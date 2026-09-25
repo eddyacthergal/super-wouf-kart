@@ -123,7 +123,6 @@ export const GRAND_JARDIN: TrackDefinition = {
       { kind: 'kibble-bowl', x: 47, z: 58, radius: 4.4 },
       { kind: 'watering-can', x: 72, z: -50, radius: 6.2 },
       // Rayon = portée des jets d'eau tournants (~7,4 m), pas seulement le pied de l'arroseur.
-      // Rayon = portée des jets d'eau tournants (~7,4 m), pas seulement le pied de l'arroseur.
       { kind: 'sprinkler', x: -8, z: -46, radius: 7.6 },
       { kind: 'giant-bone', x: -64, z: -46, radius: 6.5 },
       { kind: 'gnome', x: -3, z: 30, radius: 2.8 },
