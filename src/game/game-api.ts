@@ -19,6 +19,8 @@ export interface RaceSetup {
   reducedMotion: boolean;
   /** Journalise les événements clés dans la console (préfixe « [WoufKart] »). */
   debug?: boolean;
+  /** Commandes tactiles à l'écran (téléphone, tablette) : l'accélération devient automatique. */
+  touchControls?: boolean;
 }
 
 export interface RacerInfo {
@@ -97,8 +99,13 @@ export interface GameHandle {
   /** Reprend (sans effet si pas en pause) et appelle onPauseChange(false). */
   resume(): void;
   setMuted(muted: boolean): void;
+  /** Appui (`pressed`) ou relâchement d'un bouton tactile ; sans effet si `touchControls` est faux. */
+  setTouchControl(action: TouchAction, pressed: boolean): void;
   /** Arrête la boucle, retire les écouteurs clavier et libère les ressources WebGL et audio. */
   dispose(): void;
 }
+
+/** Commandes des boutons tactiles (l'accélération est automatique en tactile). */
+export type TouchAction = 'left' | 'right' | 'brake' | 'drift' | 'item';
 
 export type CreateGame = (canvas: HTMLCanvasElement, setup: RaceSetup, callbacks: GameCallbacks) => GameHandle;

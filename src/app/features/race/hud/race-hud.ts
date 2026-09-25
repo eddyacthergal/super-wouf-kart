@@ -9,7 +9,12 @@ import { HudTimer } from './hud-timer';
 import { Minimap } from './minimap';
 import { WrongWayBanner } from './wrong-way-banner';
 
-/** Disposition du HUD autour du canvas (non interactif : les clics traversent vers le jeu). */
+/**
+ * Disposition du HUD autour du canvas (non interactif : les clics traversent vers le jeu).
+ * Avec les commandes tactiles (`touch`), les coins du bas sont aux pouces : la mini-carte remonte
+ * au-dessus du pavé de direction (masquée si l'écran manque de place : téléphone, portrait) et la
+ * jauge de dérapage et le compteur passent au centre, entre les deux pouces (au-dessus en portrait).
+ */
 @Component({
   selector: 'app-race-hud',
   imports: [HudPosition, HudLap, HudTimer, HudSpeed, HudItem, HudDrift, Minimap, WrongWayBanner],
@@ -31,14 +36,15 @@ import { WrongWayBanner } from './wrong-way-banner';
 
     @if (info(); as race) {
       <app-minimap
-        class="absolute bottom-3 left-3 sm:bottom-5 sm:left-5"
+        class="absolute left-3 sm:left-5"
+        [class]="touch() ? minimapTouchClass : minimapClass"
         [outline]="race.trackOutline"
         [racers]="race.racers"
         [dots]="hud().dots"
       />
     }
 
-    <div class="absolute right-3 bottom-3 flex flex-col items-end gap-2 sm:right-5 sm:bottom-5">
+    <div class="absolute flex flex-col gap-2" [class]="touch() ? gaugesTouchClass : gaugesClass">
       <app-hud-drift
         [drifting]="hud().drifting"
         [tier]="hud().driftTier"
@@ -51,4 +57,13 @@ import { WrongWayBanner } from './wrong-way-banner';
 export class RaceHud {
   readonly hud = input.required<HudSnapshot>();
   readonly info = input<RaceInfo | null>(null);
+  /** Commandes tactiles affichées dans les coins du bas. */
+  readonly touch = input(false);
+
+  protected readonly minimapClass = 'bottom-3 sm:bottom-5';
+  protected readonly minimapTouchClass =
+    'bottom-36 portrait:hidden [@media(max-height:560px)]:hidden';
+  protected readonly gaugesClass = 'right-3 bottom-3 items-end sm:right-5 sm:bottom-5';
+  protected readonly gaugesTouchClass =
+    'bottom-3 left-1/2 -translate-x-1/2 items-center portrait:bottom-48';
 }

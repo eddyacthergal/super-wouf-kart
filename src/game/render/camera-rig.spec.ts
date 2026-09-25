@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { wrapAngle } from '../core/vec2';
 import { CameraRig, CHASE, type CameraTarget } from './camera-rig';
+import { fitFovToAspect } from './viewport-fov';
 
 const DT = 1 / 60;
 
@@ -64,6 +65,18 @@ describe('CameraRig', () => {
     chase.shake(0.5);
     chase.update(target, 'countdown', 3, DT);
     expect(camera.position.distanceTo(calm)).toBeLessThan(1e-9);
+    expect(camera.fov).toBe(CHASE.fov);
+  });
+
+  it('en portrait, élargit le champ vertical (même en « réduire les animations »), puis revient', () => {
+    const { rig: chase, camera } = rig(true);
+    const target: CameraTarget = { x: 0, z: 0, heading: 0, boosting: false };
+    camera.aspect = 0.5;
+    chase.update(target, 'racing', 0, DT);
+    expect(camera.fov).toBeGreaterThan(CHASE.fov);
+    expect(camera.fov).toBeCloseTo(fitFovToAspect(CHASE.fov, 0.5), 6);
+    camera.aspect = 16 / 9;
+    chase.update(target, 'racing', 0, DT);
     expect(camera.fov).toBe(CHASE.fov);
   });
 

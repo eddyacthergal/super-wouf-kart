@@ -39,6 +39,14 @@ body {
   height: 100%;
 }
 
+/* Écrans tactiles : pas de zoom au double appui sur les commandes (réaction immédiate). */
+a,
+button,
+label,
+summary {
+  touch-action: manipulation;
+}
+
 body {
   margin: 0;
   color: var(--color-leaf-900);
@@ -143,6 +151,39 @@ body {
     border-radius: 1.75rem;
     background-color: rgb(255 255 255 / 0.9);
     box-shadow: 0 6px 0 rgb(15 61 31 / 0.12);
+  }
+
+  /* Commandes tactiles : ni défilement, ni zoom, ni sélection, ni menu ou surbrillance au toucher. */
+  .touch-surface {
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /*
+   * Bouton rond des commandes tactiles : blanc sur fond sombre (contraste AA quel que soit le décor).
+   * Il reçoit les appuis, alors que le reste de la barre les laisse passer (pointer-events: none).
+   */
+  .touch-button {
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.1rem;
+    border: 3px solid rgb(255 255 255 / 0.85);
+    border-radius: 9999px;
+    background-color: rgb(15 23 42 / 0.75);
+    color: #fff;
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.3);
+  }
+
+  /* Commande tactile appuyée : jaune du thème, texte sombre (leaf-900 sur sun-400 = 8,3:1). */
+  .touch-held {
+    background-color: var(--color-sun-400);
+    color: var(--color-leaf-900);
   }
 }
 

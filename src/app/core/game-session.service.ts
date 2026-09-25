@@ -8,6 +8,7 @@ import type {
   RaceInfo,
   RaceResultEntry,
   RaceSetup,
+  TouchAction,
 } from '../../game/game-api';
 
 /**
@@ -104,6 +105,11 @@ export class GameSessionService {
 
   setMuted(muted: boolean): void {
     this.handle?.setMuted(muted);
+  }
+
+  /** Relaie l'appui ou le relâchement d'un bouton tactile à la partie en cours. */
+  setTouchControl(action: TouchAction, pressed: boolean): void {
+    this.handle?.setTouchControl(action, pressed);
   }
 
   /** Arrête la partie, libère ses ressources et réinitialise l'état publié. */

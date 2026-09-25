@@ -182,6 +182,10 @@ Aucun son avant une interaction utilisateur ; bouton muet mémorisé.
 - **Course** : canvas plein écran, HUD (position, tour, chrono, objet avec roulette, jauge de dérapage, mini-carte,
   alerte contre-sens), compte à rebours, pause (`<dialog>` natif, Échap/P), résultats (classement, temps, rejouer).
 - Commandes : flèches ou ZQSD/WASD (touches physiques), Espace = saut/dérapage, E ou Maj = objet, Échap ou P = pause.
+- Écran tactile (`pointer: coarse`, ou `?touch=1`) : commandes à l'écran (`TouchControls`, masquées aux technologies
+  d'assistance, le clavier offrant les mêmes actions) — pavé de direction sous le pouce gauche, Saut / Objet / Frein
+  sous le pouce droit, accélération automatique (`TouchInput`, combinée au clavier). Le HUD dégage les coins du bas ;
+  en portrait, la caméra élargit son champ vertical et un message conseille l'horizontale.
 - Accessibilité : AXE, WCAG AA, focus géré à l'ouverture des dialogues et des résultats, annonces `aria-live`
   (tour, dernier tour, arrivée), canvas avec `role="img"` et libellé, contraste AA, `prefers-reduced-motion`.
 - `GameSessionService` expose l'état en signals (HUD ~10 Hz) ; le jeu est chargé par import dynamique.

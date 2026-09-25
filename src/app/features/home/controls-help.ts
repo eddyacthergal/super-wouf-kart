@@ -37,7 +37,7 @@ export function keyTokens(label: string): KeyToken[] {
   return tokens;
 }
 
-/** Aide des commandes générée depuis les touches réelles du jeu. */
+/** Aide des commandes : clavier (générée depuis les touches réelles du jeu) et écran tactile. */
 @Component({
   selector: 'app-controls-help',
   template: `
@@ -68,6 +68,12 @@ export function keyTokens(label: string): KeyToken[] {
       <p class="mt-4 text-sm text-moss-700">
         Les lettres suivent leur position sur le clavier : Z, Q, S, D en AZERTY ou W, A, S, D en QWERTY.
       </p>
+      <h3 class="mt-6 text-lg font-extrabold">Sur téléphone ou tablette</h3>
+      <ul class="mt-2 list-disc space-y-1 pl-5 text-moss-700">
+        <li>Le kart accélère tout seul ; tiens l’appareil à l’horizontale.</li>
+        <li>Pouce gauche : glisse sur le pavé à gauche ou à droite pour tourner.</li>
+        <li>Pouce droit : maintiens <strong>Saut</strong> en tournant pour déraper, <strong>Objet</strong> pour l’utiliser, <strong>Frein</strong> pour freiner ou reculer.</li>
+      </ul>
     </section>
   `,
 })

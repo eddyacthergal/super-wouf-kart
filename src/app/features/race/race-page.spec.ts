@@ -394,6 +394,99 @@ describe('RacePage et les paramètres d’URL', () => {
   });
 });
 
+describe('RacePage — commandes tactiles', () => {
+  let game: FakeGame;
+
+  async function create(
+    touch?: string,
+  ): Promise<{ fixture: ComponentFixture<RacePage>; element: HTMLElement }> {
+    game = new FakeGame();
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        { provide: GAME_LOADER, useValue: game.loader },
+        { provide: SETTINGS_STORAGE, useValue: new MemoryStorage() },
+      ],
+    });
+    const fixture = TestBed.createComponent(RacePage);
+    if (touch !== undefined) fixture.componentRef.setInput('touch', touch);
+    await settle(fixture);
+    return { fixture, element: fixture.nativeElement as HTMLElement };
+  }
+
+  async function race(fixture: ComponentFixture<RacePage>): Promise<void> {
+    game.last.callbacks.onReady(FAKE_INFO);
+    game.last.callbacks.onPhase('racing');
+    game.last.callbacks.onHud(fakeHud());
+    await settle(fixture);
+  }
+
+  /** Appui synthétique (MouseEvent + pointerId : jsdom n'a pas toujours PointerEvent). */
+  function pointer(target: Element, type: string, pointerId: number): void {
+    const event = new MouseEvent(type, { bubbles: true, cancelable: true });
+    Object.defineProperty(event, 'pointerId', { value: pointerId });
+    target.dispatchEvent(event);
+  }
+
+  afterEach(() => {
+    Reflect.deleteProperty(window, 'matchMedia');
+  });
+
+  it('« ?touch=1 » : commandes affichées pendant la course et relayées au jeu, masquées en pause', async () => {
+    const { fixture, element } = await create('1');
+    expect(game.last.setup.touchControls).toBe(true);
+    // Rien à piloter pendant le chargement.
+    expect(element.querySelector('app-touch-controls')).toBeNull();
+
+    await race(fixture);
+    const drift = element.querySelector('app-touch-controls [data-control="drift"]');
+    expect(drift).not.toBeNull();
+    pointer(drift!, 'pointerdown', 1);
+    pointer(drift!, 'pointerup', 1);
+    expect(game.last.handle.touchCalls).toEqual([
+      { action: 'drift', pressed: true },
+      { action: 'drift', pressed: false },
+    ]);
+    // HUD dégagé des coins du bas, aux pouces.
+    expect(element.querySelector('app-minimap')?.className).toContain('bottom-36');
+
+    game.last.handle.pause();
+    await settle(fixture);
+    expect(element.querySelector('app-touch-controls')).toBeNull();
+    game.last.handle.resume();
+    await settle(fixture);
+    expect(element.querySelector('app-touch-controls')).not.toBeNull();
+  });
+
+  it('« ?touch=0 » : clavier seul, même sur un appareil tactile', async () => {
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: () => ({ matches: true }),
+    });
+    const { fixture, element } = await create('0');
+    expect(game.last.setup.touchControls).toBe(false);
+    await race(fixture);
+    expect(element.querySelector('app-touch-controls')).toBeNull();
+    expect(element.querySelector('app-minimap')?.className).not.toContain('bottom-36');
+  });
+
+  it('sans paramètre : d’après l’appareil (pointeur « doigt »)', async () => {
+    const queries: string[] = [];
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: (query: string) => {
+        queries.push(query);
+        return { matches: query === '(pointer: coarse)' };
+      },
+    });
+    const { fixture, element } = await create();
+    expect(queries).toContain('(pointer: coarse)');
+    expect(game.last.setup.touchControls).toBe(true);
+    await race(fixture);
+    expect(element.querySelector('app-touch-controls')).not.toBeNull();
+  });
+});
+
 describe('isFlagOn', () => {
   it('accepte « 1 » et « true » seulement', () => {
     expect(isFlagOn('1')).toBe(true);

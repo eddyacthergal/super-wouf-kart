@@ -344,6 +344,61 @@ describe('createGameWithDeps — démarrage', () => {
   });
 });
 
+describe('createGameWithDeps — commandes tactiles', () => {
+  /** Kart du joueur d'après le dernier état rendu. */
+  const playerKart = (h: Harness) => {
+    const state = h.renderer.lastState;
+    if (!state) throw new Error('Aucun rendu.');
+    return state.racers[state.playerId].kart;
+  };
+
+  /** Frames accélérées jusqu'au départ (fin du compte à rebours). */
+  const untilRacing = (h: Harness): void => {
+    let frames = 0;
+    while (h.rec.phases.at(-1) !== 'racing' && frames++ < 200) h.frames.frame(FAST_FRAME_MS);
+    expect(h.rec.phases.at(-1)).toBe('racing');
+  };
+
+  it('les boutons à l’écran s’ajoutent au clavier : direction, puis frein qui l’emporte sur les gaz', () => {
+    const h = harness();
+    const game = start(h, { touchControls: true });
+    untilRacing(h);
+
+    game.setTouchControl('left', true);
+    h.frames.frames(20);
+    expect(playerKart(h).steer).toBeLessThan(-0.9);
+    game.setTouchControl('left', false);
+    h.frames.frames(20);
+    expect(Math.abs(playerKart(h).steer)).toBeLessThan(0.05);
+
+    h.frames.frames(40);
+    const cruising = playerKart(h).speed;
+    expect(cruising).toBeGreaterThan(5);
+    // Le clavier factice tient les gaz : le frein tactile doit quand même ralentir le kart.
+    game.setTouchControl('brake', true);
+    h.frames.frames(20);
+    expect(playerKart(h).speed).toBeLessThan(cruising - 3);
+  });
+
+  it('sans commandes tactiles, ou en pause, les appuis sont ignorés', () => {
+    const keyboardOnly = harness();
+    const game = start(keyboardOnly);
+    untilRacing(keyboardOnly);
+    game.setTouchControl('left', true);
+    keyboardOnly.frames.frames(20);
+    expect(playerKart(keyboardOnly).steer).toBe(0);
+
+    const paused = harness();
+    const touchGame = start(paused, { touchControls: true });
+    untilRacing(paused);
+    touchGame.pause();
+    touchGame.setTouchControl('left', true);
+    touchGame.resume();
+    paused.frames.frames(20);
+    expect(playerKart(paused).steer).toBe(0);
+  });
+});
+
 describe('createGameWithDeps — boucle', () => {
   it('rend chaque frame et publie le HUD environ toutes les 100 ms', () => {
     const h = harness();

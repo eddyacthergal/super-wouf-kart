@@ -28,7 +28,12 @@ import type {
 } from './game-api';
 import { buildHudSnapshot, WrongWayTracker } from './hud';
 import { KeyboardInput } from './input/keyboard-input';
-import { PlayerController, type DriverInputSource } from './input/player-controller';
+import {
+  combineInputSources,
+  PlayerController,
+  type DriverInputSource,
+} from './input/player-controller';
+import { TouchInput } from './input/touch-input';
 import { createRoster } from './race/roster';
 import { RaceSimulation } from './race/simulation';
 import { RaceRenderer } from './render/race-renderer';
@@ -149,6 +154,9 @@ function startRace(
   const keyboard = deps.createKeyboard({ onPauseRequest: () => requestPause() });
   keyboard.attach();
   cleanups.push(() => keyboard.detach());
+  // Boutons à l'écran (téléphone, tablette), en plus du clavier.
+  const touch = setup.touchControls === true ? new TouchInput() : null;
+  const playerInput: DriverInputSource = touch ? combineInputSources([keyboard, touch]) : keyboard;
 
   const controllers = new Map<number, DriverController>();
   for (const racer of state.racers) {
@@ -157,7 +165,7 @@ function startRace(
       racer.id,
       byAi
         ? new AiController(racer.id, createAiPersonality(rng, racer.id), rng)
-        : new PlayerController(racer.id, keyboard),
+        : new PlayerController(racer.id, playerInput),
     );
   }
 
@@ -261,6 +269,7 @@ function startRace(
     paused = true;
     loop.stop();
     keyboard.reset();
+    touch?.reset();
     audio.updatePlayer(playerAudio(false));
     log('Pause');
     callbacks.onPauseChange(true);
@@ -271,6 +280,7 @@ function startRace(
     paused = false;
     // Touches enfoncées pendant la pause (menu) : oubliées, la répétition les rétablit si besoin.
     keyboard.reset();
+    touch?.reset();
     loop.start();
     log('Reprise');
     callbacks.onPauseChange(false);
@@ -333,6 +343,10 @@ function startRace(
     setMuted: (muted) => {
       if (!disposed) audio.setMuted(muted);
     },
+    setTouchControl: (action, pressed) => {
+      // En pause, les appuis sont ignorés : la reprise repart de commandes relâchées.
+      if (!disposed && !paused) touch?.set(action, pressed);
+    },
     dispose: () => {
       if (disposed) return;
       disposed = true;
@@ -389,6 +403,7 @@ function inertHandle(): GameHandle {
     pause: () => undefined,
     resume: () => undefined,
     setMuted: () => undefined,
+    setTouchControl: () => undefined,
     dispose: () => undefined,
   };
 }
