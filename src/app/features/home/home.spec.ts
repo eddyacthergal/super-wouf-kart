@@ -54,7 +54,7 @@ describe('Home', () => {
     const labels = rows.map((row) => row.querySelector('th')?.textContent?.trim());
     expect(labels).toContain('Accélérer');
     expect(labels).toContain('Pause');
-    expect(rows[0].textContent).toContain('Automatique');
+    expect(rows[0].querySelectorAll('td')[1]?.textContent?.trim()).toBe('Auto');
     const keys = Array.from(element.querySelectorAll('table tbody kbd')).map((kbd) =>
       kbd.textContent?.trim(),
     );
@@ -96,10 +96,12 @@ describe('CONTROL_ROWS et rowTokens', () => {
     expect([...covered].sort()).toEqual(KEY_BINDINGS.map((binding) => binding.action).sort());
   });
 
-  it('réunissent gauche et droite sur une ligne, séparées par « · » (lu « ; »)', () => {
+  it('version courte : gauche et droite sur une ligne (« · », lu « ; »), sans variante QWERTY', () => {
     const tokens = rowTokens(['left', 'right']);
     const keys = tokens.flatMap((token) => (token.kind === 'key' ? [token.text] : []));
-    expect(keys).toEqual(['←', 'Q', 'A', '→', 'D']);
+    expect(keys).toEqual(['←', 'Q', '→', 'D']);
+    // « ou » n'est plus affiché, mais reste lu par les lecteurs d'écran.
+    expect(tokens).toContainEqual({ kind: 'separator', visual: '', spoken: ' ou ' });
     expect(tokens).toContainEqual({ kind: 'separator', visual: ' · ', spoken: ' ; ' });
   });
 });

@@ -12,12 +12,12 @@ interface ControlRow {
 }
 
 export const CONTROL_ROWS: readonly ControlRow[] = [
-  { label: 'Accélérer', actions: ['accelerate'], touch: 'Automatique' },
-  { label: 'Tourner', actions: ['left', 'right'], touch: 'Joystick (pouce gauche)' },
-  { label: 'Freiner, reculer', actions: ['brake'], touch: 'Bouton Frein' },
-  { label: 'Sauter, déraper (maintenir en tournant)', actions: ['drift'], touch: 'Bouton Saut' },
-  { label: 'Utiliser l’objet', actions: ['item'], touch: 'Bouton Objet' },
-  { label: 'Pause', actions: ['pause'], touch: 'Bouton pause (en haut)' },
+  { label: 'Accélérer', actions: ['accelerate'], touch: 'Auto' },
+  { label: 'Tourner', actions: ['left', 'right'], touch: 'Joystick gauche' },
+  { label: 'Freiner', actions: ['brake'], touch: 'Frein' },
+  { label: 'Déraper', actions: ['drift'], touch: 'Saut (maintenir)' },
+  { label: 'Objet', actions: ['item'], touch: 'Objet' },
+  { label: 'Pause', actions: ['pause'], touch: 'Pause (en haut)' },
 ];
 
 /** Nom prononcé des flèches (les glyphes seuls sont mal lus par les synthèses vocales). */
@@ -49,13 +49,32 @@ export function keyTokens(label: string): KeyToken[] {
 /** Séparateur entre deux groupes de touches d'une même ligne (gauche · droite). */
 const GROUP_SEPARATOR: KeyToken = { kind: 'separator', visual: ' · ', spoken: ' ; ' };
 
-/** Touches d'une ligne : celles de chaque action, dans l'ordre. */
+/**
+ * Touches d'une ligne, en version courte : pour chaque action, ses touches séparées par un simple
+ * espace (lu « ou »), sans la variante QWERTY d'une lettre (« Z/W » → « Z », rappelé sous le tableau).
+ */
 export function rowTokens(actions: readonly GameAction[]): KeyToken[] {
   return actions.flatMap((action, index) => {
     const binding = KEY_BINDINGS.find((candidate) => candidate.action === action);
-    const tokens = binding ? keyTokens(binding.label) : [];
+    const tokens = binding ? shortTokens(keyTokens(binding.label)) : [];
     return index > 0 && tokens.length > 0 ? [GROUP_SEPARATOR, ...tokens] : tokens;
   });
+}
+
+/** Retire les variantes « /X » et remplace les « ou » affichés par un espace (toujours lus « ou »). */
+function shortTokens(tokens: readonly KeyToken[]): KeyToken[] {
+  const kept: KeyToken[] = [];
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+    if (token.kind === 'separator' && token.visual === '/') {
+      i++; // Saute aussi la touche qui suit la barre oblique.
+      continue;
+    }
+    kept.push(
+      token.kind === 'separator' ? { kind: 'separator', visual: '', spoken: ' ou ' } : token,
+    );
+  }
+  return kept;
 }
 
 /** Aide des commandes : un tableau, une ligne par action, clavier et écran tactile côte à côte. */
@@ -106,9 +125,7 @@ export function rowTokens(actions: readonly GameAction[]): KeyToken[] {
         </tbody>
       </table>
       <p class="mt-4 text-sm text-moss-700">
-        Clavier : les lettres suivent leur position (Z, Q, S, D en AZERTY ou W, A, S, D en QWERTY).
-        Téléphone, tablette : tiens l’appareil à l’horizontale, le joystick apparaît sous le pouce
-        gauche.
+        En QWERTY : W A S D au lieu de Z Q S D. Sur mobile : à l’horizontale.
       </p>
     </section>
   `,
