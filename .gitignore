@@ -48,4 +48,4 @@ Thumbs.db
 .claude
 
 # Généré au build (scripts/build-info.mjs)
-/src/app/core/build-info.ts
+/public/build-info.json

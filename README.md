@@ -83,15 +83,18 @@ Pour déclencher un mini-turbo, maintiens **Espace** en tournant, puis relâche 
 | `npm run build` | Build de production dans `dist/` |
 | `npm test` | Tests unitaires (Vitest, via `ng test`) |
 | `npm run watch` | Build de développement en continu |
-| `npm run build-info` | Régénère `src/app/core/build-info.ts` (lancé automatiquement avant `start`, `build`, `watch` et `test`) |
+| `npm run build-info` | Écrit `public/build-info.json` (date du build), lancé automatiquement par `start`, `build` et `watch` |
 | `npm run release:patch` / `release:minor` / `release:major` | Incrémente la version (`package.json` et `package-lock.json`) |
 
 ## Versionnage
 
-La version du jeu est celle de `package.json` (versionnage sémantique). Chaque build génère
-`src/app/core/build-info.ts` (non versionné) avec cette version et la date du build ; la page
-d'accueil les affiche en pied de page. Pour publier une nouvelle version : `npm run release:patch`
-(correctif), `release:minor` (fonctionnalité) ou `release:major` (rupture), puis committer.
+La version du jeu est celle de `package.json` (versionnage sémantique), importée à la compilation.
+La date du build est écrite dans `public/build-info.json` (non versionné) par `npm start`,
+`npm run build` et `npm run watch`, puis lue par l'accueil, qui affiche « Version x.y.z · build
+dd/MM/yyyy HH:mm:ss ». Ce fichier est facultatif : si `ng build` est lancé directement, le build
+fonctionne et l'accueil n'affiche que la version. Pour publier une nouvelle version :
+`npm run release:patch` (correctif), `release:minor` (fonctionnalité) ou `release:major` (rupture),
+puis committer.
 
 ## Architecture
 
