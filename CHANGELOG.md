@@ -4,13 +4,14 @@ Versionnage sémantique. Dates de fusion dans `main`.
 
 ## [0.4.1] – 27/09/2026
 
+- Correction : dérapage au clavier, plus de choc ni de sortie de piste, même en gardant la flèche.
 - Ajout : journal des versions.
 
 ## [0.4.0] – 27/09/2026 · [MR #7](https://github.com/eddyacthergal/super-wouf-kart/pull/7)
 
-- Ajout : assistance au dérapage, le kart suit le virage tout seul.
+- Ajout : assistance au dérapage (première version, insuffisante au clavier).
 - Modification : sens du dérapage choisi au saut, comme dans Mario Kart.
-- Correction : dérapages lancés dans le mauvais sens, sorties de piste en début de dérapage.
+- Correction : dérapages lancés dans le mauvais sens.
 
 ## [0.3.0] – 26/09/2026 · [MR #6](https://github.com/eddyacthergal/super-wouf-kart/pull/6)
 
