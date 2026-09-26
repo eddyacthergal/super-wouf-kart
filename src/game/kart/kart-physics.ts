@@ -55,6 +55,18 @@ interface KartMemory {
   wallContact: boolean;
   /** Intensité du contact au pas précédent. */
   wallIntensity: number;
+  /**
+   * Volant de dérapage, de -1 (contre-braquage) à +1 (vers l'intérieur) : suit la consigne à
+   * DRIFT.steerResponse, pour doser la glisse même avec des touches tout-ou-rien.
+   */
+  driftWheel: number;
+  /**
+   * Temps restant (s) pour choisir le sens du dérapage après un appui : on ne peut lancer un
+   * dérapage que pendant le saut qui suit l'appui, jamais plus tard en gardant la touche.
+   */
+  driftWindow: number;
+  /** Taux de virage au neutre du pas courant (fraction du turnRate) : fixe, ou calculé par l'assistance. */
+  driftNeutral: number;
 }
 
 const memories = new WeakMap<KartState, KartMemory>();
@@ -62,7 +74,7 @@ const memories = new WeakMap<KartState, KartMemory>();
 function memoryOf(kart: KartState): KartMemory {
   let memory = memories.get(kart);
   if (!memory) {
-    memory = { driftHeld: false, wallContact: kart.wallContact, wallIntensity: 0 };
+    memory = { driftHeld: false, wallContact: kart.wallContact, wallIntensity: 0, driftWheel: 0, driftWindow: 0, driftNeutral: DRIFT.turnNeutral };
     memories.set(kart, memory);
   }
   return memory;
@@ -94,9 +106,15 @@ export function stepKart(
     // Une consigne invalide (NaN, infinie) vaut « tout droit » plutôt que d'empoisonner l'état.
     const steer = Number.isFinite(input.steer) ? clamp(input.steer, -1, 1) : 0;
     kart.steer = approach(kart.steer, steer, PHYSICS.steerResponse * dt);
-    stepDrift(kart, input.drift, driftPressed, steer, dt, emit);
+    stepDrift(kart, memory, input.drift, driftPressed, steer, dt, emit);
     stepSpeed(kart, input, tuning, dt);
-    kart.heading = wrapAngle(kart.heading + turnDelta(kart, steer, tuning, dt));
+    if (kart.drift.active) {
+      memory.driftNeutral =
+        input.driftAssist === false ? DRIFT.turnNeutral : driftAssistFactor(kart, track, tuning);
+    }
+    kart.heading = wrapAngle(
+      kart.heading + turnDelta(kart, memory.driftWheel, memory.driftNeutral, tuning, dt),
+    );
   }
 
   const distance = kart.speed * dt;
@@ -108,14 +126,55 @@ export function stepKart(
   collideWithTrack(kart, track, dt, memory, emit);
 
   if (!spinning) {
-    const target = kart.drift.active ? driftVisualYaw(kart.drift.direction, kart.steer) : 0;
+    const target = kart.drift.active ? driftVisualYaw(kart.drift.direction, memory.driftWheel) : 0;
     kart.visualYaw += (target - kart.visualYaw) * Math.min(1, VISUAL_YAW_RESPONSE * dt);
   }
 }
 
-/** Angle de glisse visé en dérapage : plus prononcé en braquant dans le sens du dérapage. */
-function driftVisualYaw(direction: number, steer: number): number {
-  return -direction * (DRIFT.visualYaw + DRIFT.visualYawSteer * steer * direction);
+/** Angle de glisse visé en dérapage : plus prononcé en braquant vers l'intérieur (wheel > 0). */
+function driftVisualYaw(direction: number, wheel: number): number {
+  return -direction * (DRIFT.visualYaw + DRIFT.visualYawSteer * wheel);
+}
+
+/**
+ * Taux de virage en dérapage (fraction du turnRate) pour une position du volant de dérapage :
+ * linéaire par morceaux, du contre-braquage (turnWide) au neutre (`neutral`) puis à l'intérieur
+ * (turnTight).
+ */
+export function driftTurnFactor(wheel: number, neutral: number = DRIFT.turnNeutral): number {
+  const w = clamp(wheel, -1, 1);
+  return w >= 0 ? neutral + w * (DRIFT.turnTight - neutral) : neutral + w * (neutral - DRIFT.turnWide);
+}
+
+/** Position du volant de dérapage qui donne le taux de virage `factor` (inverse de driftTurnFactor). */
+export function driftWheelFor(factor: number, neutral: number = DRIFT.turnNeutral): number {
+  if (factor >= neutral) {
+    const span = DRIFT.turnTight - neutral;
+    return span > 0 ? clamp((factor - neutral) / span, 0, 1) : 1;
+  }
+  const span = neutral - DRIFT.turnWide;
+  return span > 0 ? clamp((factor - neutral) / span, -1, 0) : -1;
+}
+
+/**
+ * Assistance au dérapage : taux de virage au neutre (fraction du turnRate, dans le sens du
+ * dérapage) qui fait suivre le virage au kart, sur sa trajectoire actuelle ramenée sur la route.
+ * Poursuite pure vers un point devant : quel que soit le rayon du virage, lâcher la direction
+ * garde le kart sur la piste ; braquer resserre, contre-braquer élargit.
+ */
+export function driftAssistFactor(kart: KartState, track: TrackQuery, tuning: KartTuning): number {
+  const projection = track.project(kart.position, kart.trackIndex);
+  const speed = Math.max(Math.abs(kart.speed), 1);
+  const ahead = track.sampleAt(projection.s + Math.max(DRIFT.assistMinLookahead, speed * DRIFT.assistLookahead));
+  const margin = Math.max(0, ahead.halfWidth - DRIFT.assistEdgeMargin);
+  const lateral = clamp(projection.lateral, -margin, margin);
+  const dx = ahead.position.x + ahead.left.x * lateral - kart.position.x;
+  const dz = ahead.position.z + ahead.left.z * lateral - kart.position.z;
+  const distance = Math.max(1, Math.hypot(dx, dz));
+  const alpha = wrapAngle(headingOf({ x: dx, z: dz }) - kart.heading);
+  // Rotation (rad/s, > 0 : le cap augmente) de l'arc qui mène au point visé.
+  const turn = (2 * speed * Math.sin(alpha)) / distance;
+  return clamp((-kart.drift.direction * turn) / tuning.turnRate, DRIFT.turnWide, DRIFT.turnTight);
 }
 
 function tickTimers(kart: KartState, dt: number): void {
@@ -152,6 +211,7 @@ function tierFor(charge: number): DriftTier {
 
 function stepDrift(
   kart: KartState,
+  memory: KartMemory,
   held: boolean,
   pressed: boolean,
   steer: number,
@@ -171,6 +231,7 @@ function stepDrift(
     } else if (kart.speed < DRIFT_CANCEL_RATIO * DRIFT.minSpeed) {
       resetDrift(drift);
     } else {
+      memory.driftWheel = approach(memory.driftWheel, steer * drift.direction, DRIFT.steerResponse * dt);
       drift.charge += dt * (1 + DRIFT_CHARGE_STEER_BONUS * Math.max(0, steer * drift.direction));
       // Un événement par palier franchi, même si un grand pas en franchit plusieurs.
       const tier = tierFor(drift.charge);
@@ -182,17 +243,29 @@ function stepDrift(
     return;
   }
 
-  if (!held) return;
+  if (!held) {
+    memory.driftWindow = 0;
+    return;
+  }
+  // Comme dans Mario Kart : l'appui fait sauter le kart, et le sens du dérapage se choisit au
+  // braquage pendant ce saut. Sans braquage d'ici l'atterrissage, c'est un simple saut : garder
+  // la touche et corriger sa trajectoire ensuite ne lance jamais de dérapage (ni dans le mauvais sens).
+  if (pressed) {
+    kart.hopTime = DRIFT.hopDuration;
+    memory.driftWindow = DRIFT.hopDuration;
+  }
+  if (memory.driftWindow <= 0) return;
   if (Math.abs(steer) > DRIFT_STEER_THRESHOLD && kart.speed >= DRIFT.minSpeed) {
+    memory.driftWindow = 0;
     drift.active = true;
     drift.direction = steer > 0 ? 1 : -1;
     drift.charge = 0;
     drift.tier = 0;
-    kart.hopTime = DRIFT.hopDuration;
+    // Le dérapage part au neutre : braquer pour choisir le sens ne jette pas le kart vers l'intérieur.
+    memory.driftWheel = 0;
     emit({ type: 'drift-start' });
-  } else if (pressed) {
-    // Appui sans braquage suffisant (ou trop lent) : simple saut.
-    kart.hopTime = DRIFT.hopDuration;
+  } else {
+    memory.driftWindow = Math.max(0, memory.driftWindow - dt);
   }
 }
 
@@ -225,13 +298,17 @@ function stepSpeed(kart: KartState, input: DriverInput, tuning: KartTuning, dt: 
 }
 
 /** Variation de cap du pas (rad). */
-function turnDelta(kart: KartState, steer: number, tuning: KartTuning, dt: number): number {
+function turnDelta(
+  kart: KartState,
+  driftWheel: number,
+  driftNeutral: number,
+  tuning: KartTuning,
+  dt: number,
+): number {
   const drift = kart.drift;
   if (drift.active) {
-    // Contre-braquer élargit la courbe (steerMin), braquer dans le sens du dérapage la resserre (steerMax).
-    const t = (steer * drift.direction + 1) / 2;
-    const tightness = DRIFT.steerMin + (DRIFT.steerMax - DRIFT.steerMin) * t;
-    return -drift.direction * tuning.turnRate * tightness * dt;
+    // Contre-braquer élargit la courbe, braquer vers l'intérieur la resserre.
+    return -drift.direction * tuning.turnRate * driftTurnFactor(driftWheel, driftNeutral) * dt;
   }
   const grip = Math.min(1, Math.abs(kart.speed) / PHYSICS.minTurnSpeed);
   return -kart.steer * tuning.turnRate * grip * Math.sign(kart.speed) * dt;
@@ -282,6 +359,8 @@ function collideWithTrack(
   if (impact) {
     kart.speed *= 1 - (1 - PHYSICS.wallSpeedRetention) * Math.min(1, normal * 2 + WALL_IMPACT_FLOOR);
     if (intensity > 0) emit({ type: 'wall', intensity });
+    // Un vrai choc casse la glisse, sans turbo ; un simple frôlement la laisse continuer.
+    if (kart.drift.active && intensity > DRIFT.wallCancelIntensity) resetDrift(kart.drift);
   } else {
     kart.speed = approach(kart.speed, 0, WALL_RUB_DECELERATION * dt);
   }

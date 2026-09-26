@@ -72,6 +72,11 @@ export interface DriverInput {
   drift: boolean;
   /** Vrai une seule fois par appui (front montant). */
   useItem: boolean;
+  /**
+   * Assistance au dérapage (active si absent) : au neutre, le kart suit le virage tout seul ;
+   * désactivée, le neutre est une courbe fixe (DRIFT.turnNeutral), pour les pilotes confirmés.
+   */
+  driftAssist?: boolean;
 }
 
 export const NEUTRAL_INPUT: DriverInput = { throttle: false, brake: false, steer: 0, drift: false, useItem: false };

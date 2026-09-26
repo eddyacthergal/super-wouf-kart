@@ -66,12 +66,30 @@ export const DRIFT = {
   visualYawSteer: 0.2,
   hopDuration: 0.25,
   /**
-   * Taux de virage en dérapage, en fraction du turnRate : large (contre-braquage) → serré. À pleine
-   * vitesse (stats moyennes), rayon ≈ 65 m en contre-braquant, 20 m sans braquer, 12 m en braquant :
-   * le dérapage tient dans tous les virages du jardin, même les plus doux.
+   * Taux de virage en dérapage, en fraction du turnRate, selon le volant de dérapage (-1 = contre-
+   * braquage, 0 = neutre, +1 = braquage vers l'intérieur). À pleine vitesse (stats moyennes), rayon
+   * ≈ 105 m en contre-braquant (presque droit), 37 m au neutre (la plupart des virages sans rien
+   * toucher), 13 m en braquant (épingles) : on dose la glisse sur toute la plage.
    */
-  steerMin: 0.2,
-  steerMax: 1.1,
+  turnWide: 0.12,
+  turnNeutral: 0.35,
+  turnTight: 1.0,
+  /**
+   * Vitesse (1/s) à laquelle le volant de dérapage suit la consigne : un appui bref ajuste un peu,
+   * un appui maintenu resserre progressivement. Au clavier, on dose ainsi comme avec un joystick.
+   */
+  steerResponse: 7,
+  /** Un choc violent contre une haie (intensité 0 à 1) casse le dérapage, sans turbo ; les frottements, non. */
+  wallCancelIntensity: 0.6,
+  /**
+   * Assistance au dérapage (DriverInput.driftAssist) : au neutre, le kart suit le virage quel que
+   * soit son rayon (au lieu de turnNeutral fixe). Il vise un point à assistLookahead s devant (au
+   * moins assistMinLookahead m), sur sa trajectoire actuelle, gardée à assistEdgeMargin m du bord
+   * de la route.
+   */
+  assistLookahead: 0.6,
+  assistMinLookahead: 12,
+  assistEdgeMargin: 2,
 } as const;
 
 export const ITEMS = {

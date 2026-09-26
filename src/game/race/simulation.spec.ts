@@ -205,16 +205,24 @@ describe('RaceSimulation', () => {
 
     it('les événements de stepKart portent l’identifiant du pilote qui les a produits', () => {
       // Cercle de 200 m vers la gauche : le pilote 0 file tout droit jusqu'à la haie extérieure,
-      // le pilote 1 dérape à gauche.
+      // le pilote 1 prend de la vitesse puis appuie sur Saut en tournant à gauche : il dérape.
       const circle = createCircleTrack(200);
       const sim = new RaceSimulation(circle, [entry(), entry()], { rng: createRng(4) });
       const controllers = new Map<number, DriverController>([
         [0, new ScriptedController(0, FULL_THROTTLE)],
-        [1, new ScriptedController(1, { ...FULL_THROTTLE, drift: true, steer: -1 })],
+        [1, new ScriptedController(1, { ...FULL_THROTTLE, steer: -1 })],
       ]);
       skipCountdown(sim, controllers);
       const events: GameEvent[] = [];
-      for (let i = 0; i < 6 / FIXED_DT; i++) events.push(...sim.step(FIXED_DT, controllers));
+      for (let i = 0; i < 6 / FIXED_DT; i++) {
+        if (i === Math.round(2 / FIXED_DT)) {
+          controllers.set(
+            1,
+            new ScriptedController(1, { ...FULL_THROTTLE, drift: true, steer: -1 }),
+          );
+        }
+        events.push(...sim.step(FIXED_DT, controllers));
+      }
 
       const driftEvents = events.filter(
         (event) => event.type === 'drift-start' || event.type === 'drift-tier',

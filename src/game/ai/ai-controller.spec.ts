@@ -29,6 +29,7 @@ import {
   wrapAngle,
   type Vec2,
 } from '../core/vec2';
+import { driftAssistFactor, driftTurnFactor } from '../kart/kart-physics';
 import { createCircleTrack } from '../testing/fake-track';
 import { createTestRace, createTestRacer, TEST_TUNING } from '../testing/fixtures';
 import { AiController } from './ai-controller';
@@ -137,11 +138,12 @@ class TestKartPhysics {
     this.stepDrift(kart, input, dt);
     this.stepSpeed(racer, input, dt);
 
-    // dθ = −steer × turnRate × min(1, |v| / 6) × signe(v) ; en dérapage, rotation entre steerMin et steerMax.
+    // dθ = −steer × turnRate × min(1, |v| / 6) × signe(v) ; en dérapage, taux driftTurnFactor(volant)
+    // autour du neutre de l'assistance.
     const grip = Math.min(1, Math.abs(kart.speed) / PHYSICS.minTurnSpeed) * Math.sign(kart.speed);
     const d = kart.drift.direction;
     const turn = kart.drift.active
-      ? d * (DRIFT.steerMin + ((DRIFT.steerMax - DRIFT.steerMin) * (kart.steer * d + 1)) / 2)
+      ? d * driftTurnFactor(kart.steer * d, driftAssistFactor(kart, track, racer.tuning))
       : kart.steer;
     kart.heading -= turn * racer.tuning.turnRate * grip * dt;
     kart.position = addScaled(kart.position, forwardOf(kart.heading), kart.speed * dt);
