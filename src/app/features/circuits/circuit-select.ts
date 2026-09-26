@@ -18,7 +18,7 @@ const THEMES: Readonly<Record<TrackThemeId, { label: string; background: string 
   selector: 'app-circuit-select',
   imports: [RouterLink, TrackPreview],
   template: `
-    <main class="mx-auto max-w-5xl px-4 py-8 sm:py-10">
+    <main class="mx-auto max-w-6xl px-4 py-8 sm:py-10">
       <header class="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 tabindex="-1" class="text-5xl font-black tracking-tight">Circuits</h1>
@@ -29,7 +29,7 @@ const THEMES: Readonly<Record<TrackThemeId, { label: string; background: string 
 
       <fieldset class="mt-8">
         <legend class="sr-only">Circuit</legend>
-        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           @for (circuit of circuits; track circuit.id) {
             <label
               class="card flex cursor-pointer flex-col gap-3 p-4 transition-colors hover:border-leaf-500 has-checked:border-leaf-700 has-checked:bg-sun-200"
@@ -57,9 +57,11 @@ const THEMES: Readonly<Record<TrackThemeId, { label: string; background: string 
                   "
                   (change)="settings.setTrack(circuit.id)"
                 />
-                <span [id]="'track-name-' + circuit.id" class="text-xl font-black">{{
+                <span [id]="'track-name-' + circuit.id" class="text-xl leading-tight font-black">{{
                   circuit.name
                 }}</span>
+              </span>
+              <span class="flex items-center gap-2">
                 <span
                   [id]="'track-theme-' + circuit.id"
                   class="rounded-full bg-leaf-100 px-2 py-0.5 text-xs font-bold text-leaf-900"
