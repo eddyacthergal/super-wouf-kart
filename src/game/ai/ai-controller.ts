@@ -20,7 +20,7 @@ import {
   type TrackQuery,
 } from '../core/types';
 import { approach, clamp, wrapAngle, type Vec2 } from '../core/vec2';
-import { driftAssistFactor, driftWheelFor } from '../kart/kart-physics';
+import { assistedWheelFor, driftAssistFactor } from '../kart/kart-physics';
 import type { AiPersonality } from './personality';
 
 // Point visé : s + TARGET_BASE_DISTANCE + vitesse × TARGET_SPEED_FACTOR.
@@ -371,7 +371,7 @@ export class AiController implements DriverController {
     const kart = racer.kart;
     if (!kart.drift.active) return this.driftSide * Math.max(this.driftSide * steer, DRIFT_START_STEER * 2);
     const side = kart.drift.direction !== 0 ? kart.drift.direction : this.driftSide;
-    return driftWheelFor(pursuit * side, driftAssistFactor(kart, track, racer.tuning)) * side;
+    return assistedWheelFor(pursuit * side, driftAssistFactor(kart, track, racer.tuning)) * side;
   }
 
   /** Décide de l'usage de l'objet ; vrai sur un seul pas (front montant). */

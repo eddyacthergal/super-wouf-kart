@@ -88,6 +88,12 @@ export const DRIFT = {
    * de la route.
    */
   assistLookahead: 0.6,
+  /**
+   * Avec l'assistance, le braquage module le virage suivi au lieu d'imposer un rayon : +/-
+   * assistSteer (fraction) en braquant vers l'intérieur / en contre-braquant. Garder la flèche
+   * enfoncée coupe le virage sans jeter le kart dans la haie.
+   */
+  assistSteer: 0.35,
   assistMinLookahead: 12,
   assistEdgeMargin: 2,
 } as const;

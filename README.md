@@ -28,7 +28,7 @@ Construit avec **Angular 22** pour l'interface et **three.js** pour la 3D.
   - corps : pull rayé, cape de héros.
 
   Tes choix sont mémorisés.
-- **Dérapage et mini-turbo**, comme dans Mario Kart : appuie sur Saut **en tournant** (ou tourne pendant le saut) pour choisir le sens, puis dose la glisse : sans rien toucher, le kart suit un virage courant ; en braquant, il serre (épingles) ; en contre-braquant, il s'élargit. Traces de pneus et étincelles, 3 paliers de turbo (bleu, orange, violet) au relâchement. Un saut sans braquer reste un simple saut, et un gros choc casse le dérapage.
+- **Dérapage et mini-turbo**, comme dans Mario Kart : appuie sur Saut **en tournant** (ou tourne pendant le saut) pour choisir le sens, puis garde Saut : grâce à l'**assistance au dérapage**, le kart suit le virage tout seul sans toucher à la direction ; en braquant, il serre (épingles) ; en contre-braquant, il s'élargit. Traces de pneus et étincelles, 3 paliers de turbo (bleu, orange, violet) au relâchement. Un saut sans braquer reste un simple saut, et un gros choc casse le dérapage.
 - **4 objets canins**, tirés dans les boîtes à objets :
 
   | Objet | Effet |
@@ -105,6 +105,9 @@ fonctionne et l'accueil n'affiche que la version. Pour publier une nouvelle vers
 `npm run release:patch` (correctif), `release:minor` (fonctionnalité) ou `release:major` (rupture),
 puis committer.
 
+Le détail de chaque version (ajouts, modifications, corrections) est tenu dans le
+[journal des versions](CHANGELOG.md), mis à jour par chaque pull request.
+
 ## Architecture
 
 Le projet sépare strictement l'**interface** (Angular) et le **moteur de jeu** (TypeScript pur).
@@ -160,6 +163,7 @@ L'interface vise **WCAG AA** et **0 violation AXE** :
 
 ## Documentation
 
+- Journal des versions : [`CHANGELOG.md`](CHANGELOG.md)
 - Spec de conception : [`docs/superpowers/specs/2026-09-23-wouf-kart-design.md`](docs/superpowers/specs/2026-09-23-wouf-kart-design.md)
 - Circuits (fonctionnement, ajout d'un circuit) : [`docs/circuits.md`](docs/circuits.md)
 - Règles de code Angular du projet : [`CLAUDE.md`](CLAUDE.md)

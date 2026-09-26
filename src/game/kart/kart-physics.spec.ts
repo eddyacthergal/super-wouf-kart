@@ -5,7 +5,7 @@ import { NEUTRAL_INPUT, type DriverInput, type KartEvent, type KartState, type K
 import { addScaled, clamp, dot, headingOf, leftOf, scale, sub, wrapAngle } from '../core/vec2';
 import { createCircleTrack } from '../testing/fake-track';
 import { TEST_TUNING } from '../testing/fixtures';
-import { driftTurnFactor, driftWheelFor, stepKart } from './kart-physics';
+import { driftAssistFactor, driftTurnFactor, driftWheelFor, stepKart } from './kart-physics';
 import { tuningFromStats } from './tuning';
 
 /** Quasi-ligne droite (cercle de 2 km tournant à gauche). */
@@ -404,17 +404,21 @@ describe('stepKart — dérapage', () => {
 
   it('assistance : braquer resserre, contre-braquer élargit, autour du virage suivi', () => {
     const circle = createCircleTrack(40);
+    /** Rotation sur un pas, une fois le volant de dérapage stabilisé sur `steer`. */
     const turnWith = (steer: number): number => {
       const kart = kartOn(circle, 0, 0, 22);
       step(kart, { throttle: true, drift: true, steer: -1 }, circle);
       run(kart, 0.5, { throttle: true, drift: true }, { track: circle });
-      const heading0 = kart.heading;
       run(kart, 0.3, { throttle: true, drift: true, steer }, { track: circle });
-      return wrapAngle(kart.heading - heading0);
+      const neutral = driftAssistFactor(kart, circle, TEST_TUNING);
+      const heading0 = kart.heading;
+      step(kart, { throttle: true, drift: true, steer }, circle);
+      return wrapAngle(kart.heading - heading0) / FIXED_DT / TEST_TUNING.turnRate / neutral;
     };
-    const free = turnWith(0);
-    expect(turnWith(-1)).toBeGreaterThan(free + 0.05);
-    expect(turnWith(1)).toBeLessThan(free - 0.05);
+    // Dérapage à gauche (-1) : braquer à gauche resserre de assistSteer, à droite élargit d'autant.
+    expect(turnWith(0)).toBeCloseTo(1, 1);
+    expect(turnWith(-1)).toBeCloseTo(1 + DRIFT.assistSteer, 1);
+    expect(turnWith(1)).toBeCloseTo(1 - DRIFT.assistSteer, 1);
   });
 
   it('driftWheelFor est l’inverse de driftTurnFactor, bornée à [-1, 1]', () => {

@@ -67,6 +67,8 @@ interface KartMemory {
   driftWindow: number;
   /** Taux de virage au neutre du pas courant (fraction du turnRate) : fixe, ou calculé par l'assistance. */
   driftNeutral: number;
+  /** Assistance au dérapage active au pas courant. */
+  driftAssisted: boolean;
 }
 
 const memories = new WeakMap<KartState, KartMemory>();
@@ -74,7 +76,7 @@ const memories = new WeakMap<KartState, KartMemory>();
 function memoryOf(kart: KartState): KartMemory {
   let memory = memories.get(kart);
   if (!memory) {
-    memory = { driftHeld: false, wallContact: kart.wallContact, wallIntensity: 0, driftWheel: 0, driftWindow: 0, driftNeutral: DRIFT.turnNeutral };
+    memory = { driftHeld: false, wallContact: kart.wallContact, wallIntensity: 0, driftWheel: 0, driftWindow: 0, driftNeutral: DRIFT.turnNeutral, driftAssisted: true };
     memories.set(kart, memory);
   }
   return memory;
@@ -109,11 +111,11 @@ export function stepKart(
     stepDrift(kart, memory, input.drift, driftPressed, steer, dt, emit);
     stepSpeed(kart, input, tuning, dt);
     if (kart.drift.active) {
-      memory.driftNeutral =
-        input.driftAssist === false ? DRIFT.turnNeutral : driftAssistFactor(kart, track, tuning);
+      memory.driftAssisted = input.driftAssist !== false;
+      memory.driftNeutral = memory.driftAssisted ? driftAssistFactor(kart, track, tuning) : DRIFT.turnNeutral;
     }
     kart.heading = wrapAngle(
-      kart.heading + turnDelta(kart, memory.driftWheel, memory.driftNeutral, tuning, dt),
+      kart.heading + turnDelta(kart, memory.driftWheel, memory.driftNeutral, memory.driftAssisted, tuning, dt),
     );
   }
 
@@ -156,6 +158,17 @@ export function driftWheelFor(factor: number, neutral: number = DRIFT.turnNeutra
   return span > 0 ? clamp((factor - neutral) / span, -1, 0) : -1;
 }
 
+/** Avec l'assistance : le braquage module le virage suivi (± DRIFT.assistSteer). */
+export function assistedTurnFactor(wheel: number, assist: number): number {
+  return assist * (1 + DRIFT.assistSteer * clamp(wheel, -1, 1));
+}
+
+/** Position du volant qui donne le taux `factor` autour du virage suivi (inverse de assistedTurnFactor). */
+export function assistedWheelFor(factor: number, assist: number): number {
+  if (assist <= 1e-6) return factor > 0 ? 1 : -1;
+  return clamp((factor / assist - 1) / DRIFT.assistSteer, -1, 1);
+}
+
 /**
  * Assistance au dérapage : taux de virage au neutre (fraction du turnRate, dans le sens du
  * dérapage) qui fait suivre le virage au kart, sur sa trajectoire actuelle ramenée sur la route.
@@ -174,7 +187,8 @@ export function driftAssistFactor(kart: KartState, track: TrackQuery, tuning: Ka
   const alpha = wrapAngle(headingOf({ x: dx, z: dz }) - kart.heading);
   // Rotation (rad/s, > 0 : le cap augmente) de l'arc qui mène au point visé.
   const turn = (2 * speed * Math.sin(alpha)) / distance;
-  return clamp((-kart.drift.direction * turn) / tuning.turnRate, DRIFT.turnWide, DRIFT.turnTight);
+  // Jusqu'à 0 (tout droit) : l'assistance peut redresser un kart qui pointe vers l'intérieur.
+  return clamp((-kart.drift.direction * turn) / tuning.turnRate, 0, DRIFT.turnTight);
 }
 
 function tickTimers(kart: KartState, dt: number): void {
@@ -302,13 +316,17 @@ function turnDelta(
   kart: KartState,
   driftWheel: number,
   driftNeutral: number,
+  driftAssisted: boolean,
   tuning: KartTuning,
   dt: number,
 ): number {
   const drift = kart.drift;
   if (drift.active) {
     // Contre-braquer élargit la courbe, braquer vers l'intérieur la resserre.
-    return -drift.direction * tuning.turnRate * driftTurnFactor(driftWheel, driftNeutral) * dt;
+    const factor = driftAssisted
+      ? assistedTurnFactor(driftWheel, driftNeutral)
+      : driftTurnFactor(driftWheel, driftNeutral);
+    return -drift.direction * tuning.turnRate * factor * dt;
   }
   const grip = Math.min(1, Math.abs(kart.speed) / PHYSICS.minTurnSpeed);
   return -kart.steer * tuning.turnRate * grip * Math.sign(kart.speed) * dt;
