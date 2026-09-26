@@ -16,13 +16,29 @@ import {
   createMulchTexture,
 } from './textures';
 
+/** Habillage de la piste propre au thème : textures de la route et des bas-côtés, bordures. */
+export interface SurfaceStyle {
+  road: () => THREE.Texture;
+  /** Longueur (m) couverte par une répétition de la texture de route. */
+  roadTile: number;
+  shoulder: () => THREE.Texture;
+  shoulderTile: number;
+  curbColors: readonly [string, string];
+}
+
+/** Jardin : allée de gravier, paillis, bordures rouges et blanches. */
+export const GARDEN_SURFACE: SurfaceStyle = {
+  road: () => createGravelTexture(),
+  roadTile: 7,
+  shoulder: () => createMulchTexture(),
+  shoulderTile: 4,
+  curbColors: [PALETTE.curbRed, PALETTE.curbWhite],
+};
+
 /** Hauteurs des couches au sol (m) : légèrement au-dessus de la pelouse (y = 0). */
 const ROAD_Y = 0.02;
 const SHOULDER_Y = 0.012;
 const MARKING_Y = 0.028;
-/** Longueur (m) couverte par une répétition des textures de gravier et de paillis. */
-const GRAVEL_TILE = 7;
-const MULCH_TILE = 4;
 /** Le paillis passe sous la haie pour qu'aucune herbe n'apparaisse entre les deux. */
 const SHOULDER_OVERLAP = 1.4;
 /** Bordures : longueur d'un segment coloré, largeur, hauteur, décalage au-delà du bord de route. */
@@ -91,25 +107,25 @@ function groundMaterial(map: THREE.Texture, offset: number): THREE.MeshStandardM
   });
 }
 
-function buildRoad(track: TrackQuery, bag: DisposalBag): THREE.Mesh {
+function buildRoad(track: TrackQuery, bag: DisposalBag, style: SurfaceStyle): THREE.Mesh {
   const geometry = bag.add(
     ribbonGeometry(
       track,
       (hw) => -hw,
       (hw) => hw,
       ROAD_Y,
-      GRAVEL_TILE,
+      style.roadTile,
     ),
   );
-  const material = bag.add(groundMaterial(bag.add(createGravelTexture()), -2));
+  const material = bag.add(groundMaterial(bag.add(style.road()), -2));
   const road = new THREE.Mesh(geometry, material);
   road.name = 'road';
   road.receiveShadow = true;
   return road;
 }
 
-function buildShoulders(track: TrackQuery, bag: DisposalBag): THREE.Mesh[] {
-  const material = bag.add(groundMaterial(bag.add(createMulchTexture()), -1));
+function buildShoulders(track: TrackQuery, bag: DisposalBag, style: SurfaceStyle): THREE.Mesh[] {
+  const material = bag.add(groundMaterial(bag.add(style.shoulder()), -1));
   const outer = track.wallHalfWidth + SHOULDER_OVERLAP;
   const sides = [
     ribbonGeometry(
@@ -117,14 +133,14 @@ function buildShoulders(track: TrackQuery, bag: DisposalBag): THREE.Mesh[] {
       (hw) => hw,
       () => outer,
       SHOULDER_Y,
-      MULCH_TILE,
+      style.shoulderTile,
     ),
     ribbonGeometry(
       track,
       () => -outer,
       (hw) => -hw,
       SHOULDER_Y,
-      MULCH_TILE,
+      style.shoulderTile,
     ),
   ];
   return sides.map((geometry, index) => {
@@ -135,8 +151,8 @@ function buildShoulders(track: TrackQuery, bag: DisposalBag): THREE.Mesh[] {
   });
 }
 
-/** Bordures alternées rouge/blanc tous les 2 m, de part et d'autre de la route. */
-function buildCurbs(track: TrackQuery, bag: DisposalBag): THREE.InstancedMesh {
+/** Bordures bicolores alternées tous les 2 m, de part et d'autre de la route. */
+function buildCurbs(track: TrackQuery, bag: DisposalBag, style: SurfaceStyle): THREE.InstancedMesh {
   const rings = [1, -1].map((side) =>
     resampleRing(
       track.samples.map((sample) => {
@@ -156,8 +172,8 @@ function buildCurbs(track: TrackQuery, bag: DisposalBag): THREE.InstancedMesh {
   const curbs = new THREE.InstancedMesh(geometry, material, count);
   curbs.name = 'curbs';
   curbs.receiveShadow = true;
-  const red = new THREE.Color(PALETTE.curbRed);
-  const white = new THREE.Color(PALETTE.curbWhite);
+  const red = new THREE.Color(style.curbColors[0]);
+  const white = new THREE.Color(style.curbColors[1]);
   const matrix = new THREE.Matrix4();
   const position = new THREE.Vector3();
   const quaternion = new THREE.Quaternion();
@@ -295,13 +311,17 @@ function buildStartArch(track: TrackQuery, bag: DisposalBag): THREE.Group {
 }
 
 /** Tous les éléments au sol du circuit, plus l'arche de départ. */
-export function buildTrackSurface(track: TrackQuery, bag: DisposalBag): THREE.Group {
+export function buildTrackSurface(
+  track: TrackQuery,
+  bag: DisposalBag,
+  style: SurfaceStyle = GARDEN_SURFACE,
+): THREE.Group {
   const group = new THREE.Group();
   group.name = 'track-surface';
   group.add(
-    buildRoad(track, bag),
-    ...buildShoulders(track, bag),
-    buildCurbs(track, bag),
+    buildRoad(track, bag, style),
+    ...buildShoulders(track, bag, style),
+    buildCurbs(track, bag, style),
     buildStartLine(track, bag),
     buildGridMarks(track, bag),
     buildStartArch(track, bag),

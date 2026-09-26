@@ -39,7 +39,7 @@ describe('Home', () => {
     const element = await render();
     const links = Array.from(element.querySelectorAll<HTMLAnchorElement>('nav a'));
     expect(links.map((link) => [link.textContent?.trim(), link.getAttribute('href')])).toEqual([
-      ['Jouer', '/course'],
+      ['Jouer', '/circuits'],
       ['Garage', '/garage'],
     ]);
   });

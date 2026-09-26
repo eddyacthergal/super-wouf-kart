@@ -5,6 +5,8 @@
  */
 import { createRng, type Rng } from '../core/rng';
 import type { TrackQuery } from '../core/types';
+import { GRAND_JARDIN } from '../track/circuits/grand-jardin';
+import type { TrackDecorHints } from '../track/track-definition';
 import { headingOf } from '../core/vec2';
 import { type Bounds, corridorClearance, trackBounds } from './track-geometry';
 
@@ -21,7 +23,16 @@ export type DecorKind =
   | 'sprinkler'
   | 'tree'
   | 'bush'
-  | 'stepping-stone';
+  | 'stepping-stone'
+  | 'fir'
+  | 'snowman'
+  | 'palm'
+  | 'parasol'
+  | 'beach-ball'
+  | 'crab'
+  | 'sandcastle'
+  | 'lifeguard-tower'
+  | 'beach-huts';
 
 export interface DecorPlacement {
   kind: DecorKind;
@@ -51,26 +62,7 @@ const FENCE_MARGIN = 36;
 const DECOR_GAP = 1;
 const DECOR_SEED = 0x60f1d;
 
-interface Landmark {
-  kind: DecorKind;
-  x: number;
-  z: number;
-  radius: number;
-}
-
-/** Pièces uniques, positions pensées pour le jardin (validées et déplacées au besoin). */
-const LANDMARKS: readonly Landmark[] = [
-  { kind: 'doghouse', x: -40, z: -114, radius: 5.5 },
-  { kind: 'kibble-bowl', x: 47, z: 58, radius: 4.4 },
-  { kind: 'watering-can', x: 72, z: -50, radius: 6.2 },
-  // Rayon = portée des jets d'eau tournants (~7,4 m), pas seulement le pied de l'arroseur.
-  { kind: 'sprinkler', x: -8, z: -46, radius: 7.6 },
-  { kind: 'giant-bone', x: -64, z: -46, radius: 6.5 },
-  { kind: 'gnome', x: -3, z: 30, radius: 2.8 },
-  { kind: 'gnome', x: 112, z: 42, radius: 2.8 },
-];
-
-interface ScatterRule {
+export interface ScatterRule {
   kind: DecorKind;
   count: number;
   size: readonly [number, number];
@@ -81,7 +73,7 @@ interface ScatterRule {
   facesTrack: boolean;
 }
 
-const SCATTER: readonly ScatterRule[] = [
+const GARDEN_SCATTER: readonly ScatterRule[] = [
   {
     kind: 'sunflower',
     count: 12,
@@ -139,18 +131,68 @@ const SCATTER: readonly ScatterRule[] = [
 ];
 
 /** Arbres de fond, hors de la clôture. */
-const OUTER_TREES = { count: 46, size: [18, 30] as const, inner: 8, outer: 80 };
+export interface OuterRule {
+  kind: DecorKind;
+  count: number;
+  size: readonly [number, number];
+  inner: number;
+  outer: number;
+  variants: number;
+}
 
-/** Pierres de gué : un chemin sinueux qui traverse la pelouse centrale. */
-const STEPPING_PATH = {
-  from: { x: -94, z: -30 },
-  to: { x: 114, z: -24 },
-  spacing: 2.9,
-  wave: 6,
-  radius: 1.25,
+/** Recette du décor d'un thème : objets semés près du circuit et arbres de fond. */
+export interface DecorRecipe {
+  scatter: readonly ScatterRule[];
+  outer: OuterRule;
+}
+
+export const GARDEN_RECIPE: DecorRecipe = {
+  scatter: GARDEN_SCATTER,
+  outer: { kind: 'tree', count: 46, size: [18, 30], inner: 8, outer: 80, variants: 3 },
 };
 
-export function planDecor(track: TrackQuery, seed = DECOR_SEED): DecorPlan {
+/** Pierres de gué : espacement, ondulation et taille, le long du chemin indiqué par le circuit. */
+const STEPPING_PATH = { spacing: 2.9, wave: 6, radius: 1.25 };
+
+const DECOR_KINDS: ReadonlySet<string> = new Set<DecorKind>([
+  'daisy',
+  'tulip',
+  'sunflower',
+  'tennis-ball',
+  'doghouse',
+  'watering-can',
+  'kibble-bowl',
+  'giant-bone',
+  'gnome',
+  'sprinkler',
+  'tree',
+  'bush',
+  'stepping-stone',
+  'fir',
+  'snowman',
+  'palm',
+  'parasol',
+  'beach-ball',
+  'crab',
+  'sandcastle',
+  'lifeguard-tower',
+  'beach-huts',
+]);
+
+function isDecorKind(kind: string): kind is DecorKind {
+  return DECOR_KINDS.has(kind);
+}
+
+/**
+ * Décor du thème jardin autour de `track`. Les pièces uniques et le chemin de pierres viennent des
+ * indications du circuit (`hints`, celles du Grand Jardin par défaut) ; types inconnus ignorés.
+ */
+export function planDecor(
+  track: TrackQuery,
+  hints: TrackDecorHints = GRAND_JARDIN.decor ?? {},
+  recipe: DecorRecipe = GARDEN_RECIPE,
+  seed = DECOR_SEED,
+): DecorPlan {
   const rng = createRng(seed);
   const fence = trackBounds(track, track.wallHalfWidth + FENCE_MARGIN);
   const placements: DecorPlacement[] = [];
@@ -179,24 +221,28 @@ export function planDecor(track: TrackQuery, seed = DECOR_SEED): DecorPlan {
   };
 
   // 1. Pièces uniques : position prévue, sinon recherche en spirale autour.
-  for (const landmark of LANDMARKS) {
+  for (const landmark of hints.landmarks ?? []) {
+    const kind = landmark.kind;
+    if (!isDecorKind(kind)) continue;
     const spot = spiralSearch(landmark.x, landmark.z, (x, z) => accepts(x, z, landmark.radius));
     if (!spot) continue;
     placements.push({
-      kind: landmark.kind,
+      kind,
       x: spot.x,
       z: spot.z,
       radius: landmark.radius,
       size: 1,
       rotation: facing(spot.x, spot.z),
-      variant: placements.filter((p) => p.kind === landmark.kind).length,
+      variant: placements.filter((p) => p.kind === kind).length,
     });
   }
 
-  // 2. Pierres de gué.
-  const { from, to, spacing, wave, radius } = STEPPING_PATH;
+  // 2. Pierres de gué, si le circuit indique un chemin.
+  const { spacing, wave, radius } = STEPPING_PATH;
+  const from = hints.path?.from ?? { x: 0, z: 0 };
+  const to = hints.path?.to ?? from;
   const pathLength = Math.hypot(to.x - from.x, to.z - from.z);
-  const stones = Math.floor(pathLength / spacing);
+  const stones = hints.path && pathLength > spacing ? Math.floor(pathLength / spacing) : -1;
   for (let i = 0; i <= stones; i++) {
     const t = i / stones;
     const x = from.x + (to.x - from.x) * t + rng.range(-0.3, 0.3);
@@ -225,7 +271,7 @@ export function planDecor(track: TrackQuery, seed = DECOR_SEED): DecorPlan {
   }
 
   // 3. Fleurs, balles, buissons et arbres, près du circuit pour qu'on les voie passer.
-  for (const rule of SCATTER) {
+  for (const rule of recipe.scatter) {
     let placed = 0;
     for (let attempt = 0; attempt < rule.count * 40 && placed < rule.count; attempt++) {
       const size = rng.range(rule.size[0], rule.size[1]);
@@ -250,20 +296,21 @@ export function planDecor(track: TrackQuery, seed = DECOR_SEED): DecorPlan {
   }
 
   // 4. Arbres de fond, au-delà de la clôture.
+  const background = recipe.outer;
   let outer = 0;
-  for (let attempt = 0; attempt < OUTER_TREES.count * 40 && outer < OUTER_TREES.count; attempt++) {
-    const size = rng.range(OUTER_TREES.size[0], OUTER_TREES.size[1]);
+  for (let attempt = 0; attempt < background.count * 40 && outer < background.count; attempt++) {
+    const size = rng.range(background.size[0], background.size[1]);
     const r = size * 0.3;
-    const spot = ringPoint(rng, fence, OUTER_TREES.inner + r, OUTER_TREES.outer);
+    const spot = ringPoint(rng, fence, background.inner + r, background.outer);
     if (!accepts(spot.x, spot.z, r, false)) continue;
     placements.push({
-      kind: 'tree',
+      kind: background.kind,
       x: spot.x,
       z: spot.z,
       radius: r,
       size,
       rotation: rng.range(0, Math.PI * 2),
-      variant: rng.int(0, 2),
+      variant: rng.int(0, background.variants - 1),
     });
     outer++;
   }

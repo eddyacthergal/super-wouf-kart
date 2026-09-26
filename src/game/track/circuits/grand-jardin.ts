@@ -1,5 +1,5 @@
 /**
- * Tracé du circuit « jardin » : points de contrôle de la spline Catmull-Rom centripète fermée (m).
+ * Circuit « Grand Jardin » : points de contrôle de la spline Catmull-Rom centripète fermée (m).
  * Le point 0 est sur la ligne de départ/arrivée ; la course suit les indices croissants.
  *
  * Tour d'environ 910 m, sens global à gauche : longue ligne droite de départ, virage 1, chicane,
@@ -8,7 +8,8 @@
  * pour que la spline suive fidèlement les rayons voulus. Les contraintes (longueur, rayon minimal,
  * écart entre couloirs, etc.) sont vérifiées dans track.spec.ts.
  */
-import type { Vec2 } from '../core/vec2';
+import type { Vec2 } from '../../core/vec2';
+import type { TrackDefinition } from '../track-definition';
 
 export const GARDEN_CONTROL_POINTS: readonly Vec2[] = [
   // Ligne droite de départ : le point 0 est la ligne d'arrivée, les points voisins restent alignés.
@@ -109,3 +110,25 @@ export const GARDEN_CONTROL_POINTS: readonly Vec2[] = [
   { x: 62, z: -90 },
   { x: 49, z: -90 },
 ];
+
+export const GRAND_JARDIN: TrackDefinition = {
+  id: 'grand-jardin',
+  name: 'Grand Jardin',
+  description: 'Le grand tour : longue ligne droite, chicane et épingle de la niche.',
+  theme: 'garden',
+  controlPoints: GARDEN_CONTROL_POINTS,
+  decor: {
+    landmarks: [
+      { kind: 'doghouse', x: -40, z: -114, radius: 5.5 },
+      { kind: 'kibble-bowl', x: 47, z: 58, radius: 4.4 },
+      { kind: 'watering-can', x: 72, z: -50, radius: 6.2 },
+      // Rayon = portée des jets d'eau tournants (~7,4 m), pas seulement le pied de l'arroseur.
+      { kind: 'sprinkler', x: -8, z: -46, radius: 7.6 },
+      { kind: 'giant-bone', x: -64, z: -46, radius: 6.5 },
+      { kind: 'gnome', x: -3, z: 30, radius: 2.8 },
+      { kind: 'gnome', x: 112, z: 42, radius: 2.8 },
+    ],
+    // Pierres de gué : un chemin sinueux qui traverse la pelouse centrale.
+    path: { from: { x: -94, z: -30 }, to: { x: 114, z: -24 } },
+  },
+};

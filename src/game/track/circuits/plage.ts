@@ -1,0 +1,97 @@
+/**
+ * Circuit « Plage au couchant » : points de contrôle de la spline Catmull-Rom centripète fermée (m).
+ * Le point 0 est sur la ligne de départ/arrivée ; la course suit les indices croissants.
+ *
+ * Tour d'environ 770 m, rapide et coulé : longue ligne droite le long de la mer (côté +Z), montée
+ * par des vagues (deux S successifs), grand virage du fond puis la vague de la descente. Tracé
+ * construit à la « tortue » (rayon minimal 26 m) ; règles communes vérifiées par validateTrack.
+ */
+import type { Vec2 } from '../../core/vec2';
+import type { TrackDefinition } from '../track-definition';
+
+const PLAGE_CONTROL_POINTS: readonly Vec2[] = [
+  { x: 8.5, z: 94.8 },
+  { x: 3.5, z: 94.8 },
+  { x: -76.5, z: 94.8 },
+  { x: -81.5, z: 94.8 },
+  { x: -92.6, z: 93 },
+  { x: -102.7, z: 87.9 },
+  { x: -110.6, z: 80 },
+  { x: -115.7, z: 69.9 },
+  { x: -117.5, z: 58.8 },
+  { x: -117.5, z: 53.8 },
+  { x: -117.5, z: 0.1 },
+  { x: -117.5, z: -4.9 },
+  { x: -116, z: -14.2 },
+  { x: -111.8, z: -22.6 },
+  { x: -105.1, z: -29.2 },
+  { x: -96.8, z: -33.5 },
+  { x: -87.5, z: -34.9 },
+  { x: -79.7, z: -36 },
+  { x: -72.5, z: -39 },
+  { x: -66.3, z: -43.7 },
+  { x: -61.5, z: -49.9 },
+  { x: -56.8, z: -56.2 },
+  { x: -50.5, z: -60.9 },
+  { x: -43.3, z: -63.9 },
+  { x: -35.5, z: -64.9 },
+  { x: -27.5, z: -64.9 },
+  { x: -19.8, z: -66 },
+  { x: -12.5, z: -69 },
+  { x: -6.3, z: -73.7 },
+  { x: -1.6, z: -79.9 },
+  { x: 3.2, z: -86.2 },
+  { x: 9.4, z: -90.9 },
+  { x: 16.7, z: -93.9 },
+  { x: 24.4, z: -94.9 },
+  { x: 29.4, z: -94.9 },
+  { x: 78.5, z: -94.9 },
+  { x: 83.5, z: -94.9 },
+  { x: 94, z: -93.3 },
+  { x: 103.5, z: -88.5 },
+  { x: 111, z: -80.9 },
+  { x: 115.8, z: -71.5 },
+  { x: 117.5, z: -60.9 },
+  { x: 117.5, z: -55.9 },
+  { x: 117.5, z: -45.9 },
+  { x: 117.5, z: -40.9 },
+  { x: 116.6, z: -33.8 },
+  { x: 114.1, z: -27.1 },
+  { x: 110.1, z: -21.2 },
+  { x: 104.7, z: -16.4 },
+  { x: 99.5, z: -11.5 },
+  { x: 95.8, z: -5.5 },
+  { x: 93.9, z: 1.4 },
+  { x: 93.9, z: 8.5 },
+  { x: 95.8, z: 15.3 },
+  { x: 99.5, z: 21.4 },
+  { x: 104.7, z: 26.2 },
+  { x: 110.1, z: 31 },
+  { x: 114.1, z: 36.9 },
+  { x: 116.6, z: 43.7 },
+  { x: 117.5, z: 50.8 },
+  { x: 117.5, z: 60.8 },
+  { x: 115.8, z: 71.3 },
+  { x: 111, z: 80.8 },
+  { x: 103.5, z: 88.3 },
+  { x: 94, z: 93.1 },
+  { x: 83.5, z: 94.8 },
+  { x: 78.5, z: 94.8 },
+  { x: 13.5, z: 94.8 },
+];
+
+export const PLAGE: TrackDefinition = {
+  id: 'plage',
+  name: 'Plage au couchant',
+  description: 'Rapide, le long de la mer : des virages en vagues, mouettes et dauphins.',
+  theme: 'beach',
+  controlPoints: PLAGE_CONTROL_POINTS,
+  decor: {
+    landmarks: [
+      { kind: 'sandcastle', x: -40, z: 25, radius: 7.5 },
+      { kind: 'lifeguard-tower', x: -30, z: 122, radius: 3.8 },
+      { kind: 'beach-huts', x: 55, z: 124, radius: 7.4 },
+      { kind: 'beach-huts', x: -90, z: -80, radius: 7.4 },
+    ],
+  },
+};

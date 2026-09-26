@@ -68,18 +68,19 @@ describe('RacePage', () => {
     expect(canvas?.getAttribute('aria-label')).toBe('Course en cours');
     expect(game.last.setup).toMatchObject({
       playerBreed: 'teckel',
+      trackId: 'grand-jardin',
       muted: false,
       autopilot: true,
       debug: false,
     });
     expect(typeof game.last.setup.reducedMotion).toBe('boolean');
-    expect(text()).toContain('Chargement du jardin…');
-    expect(element.querySelector('h1')?.textContent).toBe('Course');
+    expect(text()).toContain('Chargement : Grand Jardin…');
+    expect(element.querySelector('h1')?.textContent).toBe('Course : Grand Jardin');
   });
 
   it('annonce le chargement dans une région de statut présente avant et après', async () => {
     const status = element.querySelector('[role="status"]');
-    expect(status?.textContent).toContain('Chargement du jardin…');
+    expect(status?.textContent).toContain('Chargement : Grand Jardin…');
     game.last.callbacks.onReady(FAKE_INFO);
     await settle(fixture);
     expect(element.querySelector('[role="status"]')).toBe(status);
@@ -103,7 +104,7 @@ describe('RacePage', () => {
     );
     await settle(fixture);
 
-    expect(text()).not.toContain('Chargement du jardin');
+    expect(text()).not.toContain('Chargement');
     expect(text()).toContain('3ᵉ');
     expect(text()).toContain('/ 8');
     expect(text()).toContain('Position : 3e sur 8');
@@ -367,7 +368,7 @@ describe('RacePage', () => {
     expect(nextElement.querySelector('[role="alert"]')?.textContent).toContain(
       'Impossible de charger le jeu',
     );
-    expect(nextElement.textContent).not.toContain('Chargement du jardin');
+    expect(nextElement.textContent).not.toContain('Chargement');
   });
 
   it('arrête la partie quand la page est détruite', () => {

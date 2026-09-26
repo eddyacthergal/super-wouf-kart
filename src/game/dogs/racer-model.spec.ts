@@ -196,6 +196,7 @@ describe.each(BREED_LIST.map((breed) => breed.id))('buildRacerModel (%s)', (bree
 });
 
 describe('accessoires', () => {
+  // 240 modèles complets : plusieurs secondes selon la machine, d'où le délai allongé.
   it('toutes les combinaisons restent sous le budget de meshes', () => {
     const heads = [null, ...skinsForSlot('head').map((skin) => skin.id)];
     const necks = [null, ...skinsForSlot('neck').map((skin) => skin.id)];
@@ -217,7 +218,7 @@ describe('accessoires', () => {
       }
     }
     expect(worst).toBeLessThanOrEqual(MAX_MESHES);
-  });
+  }, 30_000);
 
   it('ignore les accessoires inconnus ou mal placés', () => {
     const bare = meshesOf(build('carlin').root).length;

@@ -1,0 +1,92 @@
+/**
+ * Circuit « Parc enneigé » : points de contrôle de la spline Catmull-Rom centripète fermée (m).
+ * Le point 0 est sur la ligne de départ/arrivée ; la course suit les indices croissants.
+ *
+ * Tour d'environ 650 m en forme de botte : épingle au bout de la ligne droite, longue diagonale,
+ * virage serré du sommet, descente en S puis la grande épingle du talon. Tracé construit à la
+ * « tortue » (lignes droites et arcs, rayon minimal 24 m) ; règles communes vérifiées par validateTrack.
+ */
+import type { Vec2 } from '../../core/vec2';
+import type { TrackDefinition } from '../track-definition';
+
+const PARC_ENNEIGE_CONTROL_POINTS: readonly Vec2[] = [
+  { x: -2.5, z: 90 },
+  { x: -7.5, z: 90 },
+  { x: -52.5, z: 90 },
+  { x: -57.5, z: 90 },
+  { x: -66.3, z: 88.7 },
+  { x: -74.4, z: 84.8 },
+  { x: -81, z: 78.7 },
+  { x: -85.4, z: 71 },
+  { x: -87.4, z: 62.2 },
+  { x: -86.7, z: 53.3 },
+  { x: -83.5, z: 45 },
+  { x: -81, z: 40.7 },
+  { x: -75.3, z: 30.9 },
+  { x: -72.8, z: 26.5 },
+  { x: -68.8, z: 16.9 },
+  { x: -67.5, z: 6.5 },
+  { x: -68.8, z: -3.8 },
+  { x: -72.8, z: -13.5 },
+  { x: -75.3, z: -17.8 },
+  { x: -90.3, z: -43.8 },
+  { x: -92.8, z: -48.1 },
+  { x: -95.8, z: -55.7 },
+  { x: -96.5, z: -63.7 },
+  { x: -94.9, z: -71.7 },
+  { x: -91, z: -78.8 },
+  { x: -85.3, z: -84.6 },
+  { x: -78.1, z: -88.4 },
+  { x: -70.2, z: -90.1 },
+  { x: -62.1, z: -89.4 },
+  { x: -54.6, z: -86.4 },
+  { x: -50.2, z: -83.9 },
+  { x: 0.7, z: -54.5 },
+  { x: 5, z: -52 },
+  { x: 14.3, z: -44.8 },
+  { x: 21.5, z: -35.5 },
+  { x: 26, z: -24.6 },
+  { x: 27.5, z: -13 },
+  { x: 27.5, z: -8 },
+  { x: 27.5, z: 12 },
+  { x: 27.5, z: 17 },
+  { x: 28.7, z: 24.7 },
+  { x: 32.3, z: 31.7 },
+  { x: 37.8, z: 37.2 },
+  { x: 44.8, z: 40.8 },
+  { x: 52.5, z: 42 },
+  { x: 57.5, z: 42 },
+  { x: 67.5, z: 42 },
+  { x: 72.5, z: 42 },
+  { x: 79.9, z: 43.2 },
+  { x: 86.6, z: 46.6 },
+  { x: 91.9, z: 51.9 },
+  { x: 95.3, z: 58.6 },
+  { x: 96.5, z: 66 },
+  { x: 95.3, z: 73.4 },
+  { x: 91.9, z: 80.1 },
+  { x: 86.6, z: 85.4 },
+  { x: 79.9, z: 88.8 },
+  { x: 72.5, z: 90 },
+  { x: 67.5, z: 90 },
+  { x: 2.5, z: 90 },
+];
+
+export const PARC_ENNEIGE: TrackDefinition = {
+  id: 'parc-enneige',
+  name: 'Parc enneigé',
+  description: 'Sapins et bonhommes de neige : une longue diagonale et deux épingles.',
+  theme: 'snow',
+  controlPoints: PARC_ENNEIGE_CONTROL_POINTS,
+  decor: {
+    landmarks: [
+      { kind: 'snowman', x: -35, z: 40, radius: 3.4 },
+      { kind: 'snowman', x: -20, z: -10, radius: 3.4 },
+      { kind: 'snowman', x: 62, z: 8, radius: 3.4 },
+      { kind: 'snowman', x: 20, z: 122, radius: 3.4 },
+      { kind: 'doghouse', x: -48, z: 70, radius: 5.5 },
+      { kind: 'kibble-bowl', x: 60, z: -40, radius: 4.4 },
+    ],
+    path: { from: { x: -50, z: -20 }, to: { x: -8, z: 62 } },
+  },
+};

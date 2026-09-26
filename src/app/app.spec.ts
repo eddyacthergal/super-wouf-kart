@@ -22,6 +22,7 @@ describe('App', () => {
     expect(summary).toEqual([
       ['', 'Wouf Kart', 'function'],
       ['garage', 'Garage · Wouf Kart', 'function'],
+      ['circuits', 'Circuits · Wouf Kart', 'function'],
       ['course', 'Course · Wouf Kart', 'function'],
       ['**', null, 'undefined'],
     ]);

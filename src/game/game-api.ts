@@ -8,7 +8,9 @@ import type { Vec2 } from './core/vec2';
 export interface RaceSetup {
   playerBreed: BreedId;
   playerSkins: SkinSelection;
-  /** Nombre de tours (par défaut RACE_LAPS). */
+  /** Circuit (identifiant du catalogue) ; circuit par défaut si absent ou inconnu. */
+  trackId?: string;
+  /** Nombre de tours (par défaut : celui du circuit, sinon RACE_LAPS). */
   laps?: number;
   /** Graine aléatoire (par défaut : aléatoire). */
   seed?: number;
@@ -33,6 +35,9 @@ export interface RacerInfo {
 
 /** Données statiques envoyées une fois, quand la course est prête. */
 export interface RaceInfo {
+  /** Circuit réellement couru (le circuit par défaut si l'identifiant demandé est inconnu). */
+  trackId: string;
+  trackName: string;
   laps: number;
   racers: RacerInfo[];
   /** Tracé de la ligne médiane (sous-échantillonné) pour la mini-carte. */

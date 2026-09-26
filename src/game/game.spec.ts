@@ -323,6 +323,17 @@ describe('createGameWithDeps — démarrage', () => {
     expect(h.rec.huds[0].laps).toBe(1);
   });
 
+  it('court le circuit demandé, ou le circuit par défaut si l’identifiant est inconnu', () => {
+    const chosen = harness();
+    start(chosen, { trackId: 'grand-jardin' });
+    expect(chosen.rec.info?.trackId).toBe('grand-jardin');
+    expect(chosen.rec.info?.trackName).toBe('Grand Jardin');
+
+    const unknown = harness();
+    start(unknown, { trackId: 'lune' });
+    expect(unknown.rec.info?.trackId).toBe('grand-jardin');
+  });
+
   it('même graine, même plateau', () => {
     const a = harness();
     const b = harness();

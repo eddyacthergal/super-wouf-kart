@@ -15,7 +15,8 @@ import {
   wrapAngle,
   type Vec2,
 } from '../core/vec2';
-import { GARDEN_CONTROL_POINTS } from './garden-layout';
+import { GRAND_JARDIN } from './circuits/grand-jardin';
+import type { TrackDefinition } from './track-definition';
 
 /** Exposant de paramétrisation des nœuds : 0,5 = centripète (ni boucle ni pointe dans les virages serrés). */
 const SPLINE_ALPHA = 0.5;
@@ -213,8 +214,14 @@ export class Track implements TrackQuery {
   }
 }
 
+/** Circuit construit à partir de sa définition (tracé). */
+export function createTrack(definition: TrackDefinition): Track {
+  return new Track(definition.controlPoints);
+}
+
+/** Circuit « Grand Jardin », le premier du catalogue (raccourci pour les tests). */
 export function createGardenTrack(): Track {
-  return new Track(GARDEN_CONTROL_POINTS);
+  return createTrack(GRAND_JARDIN);
 }
 
 /**
