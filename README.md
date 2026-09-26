@@ -28,7 +28,7 @@ Construit avec **Angular 22** pour l'interface et **three.js** pour la 3D.
   - corps : pull rayé, cape de héros.
 
   Tes choix sont mémorisés.
-- **Dérapage et mini-turbo** : kart en travers, traces de pneus et étincelles jaunes, puis 3 paliers (bleu, orange, violet).
+- **Dérapage et mini-turbo**, comme dans Mario Kart : appuie sur Saut **en tournant** (ou tourne pendant le saut) pour choisir le sens, puis dose la glisse : sans rien toucher, le kart suit un virage courant ; en braquant, il serre (épingles) ; en contre-braquant, il s'élargit. Traces de pneus et étincelles, 3 paliers de turbo (bleu, orange, violet) au relâchement. Un saut sans braquer reste un simple saut, et un gros choc casse le dérapage.
 - **4 objets canins**, tirés dans les boîtes à objets :
 
   | Objet | Effet |

@@ -5,7 +5,7 @@ import { NEUTRAL_INPUT, type DriverInput, type KartEvent, type KartState, type K
 import { addScaled, clamp, dot, headingOf, leftOf, scale, sub, wrapAngle } from '../core/vec2';
 import { createCircleTrack } from '../testing/fake-track';
 import { TEST_TUNING } from '../testing/fixtures';
-import { stepKart } from './kart-physics';
+import { driftTurnFactor, driftWheelFor, stepKart } from './kart-physics';
 import { tuningFromStats } from './tuning';
 
 /** Quasi-ligne droite (cercle de 2 km tournant à gauche). */
@@ -308,22 +308,119 @@ describe('stepKart — dérapage', () => {
     expect(kart.hopTime).toBe(DRIFT.hopDuration);
   });
 
-  it.each([1, -1] as const)('le dérapage (sens %d) tourne dans son sens, plus ou moins serré selon le braquage', (direction) => {
-    const turnWith = (steer: number): number => {
+  it('le sens se choisit pendant le saut : braquer juste après l’appui lance le dérapage', () => {
+    const kart = kartOn(OPEN, 0, 0, 20);
+    step(kart, { throttle: true, drift: true }, OPEN);
+    expect(kart.drift.active).toBe(false);
+    run(kart, DRIFT.hopDuration / 2, { throttle: true, drift: true }, { track: OPEN });
+    const events = step(kart, { throttle: true, drift: true, steer: -1 }, OPEN);
+    expect(kart.drift).toMatchObject({ active: true, direction: -1 });
+    expect(events).toEqual([{ type: 'drift-start' }]);
+  });
+
+  it('après l’atterrissage, garder la touche et braquer ne lance plus de dérapage (ni dans le mauvais sens)', () => {
+    const kart = kartOn(OPEN, 0, 0, 20);
+    run(kart, DRIFT.hopDuration + 0.05, { throttle: true, drift: true }, { track: OPEN });
+    const events = run(kart, 1, { throttle: true, drift: true, steer: 1 }, { track: OPEN });
+    expect(kart.drift.active).toBe(false);
+    expect(ofType(events, 'drift-start')).toHaveLength(0);
+    // Relâcher puis appuyer en braquant : dérapage.
+    step(kart, { throttle: true, steer: 1 }, OPEN);
+    step(kart, { throttle: true, drift: true, steer: 1 }, OPEN);
+    expect(kart.drift).toMatchObject({ active: true, direction: 1 });
+  });
+
+  it('dérapage annulé (trop lent) : pas de relance tant que la touche reste maintenue', () => {
+    const kart = kartOn(OPEN, 0, 0, 20);
+    step(kart, { throttle: true, drift: true, steer: 1 }, OPEN);
+    run(kart, 1, { brake: true, drift: true, steer: 1 }, { track: OPEN });
+    expect(kart.drift.active).toBe(false);
+    kart.speed = 20;
+    run(kart, 0.5, { throttle: true, drift: true, steer: 1 }, { track: OPEN });
+    expect(kart.drift.active).toBe(false);
+  });
+
+  it.each([1, -1] as const)('le dérapage (sens %d) tourne dans son sens, de presque droit à très serré', (direction) => {
+    /** Rotation par seconde une fois le volant de dérapage stabilisé sur `steer`. */
+    const turnRateWith = (steer: number): number => {
       const kart = kartOn(OPEN, 0, 0, 25);
       step(kart, { throttle: true, drift: true, steer: direction }, OPEN);
       expect(kart.drift.direction).toBe(direction);
+      run(kart, 1, { throttle: true, drift: true, steer }, { track: OPEN });
       const heading0 = kart.heading;
       run(kart, 0.25, { throttle: true, drift: true, steer }, { track: OPEN });
-      return wrapAngle(kart.heading - heading0);
+      return wrapAngle(kart.heading - heading0) / 0.25;
     };
-    const wide = turnWith(-direction);
-    const tight = turnWith(direction);
     // Dérapage à droite (+1) : le cap diminue ; à gauche (-1) : il augmente.
-    expect(Math.sign(wide)).toBe(-direction);
-    expect(Math.abs(tight)).toBeGreaterThan(Math.abs(wide));
-    expect(wide).toBeCloseTo(-direction * TEST_TUNING.turnRate * DRIFT.steerMin * 0.25, 6);
-    expect(tight).toBeCloseTo(-direction * TEST_TUNING.turnRate * DRIFT.steerMax * 0.25, 6);
+    expect(turnRateWith(-direction)).toBeCloseTo(-direction * TEST_TUNING.turnRate * DRIFT.turnWide, 6);
+    expect(turnRateWith(0)).toBeCloseTo(-direction * TEST_TUNING.turnRate * DRIFT.turnNeutral, 6);
+    expect(turnRateWith(direction)).toBeCloseTo(-direction * TEST_TUNING.turnRate * DRIFT.turnTight, 6);
+  });
+
+  it('rayons à pleine vitesse (stats moyennes) : presque droit, virage courant, épingle', () => {
+    const tuning = tuningFromStats({ speed: 3, acceleration: 3, weight: 3, handling: 3 });
+    const radius = (wheel: number): number => tuning.maxSpeed / (tuning.turnRate * driftTurnFactor(wheel));
+    expect(radius(-1)).toBeGreaterThan(90);
+    expect(radius(0)).toBeGreaterThan(30);
+    expect(radius(0)).toBeLessThan(45);
+    expect(radius(1)).toBeLessThan(15);
+  });
+
+  it('dosage progressif : un appui bref resserre un peu, un appui maintenu resserre jusqu’au bout', () => {
+    const kart = kartOn(OPEN, 0, 0, 25);
+    step(kart, { throttle: true, drift: true, steer: 1 }, OPEN);
+    run(kart, 1, { throttle: true, drift: true, steer: 0 }, { track: OPEN });
+    const rate = (): number => {
+      const heading0 = kart.heading;
+      step(kart, { throttle: true, drift: true, steer: 1 }, OPEN);
+      return -wrapAngle(kart.heading - heading0) / FIXED_DT / TEST_TUNING.turnRate;
+    };
+    run(kart, 0.05, { throttle: true, drift: true, steer: 1 }, { track: OPEN });
+    const brief = rate();
+    expect(brief).toBeGreaterThan(DRIFT.turnNeutral + 0.1);
+    expect(brief).toBeLessThan(DRIFT.turnTight - 0.2);
+    run(kart, 0.5, { throttle: true, drift: true, steer: 1 }, { track: OPEN });
+    expect(rate()).toBeCloseTo(DRIFT.turnTight, 6);
+  });
+
+  it('driftWheelFor est l’inverse de driftTurnFactor, bornée à [-1, 1]', () => {
+    for (const wheel of [-1, -0.5, 0, 0.3, 1]) expect(driftWheelFor(driftTurnFactor(wheel))).toBeCloseTo(wheel, 9);
+    expect(driftWheelFor(0)).toBe(-1);
+    expect(driftWheelFor(5)).toBe(1);
+  });
+
+  it('un choc franc contre une haie casse le dérapage, sans turbo ni relance automatique ; un frôlement le laisse continuer', () => {
+    const outward = (kart: KartState): number => headingOf(scale(STRAIGHT.project(kart.position).sample.left, -1));
+    const graze = kartOn(STRAIGHT, 100, WALL_LIMIT - 0.05, 25, -0.02);
+    step(graze, { throttle: true, drift: true, steer: 1 });
+    run(graze, 0.2, { throttle: true, drift: true, steer: -1 });
+    expect(graze.drift.active).toBe(true);
+
+    // Dérapage chargé (au large), puis le kart est replacé face à la haie de droite, tout près.
+    const crash = kartOn(OPEN, 0, 0, 25);
+    step(crash, { throttle: true, drift: true, steer: 1 }, OPEN);
+    run(crash, 0.8, { throttle: true, drift: true, steer: 1 }, { track: OPEN });
+    expect(crash.drift.tier).toBeGreaterThan(0);
+    const nearWall = kartOn(STRAIGHT, 100, -(WALL_LIMIT - 1), 25);
+    crash.position = nearWall.position;
+    crash.trackIndex = nearWall.trackIndex;
+    crash.lateral = nearWall.lateral;
+    crash.speed = 25;
+    crash.heading = outward(crash);
+    const events = run(crash, 0.3, { throttle: true, drift: true, steer: 1 });
+    expect(ofType(events, 'wall').length).toBeGreaterThan(0);
+    expect(crash.drift.active).toBe(false);
+
+    // Touche toujours maintenue : pas de nouveau dérapage tout seul, même revenu à bonne vitesse.
+    crash.heading = wrapAngle(outward(crash) + Math.PI);
+    crash.speed = 20;
+    run(crash, 0.1, { throttle: true, drift: true, steer: 1 }, { track: OPEN });
+    expect(crash.drift.active).toBe(false);
+    const release = step(crash, { throttle: true }, OPEN);
+    expect(ofType(release, 'boost')).toHaveLength(0);
+    // Nouvel appui : nouveau dérapage.
+    step(crash, { throttle: true, drift: true, steer: 1 }, OPEN);
+    expect(crash.drift.active).toBe(true);
   });
 
   it.each([1, -1] as const)('pose visuelle (sens %d) : le kart glisse nez vers l’intérieur, selon le braquage, puis revient à 0', (direction) => {

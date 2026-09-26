@@ -20,6 +20,7 @@ import {
   type TrackQuery,
 } from '../core/types';
 import { approach, clamp, wrapAngle, type Vec2 } from '../core/vec2';
+import { driftWheelFor } from '../kart/kart-physics';
 import type { AiPersonality } from './personality';
 
 // Point visé : s + TARGET_BASE_DISTANCE + vitesse × TARGET_SPEED_FACTOR.
@@ -70,7 +71,7 @@ const DRIFT_MAX_CURVE_SCAN = 80;
 const DRIFT_SPEED_MARGIN = 2;
 /**
  * Rotation de référence (fraction du turnRate) sur laquelle l'IA règle ses dérapages : elle ne dérape
- * que dans les virages serrés, même si la physique permet de déraper plus large (DRIFT.steerMin).
+ * que dans les virages serrés, même si la physique permet de déraper plus large (DRIFT.turnWide).
  */
 const DRIFT_PLAN_TURN = 0.45;
 /**
@@ -362,16 +363,13 @@ export class AiController implements DriverController {
   }
 
   /**
-   * Braquage en dérapage. Pendant le saut : braquage franc vers l'intérieur. Ensuite, la rotation
-   * vaut entre steerMin (contre-braquage) et steerMax (serré) × turnRate : on choisit la position
-   * du volant qui donne la rotation demandée par la poursuite.
+   * Braquage en dérapage. Pendant le saut : braquage franc vers l'intérieur. Ensuite, on vise la
+   * position du volant de dérapage qui donne la rotation demandée par la poursuite (driftWheelFor).
    */
   private driftSteer(kart: KartState, pursuit: number, steer: number): number {
     if (!kart.drift.active) return this.driftSide * Math.max(this.driftSide * steer, DRIFT_START_STEER * 2);
     const side = kart.drift.direction !== 0 ? kart.drift.direction : this.driftSide;
-    const wanted = pursuit * side;
-    const wheel = (2 * (wanted - DRIFT.steerMin)) / (DRIFT.steerMax - DRIFT.steerMin) - 1;
-    return clamp(wheel, -1, 1) * side;
+    return driftWheelFor(pursuit * side) * side;
   }
 
   /** Décide de l'usage de l'objet ; vrai sur un seul pas (front montant). */
