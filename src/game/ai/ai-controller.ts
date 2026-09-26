@@ -20,7 +20,7 @@ import {
   type TrackQuery,
 } from '../core/types';
 import { approach, clamp, wrapAngle, type Vec2 } from '../core/vec2';
-import { driftWheelFor } from '../kart/kart-physics';
+import { driftAssistFactor, driftWheelFor } from '../kart/kart-physics';
 import type { AiPersonality } from './personality';
 
 // Point visé : s + TARGET_BASE_DISTANCE + vitesse × TARGET_SPEED_FACTOR.
@@ -196,7 +196,7 @@ export class AiController implements DriverController {
       input = {
         throttle: speed <= cornerSpeed,
         brake: speed > cornerSpeed + BRAKE_MARGIN,
-        steer: drift ? this.driftSteer(kart, pursuit, steer) : steer,
+        steer: drift ? this.driftSteer(racer, track, pursuit, steer) : steer,
         drift,
         useItem: false,
       };
@@ -364,12 +364,14 @@ export class AiController implements DriverController {
 
   /**
    * Braquage en dérapage. Pendant le saut : braquage franc vers l'intérieur. Ensuite, on vise la
-   * position du volant de dérapage qui donne la rotation demandée par la poursuite (driftWheelFor).
+   * position du volant de dérapage qui donne la rotation demandée par la poursuite (driftWheelFor),
+   * autour du neutre calculé par l'assistance.
    */
-  private driftSteer(kart: KartState, pursuit: number, steer: number): number {
+  private driftSteer(racer: RacerState, track: TrackQuery, pursuit: number, steer: number): number {
+    const kart = racer.kart;
     if (!kart.drift.active) return this.driftSide * Math.max(this.driftSide * steer, DRIFT_START_STEER * 2);
     const side = kart.drift.direction !== 0 ? kart.drift.direction : this.driftSide;
-    return driftWheelFor(pursuit * side) * side;
+    return driftWheelFor(pursuit * side, driftAssistFactor(kart, track, racer.tuning)) * side;
   }
 
   /** Décide de l'usage de l'objet ; vrai sur un seul pas (front montant). */

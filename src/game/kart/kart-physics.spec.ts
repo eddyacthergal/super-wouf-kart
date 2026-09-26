@@ -340,15 +340,15 @@ describe('stepKart — dérapage', () => {
     expect(kart.drift.active).toBe(false);
   });
 
-  it.each([1, -1] as const)('le dérapage (sens %d) tourne dans son sens, de presque droit à très serré', (direction) => {
+  it.each([1, -1] as const)('le dérapage (sens %d) tourne dans son sens, de presque droit à très serré (sans assistance)', (direction) => {
     /** Rotation par seconde une fois le volant de dérapage stabilisé sur `steer`. */
     const turnRateWith = (steer: number): number => {
       const kart = kartOn(OPEN, 0, 0, 25);
-      step(kart, { throttle: true, drift: true, steer: direction }, OPEN);
+      step(kart, { throttle: true, drift: true, steer: direction, driftAssist: false }, OPEN);
       expect(kart.drift.direction).toBe(direction);
-      run(kart, 1, { throttle: true, drift: true, steer }, { track: OPEN });
+      run(kart, 1, { throttle: true, drift: true, steer, driftAssist: false }, { track: OPEN });
       const heading0 = kart.heading;
-      run(kart, 0.25, { throttle: true, drift: true, steer }, { track: OPEN });
+      run(kart, 0.25, { throttle: true, drift: true, steer, driftAssist: false }, { track: OPEN });
       return wrapAngle(kart.heading - heading0) / 0.25;
     };
     // Dérapage à droite (+1) : le cap diminue ; à gauche (-1) : il augmente.
@@ -366,21 +366,55 @@ describe('stepKart — dérapage', () => {
     expect(radius(1)).toBeLessThan(15);
   });
 
-  it('dosage progressif : un appui bref resserre un peu, un appui maintenu resserre jusqu’au bout', () => {
+  it('dosage progressif (sans assistance) : un appui bref resserre un peu, un appui maintenu resserre jusqu’au bout', () => {
     const kart = kartOn(OPEN, 0, 0, 25);
-    step(kart, { throttle: true, drift: true, steer: 1 }, OPEN);
-    run(kart, 1, { throttle: true, drift: true, steer: 0 }, { track: OPEN });
+    step(kart, { throttle: true, drift: true, steer: 1, driftAssist: false }, OPEN);
+    run(kart, 1, { throttle: true, drift: true, steer: 0, driftAssist: false }, { track: OPEN });
     const rate = (): number => {
       const heading0 = kart.heading;
-      step(kart, { throttle: true, drift: true, steer: 1 }, OPEN);
+      step(kart, { throttle: true, drift: true, steer: 1, driftAssist: false }, OPEN);
       return -wrapAngle(kart.heading - heading0) / FIXED_DT / TEST_TUNING.turnRate;
     };
-    run(kart, 0.05, { throttle: true, drift: true, steer: 1 }, { track: OPEN });
+    run(kart, 0.05, { throttle: true, drift: true, steer: 1, driftAssist: false }, { track: OPEN });
     const brief = rate();
     expect(brief).toBeGreaterThan(DRIFT.turnNeutral + 0.1);
     expect(brief).toBeLessThan(DRIFT.turnTight - 0.2);
-    run(kart, 0.5, { throttle: true, drift: true, steer: 1 }, { track: OPEN });
+    run(kart, 0.5, { throttle: true, drift: true, steer: 1, driftAssist: false }, { track: OPEN });
     expect(rate()).toBeCloseTo(DRIFT.turnTight, 6);
+  });
+
+  it.each([25, 40, 70] as const)('assistance : sur un virage de %d m, dérapage mains libres sans quitter la route', (radius) => {
+    const circle = createCircleTrack(radius);
+    for (const direction of [1, -1] as const) {
+      // Le cercle tourne à gauche : le dérapage à gauche (-1) suit le virage, à droite il le quitte.
+      if (direction === 1) continue;
+      const kart = kartOn(circle, 0, 0, 22);
+      step(kart, { throttle: true, drift: true, steer: direction }, circle);
+      expect(kart.drift.active).toBe(true);
+      let widest = 0;
+      const events = run(kart, 4, { throttle: true, drift: true }, {
+        track: circle,
+        observe: () => (widest = Math.max(widest, Math.abs(kart.lateral))),
+      });
+      expect(kart.drift.active).toBe(true);
+      expect(ofType(events, 'wall')).toHaveLength(0);
+      expect(widest).toBeLessThan(ROAD_HALF_WIDTH);
+    }
+  });
+
+  it('assistance : braquer resserre, contre-braquer élargit, autour du virage suivi', () => {
+    const circle = createCircleTrack(40);
+    const turnWith = (steer: number): number => {
+      const kart = kartOn(circle, 0, 0, 22);
+      step(kart, { throttle: true, drift: true, steer: -1 }, circle);
+      run(kart, 0.5, { throttle: true, drift: true }, { track: circle });
+      const heading0 = kart.heading;
+      run(kart, 0.3, { throttle: true, drift: true, steer }, { track: circle });
+      return wrapAngle(kart.heading - heading0);
+    };
+    const free = turnWith(0);
+    expect(turnWith(-1)).toBeGreaterThan(free + 0.05);
+    expect(turnWith(1)).toBeLessThan(free - 0.05);
   });
 
   it('driftWheelFor est l’inverse de driftTurnFactor, bornée à [-1, 1]', () => {

@@ -81,6 +81,15 @@ export const DRIFT = {
   steerResponse: 7,
   /** Un choc violent contre une haie (intensité 0 à 1) casse le dérapage, sans turbo ; les frottements, non. */
   wallCancelIntensity: 0.6,
+  /**
+   * Assistance au dérapage (DriverInput.driftAssist) : au neutre, le kart suit le virage quel que
+   * soit son rayon (au lieu de turnNeutral fixe). Il vise un point à assistLookahead s devant (au
+   * moins assistMinLookahead m), sur sa trajectoire actuelle, gardée à assistEdgeMargin m du bord
+   * de la route.
+   */
+  assistLookahead: 0.6,
+  assistMinLookahead: 12,
+  assistEdgeMargin: 2,
 } as const;
 
 export const ITEMS = {
