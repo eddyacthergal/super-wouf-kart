@@ -25,7 +25,14 @@ export type DecorKind =
   | 'bush'
   | 'stepping-stone'
   | 'fir'
-  | 'snowman';
+  | 'snowman'
+  | 'palm'
+  | 'parasol'
+  | 'beach-ball'
+  | 'crab'
+  | 'sandcastle'
+  | 'lifeguard-tower'
+  | 'beach-huts';
 
 export interface DecorPlacement {
   kind: DecorKind;
@@ -163,6 +170,13 @@ const DECOR_KINDS: ReadonlySet<string> = new Set<DecorKind>([
   'stepping-stone',
   'fir',
   'snowman',
+  'palm',
+  'parasol',
+  'beach-ball',
+  'crab',
+  'sandcastle',
+  'lifeguard-tower',
+  'beach-huts',
 ]);
 
 function isDecorKind(kind: string): kind is DecorKind {

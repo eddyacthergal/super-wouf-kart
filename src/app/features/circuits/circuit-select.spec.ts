@@ -47,7 +47,7 @@ describe('CircuitSelect', () => {
         .filter(Boolean)
         .map((id) => element.querySelector(`#${id}`)?.textContent?.trim());
       expect(described).toEqual([
-        { garden: 'Jardin', snow: 'Neige' }[track.theme],
+        { garden: 'Jardin', snow: 'Neige', beach: 'Plage' }[track.theme],
         track.description,
         `${track.laps ?? 3} tours`,
       ]);

@@ -34,7 +34,8 @@ import { type DisposalBag, paintedMaterial } from './resources';
 export interface DecorColors {
   foliage: readonly string[];
   trunk: string;
-  fence: string;
+  /** Clôture en bois autour du décor, ou null (plage : rien entre le sable et la mer). */
+  fence: string | null;
   stones: readonly string[];
   firs: readonly string[];
   /** Neige sur les étages des sapins, ou null. */
@@ -461,10 +462,12 @@ export function buildDecor(
   );
 
   // --- Sapins -------------------------------------------------------------------
-  group.add(...buildFirs(byKind(plan, 'fir'), trunkMaterial, colors, bag));
+  const firs = buildFirs(byKind(plan, 'fir'), trunkMaterial, colors, bag);
+  // add() sans argument signale une erreur dans three.js : rien à ajouter sans sapins.
+  if (firs.length > 0) group.add(...firs);
 
   // --- Clôture -----------------------------------------------------------------
-  group.add(...buildFence(plan, bag, colors.fence));
+  if (colors.fence) group.add(...buildFence(plan, bag, colors.fence));
 
   return {
     group,

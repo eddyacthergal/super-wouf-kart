@@ -3,6 +3,7 @@
  * (ambiance + construction du monde), puis l'utiliser dans une définition de circuit.
  */
 import type { TrackThemeId } from '../track/track-definition';
+import { BEACH_THEME } from './beach-world';
 import { buildGardenWorld } from './garden-world';
 import { SUMMER_LIGHT } from './lighting';
 import { PALETTE } from './palette';
@@ -22,4 +23,5 @@ export const GARDEN_THEME: SceneTheme = {
 export const SCENE_THEMES: Readonly<Record<TrackThemeId, SceneTheme>> = {
   garden: GARDEN_THEME,
   snow: SNOW_THEME,
+  beach: BEACH_THEME,
 };

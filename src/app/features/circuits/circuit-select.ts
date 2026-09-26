@@ -10,6 +10,7 @@ import { TrackPreview } from './track-preview';
 const THEMES: Readonly<Record<TrackThemeId, { label: string; background: string }>> = {
   garden: { label: 'Jardin', background: '#e3f5d8' },
   snow: { label: 'Neige', background: '#eef4fb' },
+  beach: { label: 'Plage', background: '#fbeccb' },
 };
 
 /** Choix du circuit, entre l'accueil (ou le garage) et la course : groupe radio natif présenté en cartes. */

@@ -4,10 +4,16 @@
  */
 import { GRAND_JARDIN } from './circuits/grand-jardin';
 import { PARC_ENNEIGE } from './circuits/parc-enneige';
+import { PLAGE } from './circuits/plage';
 import { POTAGER } from './circuits/potager';
 import type { TrackDefinition } from './track-definition';
 
-export const TRACK_CATALOG: readonly TrackDefinition[] = [GRAND_JARDIN, POTAGER, PARC_ENNEIGE];
+export const TRACK_CATALOG: readonly TrackDefinition[] = [
+  GRAND_JARDIN,
+  POTAGER,
+  PARC_ENNEIGE,
+  PLAGE,
+];
 
 export const DEFAULT_TRACK_ID = GRAND_JARDIN.id;
 

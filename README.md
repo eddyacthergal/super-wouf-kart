@@ -7,9 +7,11 @@ Construit avec **Angular 22** pour l'interface et **three.js** pour la 3D.
 
 ## Fonctionnalités
 
-- **2 circuits** au choix, après « Jouer » (choix mémorisé) :
-  - **Grand Jardin** (911 m) : épingle de la niche, chicane, grande courbe, longue ligne droite de départ ;
-  - **Potager** (763 m) : plus court et sinueux, un S au fond du jardin et l'épingle des salades.
+- **4 circuits dans 3 univers**, au choix après « Jouer » (choix mémorisé) :
+  - **Grand Jardin** (911 m, jardin) : épingle de la niche, chicane, grande courbe, longue ligne droite de départ ;
+  - **Potager** (763 m, jardin) : plus court et sinueux, un S au fond du jardin et l'épingle des salades ;
+  - **Parc enneigé** (649 m, neige) : sapins et bonhommes de neige, flocons qui tombent, une longue diagonale et deux épingles ;
+  - **Plage au couchant** (768 m, plage) : le long de la mer, virages en vagues, palmiers, parasols, château de sable ; mouettes, crabes et dauphins animés.
 - **Course de 3 tours à 8 pilotes** : toi contre 7 chiens pilotés par l'ordinateur, compte à rebours, classement en direct, écran de résultats.
 - **4 races**, chacune avec ses statistiques :
 
@@ -164,7 +166,7 @@ L'interface vise **WCAG AA** et **0 violation AXE** :
 
 ## Limites et pistes
 
-Hors du périmètre du prototype : multijoueur (écran partagé ou en ligne), manette, musique, progression et déblocages. Les thèmes plage, parc enneigé et cuisine géante sont prévus.
+Hors du périmètre du prototype : multijoueur (écran partagé ou en ligne), manette, musique, progression et déblocages. Le thème cuisine géante est prévu.
 
 La structure permet de les ajouter progressivement :
 - **une nouvelle race** : une entrée de données dans `src/game/dogs/breeds.ts` ;

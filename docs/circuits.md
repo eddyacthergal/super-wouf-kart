@@ -42,7 +42,15 @@ la mini-carte, l'aperçu de l'écran de choix et le décor (haies, arbres, fleur
 
 ## Thèmes
 
-Pour l'instant, un seul thème existe : `garden` (le jardin). Les prochaines étapes ajoutent la plage,
-le parc enneigé et la cuisine géante. Un thème regroupe le rendu : palette, ciel, lumière, textures
-du sol et de la piste, bordures et objets de décor. Les règles de course restent les mêmes : un
-nouveau thème change l'ambiance, pas la conduite.
+Trois thèmes existent : `garden` (jardin d'été), `snow` (parc enneigé) et `beach` (plage au
+couchant). Un thème regroupe le rendu, sans toucher à la conduite :
+
+- l'**ambiance** (`SceneTheme`, `src/game/render/themes.ts`) : ciel, soleil, brouillard, lumière, nuages ;
+- le **monde** (`OutdoorStyle`, `src/game/render/garden-world.ts`) : couleurs du sol, de la piste,
+  des bordures et du décor, recette du décor (quels objets semer autour de la piste) ;
+- les **extras** propres au thème : neige qui tombe (`snow-park.ts`), mer, palmiers et animaux
+  (`beach-world.ts`, `beach-animals.ts`).
+
+Ajouter un thème : un style et une ambiance, puis une entrée dans `SCENE_THEMES` et un nom dans
+`TrackThemeId`. `themes.spec.ts` construit et anime le monde de chaque circuit du catalogue et
+échoue à la moindre erreur three.js.
