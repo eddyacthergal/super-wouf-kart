@@ -28,9 +28,9 @@ export interface SurfaceStyle {
 
 /** Jardin : allée de gravier, paillis, bordures rouges et blanches. */
 export const GARDEN_SURFACE: SurfaceStyle = {
-  road: createGravelTexture,
+  road: () => createGravelTexture(),
   roadTile: 7,
-  shoulder: createMulchTexture,
+  shoulder: () => createMulchTexture(),
   shoulderTile: 4,
   curbColors: [PALETTE.curbRed, PALETTE.curbWhite],
 };

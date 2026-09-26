@@ -30,10 +30,13 @@ export interface CloudStyle {
   emissive: string;
 }
 
-/** Monde construit autour de la piste ; `update` reçoit le temps écoulé depuis le départ (s). */
+/**
+ * Monde construit autour de la piste ; `update` reçoit le temps écoulé depuis le départ (s) et la
+ * position de la caméra (effets qui la suivent, comme la neige qui tombe).
+ */
 export interface ThemeWorld {
   root: THREE.Group;
-  update(time: number): void;
+  update(time: number, camera?: THREE.Vector3): void;
   dispose(): void;
 }
 

@@ -37,15 +37,20 @@ describe('CircuitSelect', () => {
     );
   });
 
-  it('nomme et décrit chaque radio (nom, nombre de tours, description)', () => {
+  it('nomme et décrit chaque radio (nom, univers, description, nombre de tours)', () => {
     for (const [index, track] of TRACK_CATALOG.entries()) {
       const radio = radios()[index];
       const name = element.querySelector(`#${radio.getAttribute('aria-labelledby')}`);
       expect(name?.textContent?.trim()).toBe(track.name);
       const described = (radio.getAttribute('aria-describedby') ?? '')
-        .split(' ')
+        .split(/\s+/)
+        .filter(Boolean)
         .map((id) => element.querySelector(`#${id}`)?.textContent?.trim());
-      expect(described).toEqual([track.description, `${track.laps ?? 3} tours`]);
+      expect(described).toEqual([
+        { garden: 'Jardin', snow: 'Neige' }[track.theme],
+        track.description,
+        `${track.laps ?? 3} tours`,
+      ]);
     }
   });
 

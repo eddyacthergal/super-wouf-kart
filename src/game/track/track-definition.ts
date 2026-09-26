@@ -9,7 +9,8 @@
 import type { Vec2 } from '../core/vec2';
 
 /** Thèmes de monde disponibles : chacun a son sol, ses murs, son ciel et son décor. */
-export type TrackThemeId = 'garden';
+/** Thème de rendu : jardin d'été, parc enneigé. */
+export type TrackThemeId = 'garden' | 'snow';
 
 /** Pièce de décor unique (niche, arrosoir…) : type propre au thème, position souhaitée et encombrement (m). */
 export interface LandmarkHint {

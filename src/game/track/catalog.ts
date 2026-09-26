@@ -3,10 +3,11 @@
  * rendu) : l'interface l'importe pour afficher les cartes, le jeu pour construire la course.
  */
 import { GRAND_JARDIN } from './circuits/grand-jardin';
+import { PARC_ENNEIGE } from './circuits/parc-enneige';
 import { POTAGER } from './circuits/potager';
 import type { TrackDefinition } from './track-definition';
 
-export const TRACK_CATALOG: readonly TrackDefinition[] = [GRAND_JARDIN, POTAGER];
+export const TRACK_CATALOG: readonly TrackDefinition[] = [GRAND_JARDIN, POTAGER, PARC_ENNEIGE];
 
 export const DEFAULT_TRACK_ID = GRAND_JARDIN.id;
 

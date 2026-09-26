@@ -439,3 +439,63 @@ export function picketGeometry(): THREE.BufferGeometry {
     -0.06,
   );
 }
+
+/** Étage de sapin : cône de hauteur 1 et de rayon 1 à la base, base à l'origine. */
+export function firTierGeometry(): THREE.BufferGeometry {
+  return new THREE.ConeGeometry(1, 1, 12, 1).translate(0, 0.5, 0);
+}
+
+/** Bonhomme de neige géant (≈ 6,5 m) : trois boules, nez carotte, chapeau et écharpe, face vers +Z. */
+export function snowmanGeometry(): THREE.BufferGeometry {
+  const snow = '#f7fbff';
+  const coal = '#1f2024';
+  return paintedGeometry([
+    { geometry: new THREE.SphereGeometry(2.2, 24, 16), color: snow, matrix: transform(0, 2, 0) },
+    { geometry: new THREE.SphereGeometry(1.6, 24, 16), color: snow, matrix: transform(0, 4.6, 0) },
+    { geometry: new THREE.SphereGeometry(1.1, 24, 16), color: snow, matrix: transform(0, 6.5, 0) },
+    // Écharpe rouge et son pan.
+    {
+      geometry: new THREE.TorusGeometry(1.15, 0.28, 10, 28),
+      color: '#d7322e',
+      matrix: transform(0, 5.65, 0, Math.PI / 2),
+    },
+    {
+      geometry: new THREE.BoxGeometry(0.5, 1.4, 0.18),
+      color: '#d7322e',
+      matrix: transform(0.55, 5.0, 1.2, 0.2, 0, 0.15),
+    },
+    // Chapeau haut de forme.
+    {
+      geometry: new THREE.CylinderGeometry(1.1, 1.1, 0.14, 24),
+      color: coal,
+      matrix: transform(0, 7.45, 0),
+    },
+    {
+      geometry: new THREE.CylinderGeometry(0.7, 0.7, 1.1, 24),
+      color: coal,
+      matrix: transform(0, 8.05, 0),
+    },
+    // Nez carotte, yeux et boutons en charbon.
+    {
+      geometry: new THREE.ConeGeometry(0.2, 1.1, 12),
+      color: '#ff8a1f',
+      matrix: transform(0, 6.5, 1.55, Math.PI / 2),
+    },
+    ...[-1, 1].map((side) => ({
+      geometry: new THREE.SphereGeometry(0.13, 10, 8),
+      color: coal,
+      matrix: transform(side * 0.38, 6.85, 0.98),
+    })),
+    ...[4.2, 4.75, 5.3].map((y, k) => ({
+      geometry: new THREE.SphereGeometry(0.17, 10, 8),
+      color: coal,
+      matrix: transform(0, y - 0.4, 1.52 - k * 0.1),
+    })),
+    // Bras en branches.
+    ...[-1, 1].map((side) => ({
+      geometry: new THREE.CylinderGeometry(0.08, 0.12, 2.4, 6),
+      color: '#6b4a2f',
+      matrix: transform(side * 2.2, 5.2, 0, 0, 0, side * 1.0),
+    })),
+  ]);
+}

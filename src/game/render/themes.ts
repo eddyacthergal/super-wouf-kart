@@ -7,6 +7,7 @@ import { buildGardenWorld } from './garden-world';
 import { SUMMER_LIGHT } from './lighting';
 import { PALETTE } from './palette';
 import type { SceneTheme } from './scene-theme';
+import { SNOW_THEME } from './snow-park';
 import { FOG_FAR, FOG_NEAR, SUMMER_CLOUDS, SUMMER_SKY } from './sky';
 
 /** Jardin en plein été (le thème d'origine). */
@@ -20,4 +21,5 @@ export const GARDEN_THEME: SceneTheme = {
 
 export const SCENE_THEMES: Readonly<Record<TrackThemeId, SceneTheme>> = {
   garden: GARDEN_THEME,
+  snow: SNOW_THEME,
 };

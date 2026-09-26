@@ -8,6 +8,7 @@ import {
   blobGeometry,
   daisyHeadGeometry,
   doghouseGeometry,
+  firTierGeometry,
   giantBoneGeometry,
   gnomeGeometry,
   kibbleBowlGeometry,
@@ -17,6 +18,7 @@ import {
   sprinklerBaseGeometry,
   stemGeometry,
   stoneGeometry,
+  snowmanGeometry,
   sunflowerHeadGeometry,
   trunkGeometry,
   tulipCupGeometry,
@@ -27,6 +29,26 @@ import {
 import type { DecorKind, DecorPlacement, DecorPlan } from './decor-plan';
 import { PALETTE } from './palette';
 import { type DisposalBag, paintedMaterial } from './resources';
+
+/** Couleurs du décor propres au thème (feuillage, troncs, clôture, pierres, sapins). */
+export interface DecorColors {
+  foliage: readonly string[];
+  trunk: string;
+  fence: string;
+  stones: readonly string[];
+  firs: readonly string[];
+  /** Neige sur les étages des sapins, ou null. */
+  firSnow: string | null;
+}
+
+export const GARDEN_DECOR_COLORS: DecorColors = {
+  foliage: PALETTE.foliage,
+  trunk: PALETTE.trunk,
+  fence: PALETTE.fence,
+  stones: PALETTE.stone,
+  firs: ['#2f6b3a', '#26603a', '#3a7a44'],
+  firSnow: null,
+};
 
 export interface Decor {
   group: THREE.Group;
@@ -101,7 +123,11 @@ function matrixOf(
   );
 }
 
-export function buildDecor(plan: DecorPlan, bag: DisposalBag): Decor {
+export function buildDecor(
+  plan: DecorPlan,
+  bag: DisposalBag,
+  colors: DecorColors = GARDEN_DECOR_COLORS,
+): Decor {
   const group = new THREE.Group();
   group.name = 'garden-decor';
   const rng = createRng(0xdec0);
@@ -259,6 +285,7 @@ export function buildDecor(plan: DecorPlan, bag: DisposalBag): Decor {
       // Os couché le long de X : parallèle au circuit quand l'avant de la pièce regarde la piste.
       'giant-bone': { geometry: giantBoneGeometry, yaw: 0 },
       gnome: { geometry: gnomeGeometry, yaw: 0 },
+      snowman: { geometry: snowmanGeometry, yaw: 0 },
     };
   const geometries = new Map<DecorKind, THREE.BufferGeometry>();
   for (const placement of plan.placements) {
@@ -321,11 +348,11 @@ export function buildDecor(plan: DecorPlan, bag: DisposalBag): Decor {
 
   // --- Arbres ----------------------------------------------------------------
   const trees = byKind(plan, 'tree');
-  const foliage = PALETTE.foliage.map((hex) => new THREE.Color(hex));
+  const foliage = colors.foliage.map((hex) => new THREE.Color(hex));
   const blob = bag.add(blobGeometry());
   const foliageMaterial = bag.add(new THREE.MeshStandardMaterial({ roughness: 0.85 }));
   const trunkMaterial = bag.add(
-    new THREE.MeshStandardMaterial({ color: PALETTE.trunk, roughness: 0.9 }),
+    new THREE.MeshStandardMaterial({ color: colors.trunk, roughness: 0.9 }),
   );
   const treeBlobs: THREE.Matrix4[] = [];
   const treeColors: THREE.Color[] = [];
@@ -419,7 +446,7 @@ export function buildDecor(plan: DecorPlan, bag: DisposalBag): Decor {
 
   // --- Pierres de gué ----------------------------------------------------------
   const stones = byKind(plan, 'stepping-stone');
-  const stonePalette = PALETTE.stone.map((hex) => new THREE.Color(hex));
+  const stonePalette = colors.stones.map((hex) => new THREE.Color(hex));
   group.add(
     instanced(
       'stepping-stones',
@@ -433,8 +460,11 @@ export function buildDecor(plan: DecorPlan, bag: DisposalBag): Decor {
     ),
   );
 
+  // --- Sapins -------------------------------------------------------------------
+  group.add(...buildFirs(byKind(plan, 'fir'), trunkMaterial, colors, bag));
+
   // --- Clôture -----------------------------------------------------------------
-  group.add(...buildFence(plan, bag));
+  group.add(...buildFence(plan, bag, colors.fence));
 
   return {
     group,
@@ -446,7 +476,7 @@ export function buildDecor(plan: DecorPlan, bag: DisposalBag): Decor {
 }
 
 /** Clôture en bois blanche sur le pourtour du jardin : planches et deux lisses par côté. */
-function buildFence(plan: DecorPlan, bag: DisposalBag): THREE.InstancedMesh[] {
+function buildFence(plan: DecorPlan, bag: DisposalBag, color: string): THREE.InstancedMesh[] {
   const { minX, maxX, minZ, maxZ } = plan.fence;
   const pickets: THREE.Matrix4[] = [];
   const rails: THREE.Matrix4[] = [];
@@ -472,13 +502,88 @@ function buildFence(plan: DecorPlan, bag: DisposalBag): THREE.InstancedMesh[] {
       rails.push(matrixOf(cx, y, cz, yaw, length, 0.3, 0.14));
     }
   }
-  const material = bag.add(
-    new THREE.MeshStandardMaterial({ color: PALETTE.fence, roughness: 0.7 }),
-  );
+  const material = bag.add(new THREE.MeshStandardMaterial({ color, roughness: 0.7 }));
   return [
     instanced('fence-pickets', bag.add(picketGeometry()), material, pickets, null, { cast: false }),
     instanced('fence-rails', bag.add(new THREE.BoxGeometry(1, 1, 1)), material, rails, null, {
       cast: false,
     }),
   ];
+}
+
+/** Sapins : court tronc et trois étages coniques, avec de la neige sur chaque étage si le thème en met. */
+function buildFirs(
+  firs: readonly DecorPlacement[],
+  trunkMaterial: THREE.Material,
+  colors: DecorColors,
+  bag: DisposalBag,
+): THREE.InstancedMesh[] {
+  if (firs.length === 0) return [];
+  const palette = colors.firs.map((hex) => new THREE.Color(hex));
+  const tiers: THREE.Matrix4[] = [];
+  const tierColors: THREE.Color[] = [];
+  const snow: THREE.Matrix4[] = [];
+  for (const fir of firs) {
+    const h = fir.size;
+    const color = palette[fir.variant % palette.length];
+    for (let k = 0; k < 3; k++) {
+      const radius = h * (0.3 - k * 0.07);
+      const base = h * (0.16 + k * 0.23);
+      const height = h * (0.42 - k * 0.04);
+      const yaw = fir.rotation + k * 0.7;
+      tiers.push(matrixOf(fir.x, base, fir.z, yaw, radius, height, radius));
+      tierColors.push(color);
+      // Neige : cône plus petit posé sur le haut de l'étage.
+      snow.push(
+        matrixOf(
+          fir.x,
+          base + height * 0.42,
+          fir.z,
+          yaw,
+          radius * 0.62,
+          height * 0.6,
+          radius * 0.62,
+        ),
+      );
+    }
+  }
+  const tierGeometry = bag.add(firTierGeometry());
+  const meshes = [
+    instanced(
+      'fir-trunks',
+      bag.add(trunkGeometry()),
+      trunkMaterial,
+      firs.map((fir) =>
+        matrixOf(
+          fir.x,
+          0,
+          fir.z,
+          fir.rotation,
+          fir.size * 0.035,
+          fir.size * 0.22,
+          fir.size * 0.035,
+        ),
+      ),
+      null,
+    ),
+    instanced(
+      'fir-tiers',
+      tierGeometry,
+      bag.add(new THREE.MeshStandardMaterial({ roughness: 0.85 })),
+      tiers,
+      tierColors,
+    ),
+  ];
+  if (colors.firSnow) {
+    meshes.push(
+      instanced(
+        'fir-snow',
+        tierGeometry,
+        bag.add(new THREE.MeshStandardMaterial({ color: colors.firSnow, roughness: 0.8 })),
+        snow,
+        null,
+      ),
+    );
+  }
+  return meshes;
 }

@@ -134,10 +134,13 @@ export function toTexture(canvas: PixelCanvas, nearest = false): THREE.DataTextu
 }
 
 /** Pelouse tondue : deux bandes (claire puis foncée) par répétition, brins et touffes. */
-export function createLawnTexture(): THREE.DataTexture {
+export function createLawnTexture(
+  lightColor: string = PALETTE.lawnLight,
+  darkColor: string = PALETTE.lawnDark,
+): THREE.DataTexture {
   const canvas = new PixelCanvas(256);
-  const light = hexToRgb(PALETTE.lawnLight);
-  const dark = hexToRgb(PALETTE.lawnDark);
+  const light = hexToRgb(lightColor);
+  const dark = hexToRgb(darkColor);
   canvas.fill((u, v) => {
     // Transition douce entre bandes (u = 0,5 et u = 0 ≡ 1).
     const edge = Math.min(Math.abs(u - 0.5), u, 1 - u);
@@ -156,10 +159,23 @@ export function createLawnTexture(): THREE.DataTexture {
   return toTexture(canvas);
 }
 
-/** Allée de gravier clair : fond beige et milliers de petits cailloux. */
-export function createGravelTexture(): THREE.DataTexture {
+const GRAVEL_PEBBLES = [
+  '#f3e6c7',
+  '#dcc596',
+  '#cfbb93',
+  '#efe0bd',
+  '#c2b18e',
+  '#e9d6ae',
+  '#d6c4a4',
+];
+
+/** Allée de gravier (beige par défaut) : fond uni et milliers de petits cailloux. */
+export function createGravelTexture(
+  baseColor: string = PALETTE.gravel,
+  pebbleColors: readonly string[] = GRAVEL_PEBBLES,
+): THREE.DataTexture {
   const canvas = new PixelCanvas(512);
-  const base = hexToRgb(PALETTE.gravel);
+  const base = hexToRgb(baseColor);
   canvas.fill((u, v) => {
     const k =
       1 +
@@ -168,25 +184,28 @@ export function createGravelTexture(): THREE.DataTexture {
     return [base[0] * k, base[1] * k, base[2] * k];
   });
   const rng = createRng(0x9a7e1);
-  const colors = ['#f3e6c7', '#dcc596', '#cfbb93', '#efe0bd', '#c2b18e', '#e9d6ae', '#d6c4a4'].map(
-    hexToRgb,
-  );
+  const colors = pebbleColors.map(hexToRgb);
   for (let i = 0; i < 2600; i++) {
     canvas.pebble(rng.range(0, 512), rng.range(0, 512), rng.range(2.2, 6.5), rng.pick(colors));
   }
   return toTexture(canvas);
 }
 
-/** Bas-côté en paillis brun : copeaux de bois orientés au hasard. */
-export function createMulchTexture(): THREE.DataTexture {
+const MULCH_CHIPS = ['#5c341e', '#94592f', '#a86c3d', '#6d3f24', '#b57a47', '#4e2c19'];
+
+/** Bas-côté en paillis (brun par défaut) : copeaux de bois orientés au hasard. */
+export function createMulchTexture(
+  baseColor: string = PALETTE.mulch,
+  chipColors: readonly string[] = MULCH_CHIPS,
+): THREE.DataTexture {
   const canvas = new PixelCanvas(256);
-  const base = hexToRgb(PALETTE.mulch);
+  const base = hexToRgb(baseColor);
   canvas.fill((u, v) => {
     const k = 0.9 + tileNoise(u, v, 6, 31) * 0.2;
     return [base[0] * k, base[1] * k, base[2] * k];
   });
   const rng = createRng(0x3c1f);
-  const colors = ['#5c341e', '#94592f', '#a86c3d', '#6d3f24', '#b57a47', '#4e2c19'].map(hexToRgb);
+  const colors = chipColors.map(hexToRgb);
   for (let i = 0; i < 1100; i++) {
     canvas.chip(
       rng.range(0, 256),

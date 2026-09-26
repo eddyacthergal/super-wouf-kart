@@ -23,18 +23,31 @@ const CROSSING_TOLERANCE = 0.2;
 const CHUNK_COUNT = 10;
 const HEDGE_SEED = 0x4ed6e;
 
+/** Couleurs des haies ; `cap` ajoute une calotte (neige) sur chaque touffe. */
+export interface HedgeStyle {
+  palette: readonly string[];
+  cap?: string;
+}
+
+export const GARDEN_HEDGES: HedgeStyle = { palette: PALETTE.hedges };
+
 export interface HedgeSet {
   group: THREE.Group;
   /** Nombre total de touffes. */
   count: number;
 }
 
-export function buildHedges(track: TrackQuery, bag: DisposalBag): HedgeSet {
+export function buildHedges(
+  track: TrackQuery,
+  bag: DisposalBag,
+  style: HedgeStyle = GARDEN_HEDGES,
+): HedgeSet {
   const rng = createRng(HEDGE_SEED);
   const offset = track.wallHalfWidth + HEDGE_CENTER_OFFSET;
   const chunks: THREE.Matrix4[][] = Array.from({ length: CHUNK_COUNT }, () => []);
   const colors: THREE.Color[][] = Array.from({ length: CHUNK_COUNT }, () => []);
-  const palette = PALETTE.hedges.map((hex) => new THREE.Color(hex));
+  const palette = style.palette.map((hex) => new THREE.Color(hex));
+  const caps: THREE.Matrix4[][] = Array.from({ length: CHUNK_COUNT }, () => []);
   const position = new THREE.Vector3();
   const quaternion = new THREE.Quaternion();
   const scale = new THREE.Vector3();
@@ -48,11 +61,19 @@ export function buildHedges(track: TrackQuery, bag: DisposalBag): HedgeSet {
       const clearance = distanceToSamples(track, point.x, point.z) - width;
       if (clearance < track.wallHalfWidth - CROSSING_TOLERANCE) continue;
       const chunk = Math.min(CHUNK_COUNT - 1, Math.floor(point.fraction * CHUNK_COUNT));
-      position.set(point.x, rng.range(0.42, 0.55), point.z);
+      const y = rng.range(0.42, 0.55);
+      position.set(point.x, y, point.z);
       quaternion.setFromEuler(euler.set(0, rng.range(0, Math.PI * 2), 0));
-      scale.set(width, rng.range(0.72, 0.86), width);
+      const height = rng.range(0.72, 0.86);
+      scale.set(width, height, width);
       chunks[chunk].push(new THREE.Matrix4().compose(position, quaternion, scale));
       colors[chunk].push(rng.pick(palette));
+      if (style.cap) {
+        // Calotte aplatie posée sur le haut de la touffe.
+        position.set(point.x, y + height * 0.62, point.z);
+        scale.set(width * 0.86, height * 0.42, width * 0.86);
+        caps[chunk].push(new THREE.Matrix4().compose(position, quaternion, scale));
+      }
     }
   }
 
@@ -75,5 +96,19 @@ export function buildHedges(track: TrackQuery, bag: DisposalBag): HedgeSet {
     group.add(mesh);
     count += matrices.length;
   });
+  if (style.cap) {
+    const capMaterial = bag.add(
+      new THREE.MeshStandardMaterial({ color: style.cap, roughness: 0.8 }),
+    );
+    caps.forEach((matrices) => {
+      if (matrices.length === 0) return;
+      const mesh = new THREE.InstancedMesh(geometry, capMaterial, matrices.length);
+      mesh.name = 'hedge-cap';
+      mesh.receiveShadow = true;
+      matrices.forEach((matrix, i) => mesh.setMatrixAt(i, matrix));
+      mesh.computeBoundingSphere();
+      group.add(mesh);
+    });
+  }
   return { group, count };
 }

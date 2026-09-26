@@ -115,7 +115,7 @@ export class RaceScene {
     this.effects.handleEvents(events, this.racers, state);
     this.effects.update(state, this.racers, dt, this.time);
     this.racers.updateTags(this.camera, followed ? followed.id : -1, dt);
-    this.world.update(this.time);
+    this.world.update(this.time, this.camera.position);
     this.sky.position.copy(this.camera.position);
   }
 
