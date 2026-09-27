@@ -43,7 +43,7 @@ export function itemWeights(rank: number, racerCount: number): Record<ItemKind, 
     f <= 0.5 ? first + (middle - first) * (f / 0.5) : middle + (last - middle) * ((f - 0.5) / 0.5);
   const weights = {} as Record<ItemKind, number>;
   for (const kind of ITEM_KINDS) weights[kind] = interpolate(WEIGHT_TABLE[kind]);
-  // L'écureuil ne vise que des pilotes moins bien classés que lui : jamais pour le podium.
+  // L'écureuil vise le premier : inutile (voire gênant) pour le podium, jamais tiré aux rangs 1 à 3.
   if (rank <= 3) weights.squirrel = 0;
   return weights;
 }
