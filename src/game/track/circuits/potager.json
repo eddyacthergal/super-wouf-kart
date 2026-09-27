@@ -2,20 +2,20 @@
   "$schema": "../circuit.schema.json",
   "id": "potager",
   "name": "Potager",
-  "description": "Court et sinueux : un S au fond du jardin et l’épingle des salades.",
+  "description": "Court et sinueux : une bosse dans le S du fond et l’épingle des salades, tout en bas.",
   "theme": "garden",
   "start": { "x": -4, "z": 82 },
   "corners": [
-    { "x": -94, "z": 82, "radius": 35 },
-    { "x": -94, "z": -65.7, "radius": 29.5 },
-    { "x": 16, "z": -65.2, "radius": 29 },
-    { "x": 37.6, "z": -83.3, "radius": 28 },
-    { "x": 93.3, "z": -83.5, "radius": 25.5 },
-    { "x": 93.3, "z": -5.6, "radius": 22 },
-    { "x": 16.3, "z": -6.4, "radius": 19.5 },
-    { "x": 15.7, "z": 34.3, "radius": 19.5 },
-    { "x": 94.6, "z": 33.4, "radius": 24 },
-    { "x": 95.4, "z": 82, "radius": 24 }
+    { "x": -94, "z": 82, "radius": 35, "y": 3 },
+    { "x": -94, "z": -65.7, "radius": 29.5, "y": 3 },
+    { "x": 16, "z": -65.2, "radius": 29, "y": 5, "bank": 6 },
+    { "x": 37.6, "z": -83.3, "radius": 28, "y": 6, "bank": 6 },
+    { "x": 93.3, "z": -83.5, "radius": 25.5, "y": 5 },
+    { "x": 93.3, "z": -5.6, "radius": 22, "y": 4 },
+    { "x": 16.3, "z": -6.4, "radius": 19.5, "y": 0 },
+    { "x": 15.7, "z": 34.3, "radius": 19.5, "y": 0 },
+    { "x": 94.6, "z": 33.4, "radius": 24, "y": 2 },
+    { "x": 95.4, "z": 82, "radius": 24, "y": 3 }
   ],
   "decor": {
     "landmarks": [

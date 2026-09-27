@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { createCircleTrack } from '../testing/fake-track';
+import { createFlatTrack } from '../testing/flat-track';
 import { createHillyTrack as hilly } from '../testing/hilly-track';
-import { createGardenTrack } from '../track/track';
 import { FLAT_TERRAIN, TERRAIN_FADE, createTerrain } from './terrain';
 
 describe('createTerrain', () => {
   it('circuit plat : aucun relief, hauteur nulle partout', () => {
-    const terrain = createTerrain(createGardenTrack());
+    const terrain = createTerrain(createFlatTrack());
     expect(terrain.hilly).toBe(false);
     expect(terrain.heightAt(10, 20)).toBe(0);
     expect(FLAT_TERRAIN.groundAt(1, 2)).toBe(0);

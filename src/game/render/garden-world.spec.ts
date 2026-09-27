@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { TrackQuery } from '../core/types';
 import { createCircleTrack } from '../testing/fake-track';
+import { createFlatTrack } from '../testing/flat-track';
 import { createHillyTrack } from '../testing/hilly-track';
 import { createGardenTrack } from '../track/track';
 import { DECOR_CORRIDOR_MARGIN, planDecor } from './decor-plan';
@@ -259,11 +260,20 @@ describe('buildGardenWorld', () => {
     }
   });
 
-  it('pose la route à y = 0,02 avec deux sommets par échantillon', () => {
+  it('pose la route à 0,02 m au-dessus du sol (relief compris), deux sommets par échantillon', () => {
     const road = world.root.getObjectByName('road') as THREE.Mesh;
     const positions = road.geometry.getAttribute('position');
-    expect(positions.count).toBe((track.samples.length + 1) * 2);
-    for (let i = 0; i < positions.count; i++) expect(positions.getY(i)).toBeCloseTo(0.02);
+    const n = track.samples.length;
+    expect(positions.count).toBe((n + 1) * 2);
+    for (let row = 0; row <= n; row++) {
+      const sample = track.samples[row % n];
+      const s = row === n ? track.length : sample.s;
+      for (const side of [0, 1] as const) {
+        const lateral = side === 0 ? -sample.halfWidth : sample.halfWidth;
+        const ground = track.surfaceAt(s, lateral).height;
+        expect(positions.getY(row * 2 + side) - ground).toBeCloseTo(0.02, 5);
+      }
+    }
     // Deux sommets d'une rangée : à ±halfWidth de la ligne médiane.
     const sample = track.samples[10];
     const left = { x: positions.getX(21), z: positions.getZ(21) };
@@ -306,7 +316,7 @@ describe('buildGardenWorld', () => {
     expect(road.geometry.getAttribute('normal').getY(0)).toBeGreaterThan(0.99);
   });
 
-  it('pose des bas-côtés en paillis de la route à la haie, sous la route', () => {
+  it('pose des bas-côtés en paillis de la route à la haie, légèrement sous la route (relief compris)', () => {
     const road = world.root.getObjectByName('road') as THREE.Mesh;
     const roadMap = (road.material as THREE.MeshStandardMaterial).map;
     for (const [name, side] of [
@@ -328,8 +338,9 @@ describe('buildGardenWorld', () => {
         const outer = side > 0 ? b : a;
         expect(inner).toBeCloseTo(side * sample.halfWidth);
         expect(Math.abs(outer)).toBeGreaterThanOrEqual(track.wallHalfWidth);
-        expect(positions.getY(index * 2)).toBeLessThan(0.02);
-        expect(positions.getY(index * 2)).toBeGreaterThan(0);
+        const ground = track.surfaceAt(sample.s, a).height;
+        expect(positions.getY(index * 2) - ground).toBeLessThan(0.02);
+        expect(positions.getY(index * 2) - ground).toBeGreaterThan(0);
       }
     }
   });
@@ -458,7 +469,7 @@ describe('buildGardenWorld', () => {
 
 describe('monde en relief', () => {
   it('circuit plat : pas de maillage de relief, pelouse à 0 comme avant', () => {
-    const world = buildGardenWorld(createGardenTrack());
+    const world = buildGardenWorld(createFlatTrack());
     expect(world.root.getObjectByName('terrain')).toBeUndefined();
     expect(world.root.getObjectByName('lawn')!.position.y).toBe(0);
     world.dispose();

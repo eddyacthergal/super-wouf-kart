@@ -2,20 +2,20 @@
   "$schema": "../circuit.schema.json",
   "id": "parc-enneige",
   "name": "Parc enneigé",
-  "description": "Sapins et bonhommes de neige : une longue diagonale et deux épingles.",
+  "description": "Piste de luge : montée par la longue diagonale, virage du sommet et descente en S.",
   "theme": "snow",
   "start": { "x": -2.5, "z": 90 },
   "corners": [
-    { "x": -74.5, "z": 90.3, "radius": 30.5 },
-    { "x": -92.5, "z": 59.7, "radius": 29.5 },
-    { "x": -60.8, "z": 6.3, "radius": 38.5 },
-    { "x": -103.8, "z": -66.3, "radius": 27.5 },
-    { "x": -73.1, "z": -97.2, "radius": 27.5 },
-    { "x": 14.8, "z": -46.5, "radius": 46.5 },
-    { "x": 27.8, "z": -25, "radius": 42 },
-    { "x": 27.1, "z": 42.4, "radius": 25.5 },
-    { "x": 96.2, "z": 41.7, "radius": 24 },
-    { "x": 96.8, "z": 90.4, "radius": 24 }
+    { "x": -74.5, "z": 90.3, "radius": 30.5, "y": 0 },
+    { "x": -92.5, "z": 59.7, "radius": 29.5, "y": 1 },
+    { "x": -60.8, "z": 6.3, "radius": 38.5, "y": 6 },
+    { "x": -103.8, "z": -66.3, "radius": 27.5, "y": 12, "bank": 10 },
+    { "x": -73.1, "z": -97.2, "radius": 27.5, "y": 12, "bank": 10 },
+    { "x": 14.8, "z": -46.5, "radius": 46.5, "y": 7 },
+    { "x": 27.8, "z": -25, "radius": 42, "y": 4 },
+    { "x": 27.1, "z": 42.4, "radius": 25.5, "y": 1 },
+    { "x": 96.2, "z": 41.7, "radius": 24, "y": 0, "bank": 12 },
+    { "x": 96.8, "z": 90.4, "radius": 24, "y": 0, "bank": 12 }
   ],
   "decor": {
     "landmarks": [
