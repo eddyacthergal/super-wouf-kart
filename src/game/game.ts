@@ -7,6 +7,7 @@ import { AiController } from './ai/ai-controller';
 import { createAiPersonality } from './ai/personality';
 import { AudioEngine, type PlayerAudioState } from './audio/audio-engine';
 import { RACE_LAPS } from './core/constants';
+import { isBoostActive } from './core/kart-state';
 import { createRng } from './core/rng';
 import type {
   DriverController,
@@ -207,7 +208,7 @@ function startRace(
       speed01: maxSpeed > 0 ? clamp(Math.abs(kart.speed) / maxSpeed, 0, 1) : 0,
       drifting: kart.drift.active,
       driftTier: kart.drift.active ? kart.drift.tier : 0,
-      boosting: kart.boostTime > 0 && kart.stunTime <= 0,
+      boosting: isBoostActive(kart),
       offroad: kart.offroad,
       active: active && state.phase === 'racing',
     };

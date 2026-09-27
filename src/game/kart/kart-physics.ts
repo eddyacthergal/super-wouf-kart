@@ -4,7 +4,7 @@
  * Conventions : avant = (sin θ, cos θ) ; steer = +1 (droite) fait diminuer θ.
  */
 import { DRIFT, ITEMS, KART_RADIUS, PHYSICS } from '../core/constants';
-import { applyBoost } from '../core/kart-state';
+import { applyBoost, isBoostActive } from '../core/kart-state';
 import type {
   DriftState,
   DriftTier,
@@ -252,7 +252,7 @@ function tickTimers(kart: KartState, dt: number): void {
   kart.stunTime = Math.max(0, kart.stunTime - dt);
   kart.collarTime = Math.max(0, kart.collarTime - dt);
   // Le turbo ne se consomme pas pendant l'arrêt net (sifflet) : il reprend à la fin de l'arrêt.
-  if (kart.boostTime > 0 && kart.stunTime <= 0) {
+  if (isBoostActive(kart)) {
     kart.boostTime = Math.max(0, kart.boostTime - dt);
     if (kart.boostTime === 0) kart.boostStrength = 1;
   }

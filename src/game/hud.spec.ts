@@ -142,6 +142,14 @@ describe('buildHudSnapshot', () => {
     expect(hud.speedKmh).toBe(100);
   });
 
+  it('turbo pas actif pendant l’arrêt net, même avec du turbo en réserve', () => {
+    const race = createTestRace(track, 2);
+    const kart = race.racers[0].kart;
+    kart.boostTime = 0.3;
+    kart.stunTime = 0.5;
+    expect(buildHudSnapshot(race, false).boosting).toBe(false);
+  });
+
   it('aspiration en cours d’après la charge du joueur', () => {
     const race = createTestRace(track, 2);
     const kart = race.racers[0].kart;

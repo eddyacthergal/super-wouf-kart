@@ -2,6 +2,7 @@
  * Données du HUD : détection du contre-sens et instantané publié vers l'interface Angular.
  * Aucune dépendance au rendu ni au DOM.
  */
+import { isBoostActive } from './core/kart-state';
 import type { RaceState, RacerState, TrackQuery, Vec2 } from './core/types';
 import type { HudSnapshot } from './game-api';
 
@@ -65,7 +66,7 @@ export function buildHudSnapshot(state: RaceState, wrongWay: boolean): HudSnapsh
     goldenBoneTime: player?.goldenBoneTime ?? 0,
     drifting: kart?.drift.active ?? false,
     driftTier: kart?.drift.active ? kart.drift.tier : 0,
-    boosting: (kart?.boostTime ?? 0) > 0,
+    boosting: kart ? isBoostActive(kart) : false,
     slipstreaming: (kart?.slipstream ?? 0) > 0,
     wrongWay,
     speedKmh: kart ? Math.round(Math.abs(kart.speed) * MS_TO_KMH) : 0,

@@ -42,6 +42,9 @@ export function applyBoost(kart: KartState, duration: number, strength: number):
   kart.boostTime = Math.max(kart.boostTime, duration);
 }
 
+/** Turbo réellement actif : gelé pendant l'arrêt net (sifflet), même s'il en reste en réserve. */
+export const isBoostActive = (kart: KartState): boolean => kart.boostTime > 0 && kart.stunTime <= 0;
+
 /** Tête-à-queue après un impact : perte de vitesse, dérapage et boost annulés. */
 export function applySpinOut(kart: KartState): void {
   kart.spinTime = ITEMS.spinDuration;
