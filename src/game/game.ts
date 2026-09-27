@@ -207,7 +207,7 @@ function startRace(
       speed01: maxSpeed > 0 ? clamp(Math.abs(kart.speed) / maxSpeed, 0, 1) : 0,
       drifting: kart.drift.active,
       driftTier: kart.drift.active ? kart.drift.tier : 0,
-      boosting: kart.boostTime > 0,
+      boosting: kart.boostTime > 0 && kart.stunTime <= 0,
       offroad: kart.offroad,
       active: active && state.phase === 'racing',
     };

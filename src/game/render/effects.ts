@@ -386,7 +386,7 @@ export class Effects {
       }
 
       // Flammes de boost.
-      const boosting = kart.boostTime > 0;
+      const boosting = kart.boostTime > 0 && kart.stunTime <= 0;
       const flames = this.flames.get(racer.id);
       if (flames) {
         const strength = 0.85 + (kart.boostStrength - 1) * 1.2;

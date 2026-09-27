@@ -251,7 +251,8 @@ function tickTimers(kart: KartState, dt: number): void {
   kart.spinTime = Math.max(0, kart.spinTime - dt);
   kart.stunTime = Math.max(0, kart.stunTime - dt);
   kart.collarTime = Math.max(0, kart.collarTime - dt);
-  if (kart.boostTime > 0) {
+  // Le turbo ne se consomme pas pendant l'arrêt net (sifflet) : il reprend à la fin de l'arrêt.
+  if (kart.boostTime > 0 && kart.stunTime <= 0) {
     kart.boostTime = Math.max(0, kart.boostTime - dt);
     if (kart.boostTime === 0) kart.boostStrength = 1;
   }

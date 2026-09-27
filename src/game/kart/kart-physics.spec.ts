@@ -856,9 +856,13 @@ describe('stepKart — sifflet', () => {
     run(kart, 0.5, { throttle: true, steer: 1 });
     expect(kart.speed).toBeLessThan(25 - 30 * 0.5 + 1);
     expect(Math.abs(wrapAngle(kart.heading - heading))).toBeLessThan(0.02);
-    expect(kart.boostTime).toBeGreaterThan(1);
+    // Le turbo est figé pendant l'arrêt : il n'est pas brûlé sur un kart immobile.
+    expect(kart.boostTime).toBe(2);
     run(kart, 0.6, { throttle: true });
     expect(kart.stunTime).toBe(0);
+    // Il reprend à décroître une fois l'arrêt terminé.
+    expect(kart.boostTime).toBeLessThan(2);
+    expect(kart.boostTime).toBeGreaterThan(1.8);
   });
 });
 
