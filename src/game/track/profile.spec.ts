@@ -75,6 +75,28 @@ describe('buildProfile — dévers', () => {
     expect(profile.bankAt((arc.start + arc.end) / 2)).toBeLessThan(0);
   });
 
+  it('normalise le dévers à la jonction de deux arcs relevés qui se touchent (pas de double comptage)', () => {
+    // Deux coins contigus (comme un virage de plus de 150° écrit en deux coins) : l'arc du coin 0
+    // se termine exactement où commence l'arc du coin 1 (aucune droite entre les deux).
+    const start = { x: -50, z: 0 };
+    const list: TrackCorner[] = [
+      { x: 0, z: 0, radius: 20, bank: 12 },
+      { x: 0, z: 40, radius: 20, bank: 12 },
+      { x: -100, z: 40, radius: 5 },
+      { x: -100, z: 0, radius: 5 },
+    ];
+    const line = buildCenterline(start, list);
+    const profile = buildProfile(line, list);
+    const arc0 = line.arcs[0]!;
+    const arc1 = line.arcs[1]!;
+    expect(arc0.end).toBeCloseTo(arc1.start, 9);
+    const full = (12 * Math.PI) / 180;
+    expect(Math.abs(profile.bankAt(arc0.end))).toBeCloseTo(full, 6);
+    for (let s = 0; s < line.length; s += 0.5) {
+      expect(Math.abs(profile.bankAt(s))).toBeLessThanOrEqual(full + 1e-9);
+    }
+  });
+
   it('le profil plat vaut 0 partout', () => {
     expect([FLAT_PROFILE.heightAt(3), FLAT_PROFILE.gradeAt(3), FLAT_PROFILE.bankAt(3)]).toEqual([
       0, 0, 0,

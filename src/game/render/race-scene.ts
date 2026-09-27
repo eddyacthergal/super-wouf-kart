@@ -14,7 +14,7 @@ import { RacerVisuals } from './racer-visuals';
 import { DisposalBag } from './resources';
 import type { ThemeWorld } from './scene-theme';
 import { buildSkyDome, sunDirectionOf } from './sky';
-import { createTerrain, type Terrain } from './terrain';
+import { createTerrain } from './terrain';
 import { SCENE_THEMES } from './themes';
 
 export interface RaceSceneOptions {
@@ -43,8 +43,6 @@ export class RaceScene {
   private readonly bag = new DisposalBag();
   private readonly lighting: SceneLighting;
   private readonly world: ThemeWorld;
-  /** Relief du circuit (sol, décor) : conservé pour le suivi de la caméra sur le relief. */
-  private readonly terrain: Terrain;
   private readonly sky: THREE.Mesh;
   private readonly racers: RacerVisuals;
   private readonly items: ItemVisuals;
@@ -62,7 +60,6 @@ export class RaceScene {
     this.lighting = new SceneLighting(theme.light, sunDirectionOf(theme.sky));
     this.camera.name = 'chase-camera';
     const terrain = createTerrain(track);
-    this.terrain = terrain;
     this.rig = new CameraRig(this.camera, options.reducedMotion, (x, z) => terrain.groundAt(x, z));
     this.lighting.addTo(this.scene);
 

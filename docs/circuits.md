@@ -57,19 +57,19 @@ hauteur et la pente du sol de la piste en un point quelconque, haies comprises.
 }
 ```
 
-| Champ                       | Règle                                                                                                                                                                            |
-| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`, `name`, `description` | identifiant (minuscules et tirets), nom et phrase de l'écran de choix                                                                                                            |
-| `theme`                     | `garden`, `snow` ou `beach`                                                                                                                                                      |
-| `laps`                      | facultatif, 1 à 9 tours (par défaut `RACE_LAPS`, 3)                                                                                                                              |
-| `start`                     | point sur la droite qui va du dernier coin au premier : ligne de départ et grille                                                                                                |
-| `corners`                   | polygone fermé, dans l'ordre de course, au moins 3 coins                                                                                                                         |
-| `corners[].radius`          | (m) le coin devient un arc tangent aux deux droites voisines                                                                                                                     |
-| coin sans `radius`          | repère d'altitude sur une droite ; refusé si la ligne y fait un angle de plus de 1°                                                                                              |
-| `corners[].y`               | (m) altitude au sommet de l'arc ou au repère ; interpolée entre les repères voisins sur un coin sans `y`. Aucun `y` sur le circuit : circuit plat ; un seul : altitude constante |
-| `corners[].bank`            | (°, 0 à 45) dévers vers l'intérieur du virage, facultatif, uniquement sur un coin avec rayon                                                                                     |
-| `decor.landmarks`           | pièces uniques (niche, gamelle, arrosoir…) : `kind`, position et encombrement (`radius`)                                                                                         |
-| `decor.path`                | chemin de pierres facultatif, entre deux points                                                                                                                                  |
+| Champ                       | Règle                                                                                                                                                                                    |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`, `name`, `description` | identifiant (minuscules et tirets), nom et phrase de l'écran de choix                                                                                                                    |
+| `theme`                     | `garden`, `snow` ou `beach`                                                                                                                                                              |
+| `laps`                      | facultatif, 1 à 9 tours (par défaut `RACE_LAPS`, 3)                                                                                                                                      |
+| `start`                     | point sur la droite qui va du dernier coin au premier : ligne de départ et grille                                                                                                        |
+| `corners`                   | polygone fermé, dans l'ordre de course, au moins 3 coins                                                                                                                                 |
+| `corners[].radius`          | (m) le coin devient un arc tangent aux deux droites voisines                                                                                                                             |
+| coin sans `radius`          | repère d'altitude sur une droite ; refusé si la ligne y fait un angle de plus de 1°                                                                                                      |
+| `corners[].y`               | (m, 0 à 25) altitude au sommet de l'arc ou au repère ; interpolée entre les repères voisins sur un coin sans `y`. Aucun `y` sur le circuit : circuit plat ; un seul : altitude constante |
+| `corners[].bank`            | (°, 0 à 20) dévers vers l'intérieur du virage, facultatif, uniquement sur un coin avec rayon                                                                                             |
+| `decor.landmarks`           | pièces uniques (niche, gamelle, arrosoir…) : `kind`, position et encombrement (`radius`)                                                                                                 |
+| `decor.path`                | chemin de pierres facultatif, entre deux points                                                                                                                                          |
 
 Un virage de plus de 150° se décrit avec **deux coins successifs** (au-delà, la géométrie devient
 ambiguë). Le champ `$schema` sert uniquement à la complétion et à la validation dans l'éditeur ; il
@@ -108,7 +108,7 @@ Chaque problème est signalé en français ; le loader les liste tous d'un coup 
 Le validateur (`validateTrack`), lui, mesure le tracé échantillonné et compare à `TRACK_RULES` :
 
 - `Virage trop serré : rayon 12.0 m < 16 m.`
-- `Pente trop forte : 24 % > 20 %.`
+- `Pente trop forte : 24.3 % > 20 %.`
 
 ## Les règles (`TRACK_RULES`)
 

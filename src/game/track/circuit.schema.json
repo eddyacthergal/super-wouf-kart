@@ -39,11 +39,16 @@
             "exclusiveMinimum": 0,
             "description": "Rayon de l'arc (m). Sans rayon : repère d'altitude sur une droite."
           },
-          "y": { "type": "number", "description": "Altitude (m) au sommet de l'arc ou au repère." },
+          "y": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 25,
+            "description": "Altitude (m) au sommet de l'arc ou au repère."
+          },
           "bank": {
             "type": "number",
             "minimum": 0,
-            "maximum": 45,
+            "maximum": 20,
             "description": "Dévers vers l'intérieur (degrés). Demande un rayon."
           }
         }

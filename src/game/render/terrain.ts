@@ -20,8 +20,11 @@ export const FLAT_TERRAIN: Terrain = { hilly: false, heightAt: () => 0, groundAt
 
 /** Distance (m) au-delà des haies sur laquelle le relief redescend au niveau 0. */
 export const TERRAIN_FADE = 40;
-/** Le maillage du sol reste sous la route de cet écart (m). */
-const UNDER_ROAD = 0.08;
+/**
+ * Le maillage du sol reste sous la route de cet écart (m) : assez pour rester sous la route même au
+ * milieu d'un triangle de 4 m sur une route courbe et relevée (le maillage est plan par triangle).
+ */
+const UNDER_ROAD = 0.15;
 /** Taille des cellules de recherche des échantillons (m). */
 const CELL = 12;
 

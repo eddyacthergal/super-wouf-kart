@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { createRng } from '../core/rng';
 import type { GameEvent, RaceState, TrackQuery } from '../core/types';
+import { REAR_WHEEL } from '../dogs/kart-model';
 import { DRIFT_TIER_COLORS } from './palette';
 import { type ParticleOptions, ParticlePool } from './particles';
 import type { RacerVisual, RacerVisuals } from './racer-visuals';
@@ -41,6 +42,13 @@ const SKID_CAPACITY = 1600;
 const SKID_MIN_STEP = 0.35;
 const SKID_MAX_STEP = 5;
 const SKID_COLOR = '#2b2622';
+/**
+ * Écart (m) entre le centre d'une roue arrière et le sol, sous elle : son rayon (`REAR_WHEEL.radius`,
+ * `kart-model.ts`). Sert à déduire le sol à l'aplomb d'une roue arrière depuis sa position monde
+ * (`getWorldPosition`, qui inclut déjà la hauteur, le tangage et le roulis interpolés du kart), sans
+ * appeler `terrain.groundAt` par roue et par image.
+ */
+const WHEEL_GROUND_OFFSET = REAR_WHEEL.radius;
 
 interface Emitter {
   spark: number;
@@ -123,8 +131,15 @@ export class Effects {
   // chaque émission selon le relief local, sans risque d'interférence entre plusieurs scènes.
   private readonly smokeOptions: ParticleOptions = { ...SMOKE_OPTIONS };
   private readonly dustOptions: ParticleOptions = { ...DUST_OPTIONS };
-  /** Hauteur du sol à l'aplomb d'un point (relief du circuit, plat par défaut). */
+  /**
+   * Hauteur du sol à l'aplomb d'un point (relief du circuit, plat par défaut) : réservé aux
+   * événements ponctuels (chocs, objets, étoiles). Les effets par roue et par image (fumée,
+   * poussière, traces, halo) utilisent `wheelGround`, moins coûteux et déjà au fait du tangage et
+   * du roulis du kart.
+   */
   private readonly ground = (x: number, z: number): number => this.terrain.groundAt(x, z);
+  /** Sol à l'aplomb d'une roue dont la position monde vient d'être lue dans `this.point`. */
+  private readonly wheelGround = (): number => this.point.y - WHEEL_GROUND_OFFSET;
 
   constructor(
     racers: RacerVisuals,
@@ -416,7 +431,7 @@ export class Effects {
     for (let w = 0; w < wheels.length; w++) {
       wheels[w].getWorldPosition(this.point);
       const size = base * (1 + Math.sin(time * 53 + w * 2.1 + visual.id) * 0.18);
-      const y = Math.max(this.ground(this.point.x, this.point.z) + 0.08, this.point.y - 0.18);
+      const y = Math.max(this.wheelGround() + 0.08, this.point.y - 0.18);
       this.soft.emit(
         this.point.x,
         y,
@@ -441,7 +456,7 @@ export class Effects {
     for (const wheel of visual.model.rearWheels) {
       wheel.getWorldPosition(this.point);
       const back = rng.range(1, 2.5);
-      const ground = this.ground(this.point.x, this.point.z);
+      const ground = this.wheelGround();
       this.smokeOptions.floor = ground + 0.03;
       this.soft.emit(
         this.point.x,
@@ -469,7 +484,7 @@ export class Effects {
       wheels[w].getWorldPosition(this.point);
       const x = this.point.x;
       const z = this.point.z;
-      const y = this.ground(x, z);
+      const y = this.wheelGround();
       const lastX = last[w * 3];
       const lastZ = last[w * 3 + 1];
       const lastY = last[w * 3 + 2];
@@ -490,7 +505,7 @@ export class Effects {
     for (const wheel of visual.model.rearWheels) {
       wheel.getWorldPosition(this.point);
       const back = rng.range(0.5, 2);
-      const ground = this.ground(this.point.x, this.point.z);
+      const ground = this.wheelGround();
       this.dustOptions.floor = ground + 0.03;
       this.soft.emit(
         this.point.x + rng.range(-0.2, 0.2),

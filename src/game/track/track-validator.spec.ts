@@ -111,6 +111,22 @@ describe('validateTrack', () => {
     expect(rules(hillyStadium([{ y: 10 }, {}, {}, { y: 0 }]))).toContain('startMaxGrade');
   });
 
+  it('affiche une décimale (pas un arrondi à l’entier) dans les messages de pente et de dévers', () => {
+    const steep = hillyStadium([{ y: 0 }, { y: 24 }, { y: 24 }, { y: 0 }]);
+    const grade = validateTrack(steep).find((issue) => issue.rule === 'maxGrade');
+    expect(grade?.message).toMatch(/^Pente trop forte : \d+\.\d % > 20 %\.$/);
+
+    const banked = hillyStadium([{ y: 0 }, { y: 0, bank: 30 }]);
+    const bank = validateTrack(banked).find((issue) => issue.rule === 'maxBank');
+    expect(bank?.message).toMatch(/^Dévers trop fort : \d+\.\d° > 20°\.$/);
+  });
+
+  it('affiche la limite (et une décimale) dans le message de pente au départ', () => {
+    const steepStart = hillyStadium([{ y: 10 }, {}, {}, { y: 0 }]);
+    const issue = validateTrack(steepStart).find((candidate) => candidate.rule === 'startMaxGrade');
+    expect(issue?.message).toMatch(/^Départ en pente : \d+\.\d % > 2 % à -?\d+ m de la ligne\.$/);
+  });
+
   it('refuse un sommet de côte trop vif', () => {
     // Repères serrés : 0 → 3 m → 0 sur 40 m de ligne droite.
     const corners: TrackCorner[] = [

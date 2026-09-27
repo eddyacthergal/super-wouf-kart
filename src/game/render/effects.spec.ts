@@ -15,12 +15,22 @@ import type { Terrain } from './terrain';
 const DT = 1 / 60;
 const track = createCircleTrack(60);
 const cleanups: (() => void)[] = [];
-/** Sol surélevé constant, pour vérifier que fumée et poussière restent au-dessus du relief. */
-const HILL_GROUND = 5;
+/**
+ * Hauteur (relief) à laquelle le kart est réellement placé (`kart.height`), pour vérifier que fumée
+ * et poussière restent au-dessus du sol surélevé.
+ */
+const KART_HEIGHT = 5;
+/**
+ * Hauteur que renvoie le `Terrain` injecté, volontairement différente de `KART_HEIGHT` : elle ne sert
+ * plus qu'aux événements ponctuels (`ground()`), jamais au plancher de la fumée ou de la poussière
+ * (par roue et par image), déduit de la position monde de la roue. Un test qui confondrait les deux
+ * échouerait aussitôt (5,03 attendu contre 40,03 si le code appelait encore `ground()` ici).
+ */
+const TERRAIN_GROUND = 40;
 const HILLY_TERRAIN: Terrain = {
   hilly: true,
-  heightAt: () => HILL_GROUND,
-  groundAt: () => HILL_GROUND,
+  heightAt: () => TERRAIN_GROUND,
+  groundAt: () => TERRAIN_GROUND,
 };
 
 afterEach(() => {
@@ -40,9 +50,17 @@ function setup(): { effects: Effects; racers: RacerVisuals; race: RaceState } {
   return { effects, racers, race };
 }
 
-/** Comme `setup()`, mais avec un sol surélevé constant (`HILL_GROUND`). */
+/**
+ * Comme `setup()`, mais avec un sol surélevé constant (`KART_HEIGHT`) : le kart lui-même est placé à
+ * cette hauteur (`kart.height` / `prevHeight`), pour que la position monde de ses roues (dont se
+ * déduit le plancher des effets) la reflète, comme sur un vrai circuit vallonné.
+ */
 function setupOnHill(): { effects: Effects; racers: RacerVisuals; race: RaceState } {
   const race = createTestRace(track, 3);
+  for (const racer of race.racers) {
+    racer.kart.height = KART_HEIGHT;
+    racer.kart.prevHeight = KART_HEIGHT;
+  }
   const bag = new DisposalBag();
   const racers = new RacerVisuals(race.racers, bag);
   const effects = new Effects(racers, bag, track, HILLY_TERRAIN);
@@ -253,11 +271,13 @@ describe('Effects', () => {
     const dustCalls = callsFor('#b98f5f');
     expect(smokeCalls.length).toBeGreaterThan(0);
     expect(dustCalls.length).toBeGreaterThan(0);
-    // Hauteur d'émission et plancher tous deux relatifs au sol surélevé (jamais 0,03 en absolu).
+    // Hauteur d'émission et plancher tous deux relatifs au sol surélevé où repose le kart (déduit de
+    // la position monde de la roue), jamais à la valeur (très différente) du `Terrain` injecté, qui
+    // ne sert plus qu'aux événements ponctuels.
     for (const call of [...smokeCalls, ...dustCalls]) {
       const [, y, , , , , , , , options] = call;
-      expect(y).toBeGreaterThan(HILL_GROUND);
-      expect(options?.floor).toBeCloseTo(HILL_GROUND + 0.03, 6);
+      expect(y).toBeGreaterThan(KART_HEIGHT);
+      expect(options?.floor).toBeCloseTo(KART_HEIGHT + 0.03, 6);
     }
 
     // Et, sans mock, aucune particule vivante ne descend sous le sol + 0,03.
@@ -266,7 +286,7 @@ describe('Effects', () => {
     const smoke = soft.filter(({ tint }) => sameColor(tint, '#ece8e0'));
     const dust = soft.filter(({ tint }) => sameColor(tint, '#b98f5f'));
     for (const { position } of [...smoke, ...dust]) {
-      expect(position.y).toBeGreaterThanOrEqual(HILL_GROUND + 0.03 - 1e-6);
+      expect(position.y).toBeGreaterThanOrEqual(KART_HEIGHT + 0.03 - 1e-6);
     }
   });
 });

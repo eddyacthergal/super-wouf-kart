@@ -36,18 +36,22 @@ describe('thèmes de rendu', () => {
     },
   );
 
-  it('neige : les flocons tombent autour de la caméra, où qu’elle soit (x, z et hauteur)', () => {
+  it('neige : les flocons tombent autour de la caméra, où qu’elle soit (x, z et hauteur), jamais sous le sol', () => {
     const { world } = build('parc-enneige');
     const camera = new THREE.Vector3(80, 3, -60);
     world.update(12, camera);
     const snow = world.root.getObjectByName('snowfall') as THREE.Points;
     const positions = snow.geometry.getAttribute('position');
+    // Bas de la colonne borné à 0 (le sol) : sur un circuit plat, la caméra est basse et
+    // `camera.y - SNOW_HEIGHT / 3` serait négatif sans cette borne.
+    const bottom = Math.max(0, camera.y - SNOW_HEIGHT / 3);
     for (let i = 0; i < positions.count; i += 97) {
       expect(Math.abs(positions.getX(i) - camera.x)).toBeLessThanOrEqual(56);
       expect(Math.abs(positions.getZ(i) - camera.z)).toBeLessThanOrEqual(56);
       // La boîte de neige suit aussi la caméra en hauteur (relief) : bornée autour de camera.y.
-      expect(positions.getY(i)).toBeGreaterThanOrEqual(camera.y - SNOW_HEIGHT / 3);
-      expect(positions.getY(i)).toBeLessThan(camera.y + (SNOW_HEIGHT * 2) / 3);
+      expect(positions.getY(i)).toBeGreaterThanOrEqual(bottom);
+      expect(positions.getY(i)).toBeGreaterThanOrEqual(0);
+      expect(positions.getY(i)).toBeLessThan(bottom + SNOW_HEIGHT);
     }
     world.dispose();
   });

@@ -79,8 +79,11 @@ function buildSnowfall(bag: DisposalBag): WorldPart {
       const sway = Math.sin(time * 0.8 + phase[i]) * SWAY;
       // Position dans la boîte, raccordée autour de la caméra : aucun flocon ne « saute » à l'écran.
       positions[i * 3] = focus.x - half + wrap(base[i * 3] + sway - focus.x + half, SNOW_BOX);
+      // Bas de la colonne borné à 0 (le sol) : sur un circuit plat, la caméra est basse et
+      // `focus.y - SNOW_HEIGHT / 3` serait négatif, faisant tomber des flocons sous le sol.
       positions[i * 3 + 1] =
-        focus.y - SNOW_HEIGHT / 3 + wrap(base[i * 3 + 1] - time * speed[i], SNOW_HEIGHT);
+        Math.max(0, focus.y - SNOW_HEIGHT / 3) +
+        wrap(base[i * 3 + 1] - time * speed[i], SNOW_HEIGHT);
       positions[i * 3 + 2] =
         focus.z - half + wrap(base[i * 3 + 2] + sway * 0.6 - focus.z + half, SNOW_BOX);
     }

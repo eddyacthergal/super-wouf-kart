@@ -174,3 +174,11 @@ emprise, rangées de boîtes).
 - La conversion des 4 circuits existants s'écarte de l'ancienne ligne médiane d'au plus **0,49 m**,
   et non de « quelques centimètres » comme annoncé en section 5 ; le seuil du plan (0,5 m) était le
   bon repère.
+- `startMaxGrade` (section 2) est en fait vérifié sur les **lignes droites du départ** telles que
+  définies par `straightBefore` / `straightAfter` (−60 à +40 m), et non sur « les ±60 m du départ »
+  comme annoncé.
+- Le plan (section 1) ne fixe pas de bornes numériques pour `corners[].bank` et `corners[].y` au
+  niveau du schéma et du loader. Elles avaient d'abord été choisies indépendamment du validateur
+  (`bank` ≤ 45°, `y` sans borne), puis alignées sur `TRACK_RULES` (`bank` ≤ 20° comme `maxBank`, `y`
+  dans [0, 25] m comme `minHeight` / `maxHeight`), pour ne pas accepter dans l'éditeur des circuits que
+  le validateur refuserait de toute façon.

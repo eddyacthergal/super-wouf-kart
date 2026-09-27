@@ -42,8 +42,20 @@ export function buildProfile(centerline: Centerline, corners: readonly TrackCorn
   return {
     heightAt: (s) => height.value(s),
     gradeAt: (s) => height.slope(s),
-    bankAt: (s) =>
-      banks.reduce((sum, { arc, value }) => sum + value * arcWeight(s, arc, length), 0),
+    bankAt: (s) => {
+      // Somme pondérée, normalisée quand les poids se chevauchent (deux arcs relevés contigus,
+      // comme un virage de plus de 150° écrit en deux coins) : sans ça, le point de jonction reçoit
+      // la pleine valeur des deux arcs à la fois (2× le dévers). Le fondu d'un S de signes opposés
+      // (poids qui se partagent sans dépasser 1) reste inchangé.
+      let sum = 0;
+      let weight = 0;
+      for (const { arc, value } of banks) {
+        const w = arcWeight(s, arc, length);
+        sum += w * value;
+        weight += w;
+      }
+      return weight > 1 ? sum / weight : sum;
+    },
   };
 }
 

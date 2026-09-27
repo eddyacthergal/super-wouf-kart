@@ -59,6 +59,48 @@ describe('parseCircuit', () => {
     expect(issues).toContainEqual(expect.stringMatching(/Coin 3 .*x/));
   });
 
+  it('refuse un dévers au-delà de 20° et une altitude hors de [0, 25] m (alignés sur le validateur)', () => {
+    const json = structuredClone(VALID);
+    (json.corners[0] as Record<string, unknown>)['bank'] = 21;
+    (json.corners[1] as Record<string, unknown>)['bank'] = 20;
+    (json.corners[2] as Record<string, unknown>)['y'] = -1;
+    (json.corners[3] as Record<string, unknown>)['y'] = 26;
+    const issues = issuesOf(json);
+    expect(issues).toContainEqual(expect.stringMatching(/Coin 1 .*dévers/));
+    expect(issues).toContainEqual(expect.stringMatching(/Coin 3 .*altitude/i));
+    expect(issues).toContainEqual(expect.stringMatching(/Coin 4 .*altitude/i));
+    // Bornes acceptées : bank = 20 (coin 2, valide) et y = 0 / 25.
+    expect(issues.some((issue) => /^Coin 2 /.test(issue))).toBe(false);
+  });
+
+  it('refuse une clé inconnue dans « start », un landmark et decor.path (en nommant le champ)', () => {
+    const json = structuredClone(VALID) as Record<string, unknown>;
+    json['start'] = { x: 0, z: -50, y: 5 };
+    json['decor'] = {
+      landmarks: [{ kind: 'gnome', x: 0, z: 0, radius: 2.8, taille: 3 }],
+      path: { from: { x: 0, z: 0, y: 1 }, to: { x: 10, z: 10 }, width: 2 },
+    };
+    const issues = issuesOf(json);
+    expect(issues).toContainEqual(expect.stringMatching(/^start .*« y »/));
+    expect(issues).toContainEqual(expect.stringMatching(/Décor 1 .*« taille »/));
+    expect(issues).toContainEqual(expect.stringMatching(/decor\.path\.from .*« y »/));
+    expect(issues).toContainEqual(expect.stringMatching(/decor\.path .*« width »/));
+  });
+
+  it('signale un dévers sur un coin sans virage (arc nul dans la ligne médiane)', () => {
+    const json = {
+      ...VALID,
+      start: { x: -25, z: 40 },
+      corners: [
+        { x: -50, z: 0, radius: 1 },
+        { x: 0, z: 0, radius: 20, bank: 10 },
+        { x: 50, z: 0, radius: 1 },
+        { x: 0, z: 80, radius: 1 },
+      ],
+    };
+    expect(issuesOf(json)).toContainEqual(expect.stringMatching(/Coin 2 .*dévers.*sans virage/));
+  });
+
   it('refuse une géométrie impossible avec le message de la ligne médiane', () => {
     const json = structuredClone(VALID);
     json.corners = json.corners.map((corner) => ({ ...corner, radius: 60 }));

@@ -4,7 +4,7 @@
  * refusé : c'est presque toujours une faute de frappe (« radious »).
  */
 import type { Vec2 } from '../core/vec2';
-import { buildCenterline, type TrackCorner } from './centerline';
+import { buildCenterline, type Centerline, type TrackCorner } from './centerline';
 import { CircuitError } from './circuit-error';
 import {
   TRACK_THEMES,
@@ -60,12 +60,22 @@ export function parseCircuit(json: unknown): TrackDefinition {
   if (issues.length > 0) throw new CircuitError(issues, label);
 
   // Géométrie : rayons qui tiennent, repères alignés, départ sur la bonne droite.
+  let centerline: Centerline;
   try {
-    buildCenterline(start!, corners);
+    centerline = buildCenterline(start!, corners);
   } catch (error) {
     if (error instanceof CircuitError) throw new CircuitError(error.issues, label);
     throw error;
   }
+
+  // Un coin peut porter un rayon et un dévers sans qu'aucune déviation n'en fasse un virage
+  // (repère aligné avec ses voisins) : le dévers serait alors ignoré en silence par le profil.
+  corners.forEach((corner, i) => {
+    if (corner.bank !== undefined && centerline.arcs[i] === null)
+      issues.push(`Coin ${i + 1} : dévers sur un coin sans virage.`);
+  });
+  if (issues.length > 0) throw new CircuitError(issues, label);
+
   return {
     id: id!,
     name: name!,
@@ -95,6 +105,7 @@ function text(value: unknown, field: string, issues: string[]): string | undefin
 }
 
 function point(value: unknown, field: string, issues: string[]): Vec2 | undefined {
+  if (isObject(value)) unknownKeys(value, ['x', 'z'], field, issues);
   if (isObject(value) && isFiniteNumber(value['x']) && isFiniteNumber(value['z']))
     return { x: value['x'], z: value['z'] };
   issues.push(`« ${field} » : { "x": nombre, "z": nombre }.`);
@@ -120,10 +131,10 @@ function cornerList(value: unknown, issues: string[]): TrackCorner[] {
     const { radius, y, bank } = raw;
     if (radius !== undefined && !(isFiniteNumber(radius) && radius > 0))
       issues.push(`${where} : le rayon doit être un nombre > 0.`);
-    if (y !== undefined && !isFiniteNumber(y))
-      issues.push(`${where} : « y » doit être un nombre fini.`);
-    if (bank !== undefined && !(isFiniteNumber(bank) && bank >= 0 && bank <= 45))
-      issues.push(`${where} : le dévers doit être un nombre de 0 à 45 (degrés).`);
+    if (y !== undefined && !(isFiniteNumber(y) && y >= 0 && y <= 25))
+      issues.push(`${where} : « y » (altitude) doit être un nombre de 0 à 25 (m).`);
+    if (bank !== undefined && !(isFiniteNumber(bank) && bank >= 0 && bank <= 20))
+      issues.push(`${where} : le dévers doit être un nombre de 0 à 20 (degrés).`);
     if (bank !== undefined && radius === undefined)
       issues.push(`${where} : un dévers demande un rayon (virage).`);
     if (issues.length > before) return [];
@@ -152,17 +163,21 @@ function decorHints(value: unknown, issues: string[]): TrackDecorHints | undefin
     if (!Array.isArray(landmarks)) issues.push('« decor.landmarks » : une liste.');
     else
       hints.landmarks = landmarks.flatMap((raw, i): LandmarkHint[] => {
+        const where = `Décor ${i + 1}`;
+        if (!isObject(raw)) {
+          issues.push(`${where} : { "kind", "x", "z", "radius" > 0 }.`);
+          return [];
+        }
+        const before = issues.length;
+        unknownKeys(raw, ['kind', 'x', 'z', 'radius'], where, issues);
         const ok =
-          isObject(raw) &&
           typeof raw['kind'] === 'string' &&
           isFiniteNumber(raw['x']) &&
           isFiniteNumber(raw['z']) &&
           isFiniteNumber(raw['radius']) &&
           raw['radius'] > 0;
-        if (!ok) {
-          issues.push(`Décor ${i + 1} : { "kind", "x", "z", "radius" > 0 }.`);
-          return [];
-        }
+        if (!ok) issues.push(`${where} : { "kind", "x", "z", "radius" > 0 }.`);
+        if (issues.length > before) return [];
         return [
           {
             kind: raw['kind'] as string,
@@ -175,6 +190,7 @@ function decorHints(value: unknown, issues: string[]): TrackDecorHints | undefin
   }
   const path = value['path'];
   if (path !== undefined) {
+    if (isObject(path)) unknownKeys(path, ['from', 'to'], 'decor.path', issues);
     const from = isObject(path) ? point(path['from'], 'decor.path.from', issues) : undefined;
     const to = isObject(path) ? point(path['to'], 'decor.path.to', issues) : undefined;
     if (!isObject(path)) issues.push('« decor.path » : { "from", "to" }.');

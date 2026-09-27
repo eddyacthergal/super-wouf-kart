@@ -125,14 +125,14 @@ export function validateTrack(track: TrackQuery): TrackIssue[] {
   if (steepest > R.maxGrade)
     issues.push({
       rule: 'maxGrade',
-      message: `Pente trop forte : ${Math.round(steepest * 100)} % > ${R.maxGrade * 100} %.`,
+      message: `Pente trop forte : ${(steepest * 100).toFixed(1)} % > ${R.maxGrade * 100} %.`,
     });
 
   const bankiest = samples.reduce((max, sample) => Math.max(max, Math.abs(sample.bank)), 0);
   if (bankiest > (R.maxBank * Math.PI) / 180 + 1e-9)
     issues.push({
       rule: 'maxBank',
-      message: `Dévers trop fort : ${Math.round((bankiest * 180) / Math.PI)}° > ${R.maxBank}°.`,
+      message: `Dévers trop fort : ${((bankiest * 180) / Math.PI).toFixed(1)}° > ${R.maxBank}°.`,
     });
 
   const lowest = Math.min(...samples.map((sample) => sample.height));
@@ -153,7 +153,7 @@ export function validateTrack(track: TrackQuery): TrackIssue[] {
     if (Math.abs(grade) > R.startMaxGrade) {
       issues.push({
         rule: 'startMaxGrade',
-        message: `Départ en pente (${Math.round(grade * 100)} % à ${s} m de la ligne).`,
+        message: `Départ en pente : ${(grade * 100).toFixed(1)} % > ${R.startMaxGrade * 100} % à ${s} m de la ligne.`,
       });
       break;
     }
@@ -168,7 +168,7 @@ export function validateTrack(track: TrackQuery): TrackIssue[] {
   if (sharpestCrest > 1 / R.minCrestRadius)
     issues.push({
       rule: 'minCrestRadius',
-      message: `Sommet de côte trop vif : rayon ${(1 / sharpestCrest).toFixed(0)} m < ${R.minCrestRadius} m.`,
+      message: `Sommet de côte trop vif : rayon ${(1 / sharpestCrest).toFixed(1)} m < ${R.minCrestRadius} m.`,
     });
 
   const rows = [...track.itemBoxRows].sort((a, b) => a - b);
