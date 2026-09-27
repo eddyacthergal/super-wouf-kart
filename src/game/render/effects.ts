@@ -119,6 +119,10 @@ export class Effects {
   private readonly euler = new THREE.Euler();
   private readonly hue = new THREE.Color();
   private readonly burstOptions: ParticleOptions = { gravity: 0, drag: 2.5, growth: 0 };
+  // Copies propres à cette instance (jamais les constantes du module) : `floor` y est réglé à
+  // chaque émission selon le relief local, sans risque d'interférence entre plusieurs scènes.
+  private readonly smokeOptions: ParticleOptions = { ...SMOKE_OPTIONS };
+  private readonly dustOptions: ParticleOptions = { ...DUST_OPTIONS };
   /** Hauteur du sol à l'aplomb d'un point (relief du circuit, plat par défaut). */
   private readonly ground = (x: number, z: number): number => this.terrain.groundAt(x, z);
 
@@ -438,7 +442,7 @@ export class Effects {
       wheel.getWorldPosition(this.point);
       const back = rng.range(1, 2.5);
       const ground = this.ground(this.point.x, this.point.z);
-      SMOKE_OPTIONS.floor = ground + 0.03;
+      this.smokeOptions.floor = ground + 0.03;
       this.soft.emit(
         this.point.x,
         ground + 0.15,
@@ -449,7 +453,7 @@ export class Effects {
         SMOKE,
         rng.range(0.28, 0.4),
         rng.range(0.4, 0.6),
-        SMOKE_OPTIONS,
+        this.smokeOptions,
       );
     }
   }
@@ -486,9 +490,11 @@ export class Effects {
     for (const wheel of visual.model.rearWheels) {
       wheel.getWorldPosition(this.point);
       const back = rng.range(0.5, 2);
+      const ground = this.ground(this.point.x, this.point.z);
+      this.dustOptions.floor = ground + 0.03;
       this.soft.emit(
         this.point.x + rng.range(-0.2, 0.2),
-        this.ground(this.point.x, this.point.z) + 0.2,
+        ground + 0.2,
         this.point.z + rng.range(-0.2, 0.2),
         -forwardX * back + rng.range(-0.6, 0.6),
         rng.range(0.6, 1.6),
@@ -496,7 +502,7 @@ export class Effects {
         DUST,
         rng.range(0.35, 0.55),
         rng.range(0.55, 0.85),
-        DUST_OPTIONS,
+        this.dustOptions,
       );
     }
   }

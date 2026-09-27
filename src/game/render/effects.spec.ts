@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { DriftTier, GameEvent, RaceState } from '../core/types';
 import { forwardOf } from '../core/vec2';
 import { createCircleTrack } from '../testing/fake-track';
@@ -10,10 +10,18 @@ import type { ParticlePool } from './particles';
 import { RacerVisuals } from './racer-visuals';
 import { DisposalBag } from './resources';
 import { SKID_MARK_LIFE } from './skid-marks';
+import type { Terrain } from './terrain';
 
 const DT = 1 / 60;
 const track = createCircleTrack(60);
 const cleanups: (() => void)[] = [];
+/** Sol surélevé constant, pour vérifier que fumée et poussière restent au-dessus du relief. */
+const HILL_GROUND = 5;
+const HILLY_TERRAIN: Terrain = {
+  hilly: true,
+  heightAt: () => HILL_GROUND,
+  groundAt: () => HILL_GROUND,
+};
 
 afterEach(() => {
   for (const cleanup of cleanups.splice(0)) cleanup();
@@ -24,6 +32,20 @@ function setup(): { effects: Effects; racers: RacerVisuals; race: RaceState } {
   const bag = new DisposalBag();
   const racers = new RacerVisuals(race.racers, bag);
   const effects = new Effects(racers, bag, track);
+  cleanups.push(() => {
+    effects.dispose();
+    racers.dispose();
+    bag.dispose();
+  });
+  return { effects, racers, race };
+}
+
+/** Comme `setup()`, mais avec un sol surélevé constant (`HILL_GROUND`). */
+function setupOnHill(): { effects: Effects; racers: RacerVisuals; race: RaceState } {
+  const race = createTestRace(track, 3);
+  const bag = new DisposalBag();
+  const racers = new RacerVisuals(race.racers, bag);
+  const effects = new Effects(racers, bag, track, HILLY_TERRAIN);
   cleanups.push(() => {
     effects.dispose();
     racers.dispose();
@@ -209,6 +231,42 @@ describe('Effects', () => {
         (mean.x / leaves.length - racer.kart.position.x) * sample.left.x +
         (mean.z / leaves.length - racer.kart.position.z) * sample.left.z;
       expect(Math.sign(offset)).toBe(Math.sign(lateral));
+    }
+  });
+
+  it('règle le plancher de la fumée et de la poussière sur le relief (sol + 0,03), pas la valeur absolue', () => {
+    const context = setupOnHill();
+    const kart = context.race.racers[1].kart;
+    kart.speed = 22;
+    kart.drift = { active: true, direction: 1, charge: 0.5, tier: 0 };
+    kart.offroad = true;
+    const spy = vi.spyOn(context.effects.soft, 'emit');
+    step(context, 10);
+
+    const sameColor = (a: THREE.Color, hex: string): boolean => {
+      const b = new THREE.Color(hex);
+      return Math.abs(a.r - b.r) < 1e-3 && Math.abs(a.g - b.g) < 1e-3 && Math.abs(a.b - b.b) < 1e-3;
+    };
+    const callsFor = (hex: string): Parameters<typeof context.effects.soft.emit>[] =>
+      spy.mock.calls.filter((call) => sameColor(call[6] as THREE.Color, hex));
+    const smokeCalls = callsFor('#ece8e0');
+    const dustCalls = callsFor('#b98f5f');
+    expect(smokeCalls.length).toBeGreaterThan(0);
+    expect(dustCalls.length).toBeGreaterThan(0);
+    // Hauteur d'émission et plancher tous deux relatifs au sol surélevé (jamais 0,03 en absolu).
+    for (const call of [...smokeCalls, ...dustCalls]) {
+      const [, y, , , , , , , , options] = call;
+      expect(y).toBeGreaterThan(HILL_GROUND);
+      expect(options?.floor).toBeCloseTo(HILL_GROUND + 0.03, 6);
+    }
+
+    // Et, sans mock, aucune particule vivante ne descend sous le sol + 0,03.
+    spy.mockRestore();
+    const soft = liveParticles(context.effects.soft);
+    const smoke = soft.filter(({ tint }) => sameColor(tint, '#ece8e0'));
+    const dust = soft.filter(({ tint }) => sameColor(tint, '#b98f5f'));
+    for (const { position } of [...smoke, ...dust]) {
+      expect(position.y).toBeGreaterThanOrEqual(HILL_GROUND + 0.03 - 1e-6);
     }
   });
 });
