@@ -32,7 +32,7 @@ Construit avec **Angular 22** pour l'interface et **three.js** pour la 3D.
   Tes choix sont mémorisés.
 
 - **Dérapage et mini-turbo**, comme dans Mario Kart : appuie sur Saut **en tournant** (ou tourne pendant le saut) pour choisir le sens, puis garde Saut : grâce à l'**assistance au dérapage**, le kart suit le virage tout seul sans toucher à la direction ; en braquant, il serre (épingles) ; en contre-braquant, il s'élargit. Traces de pneus et étincelles, 3 paliers de turbo (bleu, orange, violet) au relâchement. Un saut sans braquer reste un simple saut, et un gros choc casse le dérapage.
-- **4 objets canins**, tirés dans les boîtes à objets :
+- **8 objets canins**, tirés dans les boîtes à objets :
 
   | Objet           | Effet                                                                           |
   | --------------- | ------------------------------------------------------------------------------- |
@@ -40,6 +40,13 @@ Construit avec **Angular 22** pour l'interface et **three.js** pour la 3D.
   | Balle de tennis | Autoguidée vers le pilote juste devant                                          |
   | Flaque de boue  | Piège déposé derrière soi                                                       |
   | Croquette turbo | Boost immédiat                                                                  |
+  | Écureuil        | Fonce sur le premier et le fait tourner                                         |
+  | Os en or        | Turbo à chaque appui pendant 7 s                                                |
+  | Sifflet         | Arrête net les chiens devant                                                    |
+  | Super-collier   | Invincible 6 s, plus rapide, bouscule les karts                                 |
+
+- **Deux objets** : une boîte remplit la première case libre ; « Objet » utilise toujours le premier, le second avance.
+- **Aspiration** : rouler dans le sillage d'un concurrent remplit une jauge (traînées de vent), puis donne un turbo.
 
 - **Bruitages** générés en temps réel avec Web Audio (aucun fichier son), avec un bouton pour couper le son.
 - **Aperçu 3D** de ton chien dans le garage.
