@@ -4,7 +4,13 @@
  * Aucune dépendance à three.js : utilisable par la simulation et les tests en Node.
  */
 import { ROAD_HALF_WIDTH, WALL_HALF_WIDTH } from '../core/constants';
-import type { GridSlot, TrackProjection, TrackQuery, TrackSample } from '../core/types';
+import type {
+  GridSlot,
+  TrackProjection,
+  TrackQuery,
+  TrackSample,
+  TrackSurface,
+} from '../core/types';
 import {
   addScaled,
   clamp,
@@ -16,6 +22,7 @@ import {
   type Vec2,
 } from '../core/vec2';
 import { GRAND_JARDIN } from './circuits/grand-jardin';
+import { surfaceOf } from './surface';
 import type { TrackDefinition } from './track-definition';
 
 /** Exposant de paramétrisation des nœuds : 0,5 = centripète (ni boucle ni pointe dans les virages serrés). */
@@ -80,6 +87,10 @@ export class Track implements TrackQuery {
       position - index,
       wrapped,
     );
+  }
+
+  surfaceAt(s: number, lateral: number): TrackSurface {
+    return surfaceOf(this.sampleAt(s), lateral);
   }
 
   /** L'indice ne fait qu'accélérer la recherche : entre les haies, le résultat est celui de la recherche globale. */
@@ -336,6 +347,10 @@ function buildSamples(
       left: { x: tangent.z, z: -tangent.x },
       halfWidth: ROAD_HALF_WIDTH,
       curvature: sum / (2 * CURVATURE_SMOOTHING + 1),
+      // Profil plat pour l'instant : la tâche 4 branche le vrai relief (hauteur, pente, dévers).
+      height: 0,
+      grade: 0,
+      bank: 0,
     };
   });
 }
@@ -356,5 +371,8 @@ function interpolateSample(a: TrackSample, b: TrackSample, t: number, s: number)
     left: { x: tangent.z, z: -tangent.x },
     halfWidth: a.halfWidth + (b.halfWidth - a.halfWidth) * t,
     curvature: a.curvature + (b.curvature - a.curvature) * t,
+    height: a.height + (b.height - a.height) * t,
+    grade: a.grade + (b.grade - a.grade) * t,
+    bank: a.bank + (b.bank - a.bank) * t,
   };
 }

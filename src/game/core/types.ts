@@ -17,7 +17,11 @@ export type SkinSlot = 'head' | 'neck' | 'body';
 /** Sélection d'accessoires : un par emplacement, `null` = aucun. */
 export type SkinSelection = Record<SkinSlot, string | null>;
 
-export const EMPTY_SKINS: Readonly<SkinSelection> = Object.freeze({ head: null, neck: null, body: null });
+export const EMPTY_SKINS: Readonly<SkinSelection> = Object.freeze({
+  head: null,
+  neck: null,
+  body: null,
+});
 
 /** Statistiques d'une race, de 1 à 5 points chacune. */
 export interface StatBlock {
@@ -79,7 +83,13 @@ export interface DriverInput {
   driftAssist?: boolean;
 }
 
-export const NEUTRAL_INPUT: DriverInput = { throttle: false, brake: false, steer: 0, drift: false, useItem: false };
+export const NEUTRAL_INPUT: DriverInput = {
+  throttle: false,
+  brake: false,
+  steer: 0,
+  drift: false,
+  useItem: false,
+};
 
 /** 0 = pas de charge, 1 = bleu, 2 = orange, 3 = violet. */
 export type DriftTier = 0 | 1 | 2 | 3;
@@ -149,6 +159,18 @@ export interface TrackSample {
   halfWidth: number;
   /** Courbure signée (1/m) : > 0 = virage à gauche, < 0 = virage à droite. */
   curvature: number;
+  /** Altitude de la ligne médiane (m). */
+  height: number;
+  /** Pente dh/ds dans le sens de la course (0,1 = 10 %). */
+  grade: number;
+  /** Dévers (rad) : > 0 = la piste penche vers la gauche (bord gauche plus bas). */
+  bank: number;
+}
+
+/** Sol de la piste en un point : hauteur (m) et gradient horizontal (∂h/∂x, ∂h/∂z). */
+export interface TrackSurface {
+  height: number;
+  gradient: Vec2;
 }
 
 export interface TrackProjection {
@@ -186,6 +208,8 @@ export interface TrackQuery {
   gridSlot(index: number): GridSlot;
   /** Abscisses (m) des rangées de boîtes à objets. */
   readonly itemBoxRows: readonly number[];
+  /** Sol de la piste à l'abscisse s, à `lateral` m de la ligne médiane (+ = gauche). */
+  surfaceAt(s: number, lateral: number): TrackSurface;
 }
 
 // ---------------------------------------------------------------------------

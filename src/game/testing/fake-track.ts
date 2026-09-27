@@ -6,12 +6,28 @@
 import { ROAD_HALF_WIDTH, WALL_HALF_WIDTH } from '../core/constants';
 import type { GridSlot, TrackProjection, TrackQuery, TrackSample } from '../core/types';
 import { add, headingOf, scale, type Vec2 } from '../core/vec2';
+import { surfaceOf } from '../track/surface';
 
 export type TurnDirection = 'left' | 'right';
 
-export function createCircleTrack(radius = 60, direction: TurnDirection = 'left'): TrackQuery {
+/** Relief plat par défaut, pour les tests qui veulent une pente et/ou un dévers constants. */
+export interface CircleRelief {
+  /** Altitude au départ (m). */
+  height?: number;
+  /** Pente constante dans le sens de la course (sans unité) ; l'altitude vaut height + grade · s. */
+  grade?: number;
+  /** Dévers constant (rad, > 0 = bord gauche plus bas). */
+  bank?: number;
+}
+
+export function createCircleTrack(
+  radius = 60,
+  direction: TurnDirection = 'left',
+  relief: CircleRelief = {},
+): TrackQuery {
   const length = 2 * Math.PI * radius;
   const sign = direction === 'left' ? 1 : -1;
+  const { height = 0, grade = 0, bank = 0 } = relief;
   const wrapS = (s: number): number => ((s % length) + length) % length;
 
   const sampleAt = (sRaw: number): TrackSample => {
@@ -22,7 +38,17 @@ export function createCircleTrack(radius = 60, direction: TurnDirection = 'left'
     const position: Vec2 = { x: radius * Math.cos(phi), z: sign * -radius * Math.sin(phi) };
     const tangent: Vec2 = { x: -Math.sin(phi), z: sign * -Math.cos(phi) };
     const left: Vec2 = { x: tangent.z, z: -tangent.x };
-    return { s, position, tangent, left, halfWidth: ROAD_HALF_WIDTH, curvature: sign / radius };
+    return {
+      s,
+      position,
+      tangent,
+      left,
+      halfWidth: ROAD_HALF_WIDTH,
+      curvature: sign / radius,
+      height: height + grade * s,
+      grade,
+      bank,
+    };
   };
 
   const count = Math.max(8, Math.round(length));
@@ -43,7 +69,11 @@ export function createCircleTrack(radius = 60, direction: TurnDirection = 'left'
     const progress = -(10 + Math.floor(index / 2) * 7 + (index % 2) * 3.5);
     const sample = sampleAt(progress);
     const lateral = index % 2 === 0 ? 3.5 : -3.5;
-    return { position: add(sample.position, scale(sample.left, lateral)), heading: headingOf(sample.tangent), progress };
+    return {
+      position: add(sample.position, scale(sample.left, lateral)),
+      heading: headingOf(sample.tangent),
+      progress,
+    };
   };
 
   return {
@@ -54,5 +84,6 @@ export function createCircleTrack(radius = 60, direction: TurnDirection = 'left'
     project,
     gridSlot,
     itemBoxRows: [length * 0.25, length * 0.6],
+    surfaceAt: (s, lateral) => surfaceOf(sampleAt(s), lateral),
   };
 }
