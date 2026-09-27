@@ -811,7 +811,7 @@ describe('croquette turbo', () => {
     expect(race.items).toEqual([]);
     expect(events).toEqual([
       { type: 'item-use', racerId: 1, item: 'kibble-turbo' },
-      { type: 'boost', racerId: 1, source: 'item', tier: 0 },
+      { type: 'boost', racerId: 1, source: 'item' },
     ]);
   });
 });

@@ -150,7 +150,7 @@ export function useItem(
       break;
     case 'kibble-turbo':
       applyBoost(kart, ITEMS.turboDuration, ITEMS.turboStrength);
-      emit({ type: 'boost', racerId: racer.id, source: 'item', tier: 0 });
+      emit({ type: 'boost', racerId: racer.id, source: 'item' });
       break;
   }
 }

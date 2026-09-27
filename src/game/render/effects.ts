@@ -64,6 +64,7 @@ const color = (hex: string): THREE.Color => new THREE.Color(hex);
 const TIER_COLORS = DRIFT_TIER_COLORS.map(color);
 const DUST = color('#b98f5f');
 const FLAME = color('#ff8a1f');
+const WIND = color('#dff3ff');
 const FLAME_CORE = color('#ffd35a');
 const PUFF = color('#f4f1ea');
 const SMOKE = color('#ece8e0');
@@ -223,7 +224,12 @@ export class Effects {
           }
           break;
         case 'boost': {
-          const tint = event.source === 'drift' ? TIER_COLORS[event.tier] : FLAME;
+          const tint =
+            event.source === 'drift'
+              ? TIER_COLORS[event.tier]
+              : event.source === 'slipstream'
+                ? WIND
+                : FLAME;
           for (const exhaust of visual.model.exhausts) {
             exhaust.getWorldPosition(this.point);
             this.burst(

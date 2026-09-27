@@ -50,7 +50,8 @@ class FakeParam {
   }
 
   private record(method: string, value: number, time: number): this {
-    if (!Number.isFinite(value) || !Number.isFinite(time) || time < 0) this.ctx.fail(`${method}(${value}, ${time})`);
+    if (!Number.isFinite(value) || !Number.isFinite(time) || time < 0)
+      this.ctx.fail(`${method}(${value}, ${time})`);
     this.calls.push({ method, value, time });
     this.value = value;
     return this;
@@ -255,7 +256,9 @@ function outputGainOf(ctx: FakeAudioContext, source: FakeNode): FakeGain {
 }
 
 function firstFilterOf(source: FakeNode): FakeFilter {
-  const filter = source.connections.find((target): target is FakeFilter => target instanceof FakeFilter);
+  const filter = source.connections.find(
+    (target): target is FakeFilter => target instanceof FakeFilter,
+  );
   if (!filter) throw new Error('filtre introuvable');
   return filter;
 }
@@ -277,14 +280,24 @@ function continuousSounds(ctx: FakeAudioContext) {
 }
 
 /** Sources créées par un lot d'événements. */
-function sourcesPlayedBy(engine: AudioEngine, ctx: FakeAudioContext, events: readonly GameEvent[], playerId = 0): FakeSource[] {
+function sourcesPlayedBy(
+  engine: AudioEngine,
+  ctx: FakeAudioContext,
+  events: readonly GameEvent[],
+  playerId = 0,
+): FakeSource[] {
   const before = ctx.sources.length;
   engine.handleEvents(events, playerId);
   return ctx.sources.slice(before);
 }
 
 /** Nombre de sources créées par un lot d'événements. */
-function sourcesCreatedBy(engine: AudioEngine, ctx: FakeAudioContext, events: readonly GameEvent[], playerId = 0): number {
+function sourcesCreatedBy(
+  engine: AudioEngine,
+  ctx: FakeAudioContext,
+  events: readonly GameEvent[],
+  playerId = 0,
+): number {
   return sourcesPlayedBy(engine, ctx, events, playerId).length;
 }
 
@@ -301,7 +314,9 @@ function downstream(node: FakeNode): FakeNode[] {
   const chain: FakeNode[] = [];
   let current = node;
   for (let guard = 0; guard < 10; guard++) {
-    const next = current.connections.find((target): target is FakeNode => target instanceof FakeNode);
+    const next = current.connections.find(
+      (target): target is FakeNode => target instanceof FakeNode,
+    );
     if (!next) break;
     chain.push(next);
     current = next;
@@ -329,7 +344,8 @@ function envelopePeak(source: FakeNode): number {
 /** Valeur de départ et valeur visée en fin de rampe d'un paramètre planifié. */
 function rampOf(param: FakeParam): { from: number; to: number } {
   const from = param.calls.find((call) => call.method === 'setValueAtTime')?.value ?? param.value;
-  const to = param.calls.find((call) => call.method === 'exponentialRampToValueAtTime')?.value ?? from;
+  const to =
+    param.calls.find((call) => call.method === 'exponentialRampToValueAtTime')?.value ?? from;
   return { from, to };
 }
 
@@ -360,7 +376,8 @@ function racerEvents(racerId: number): GameEvent[] {
   return [
     { type: 'drift-tier', racerId, tier: 2 },
     { type: 'boost', racerId, source: 'drift', tier: 3 },
-    { type: 'boost', racerId, source: 'item', tier: 0 },
+    { type: 'boost', racerId, source: 'item' },
+    { type: 'boost', racerId, source: 'slipstream' },
     { type: 'wall', racerId, intensity: 0.7 },
     { type: 'bump', racerId, otherId: racerId === OTHER ? 5 : OTHER, intensity: 0.5 },
     { type: 'item-box', racerId },
@@ -466,7 +483,9 @@ describe('AudioEngine avec un contexte', () => {
     expect(ctx.resume).toHaveBeenCalledTimes(1);
     const count = ctx.sources.length;
     expect(count).toBeGreaterThan(0);
-    expect(ctx.sources.every((source) => source.startTime !== null && source.stopTime === null)).toBe(true);
+    expect(
+      ctx.sources.every((source) => source.startTime !== null && source.stopTime === null),
+    ).toBe(true);
     await engine.resume();
     expect(ctx.sources).toHaveLength(count);
     expect(ctx.resume).toHaveBeenCalledTimes(1);
@@ -501,10 +520,14 @@ describe('AudioEngine avec un contexte', () => {
 
   it('le joueur touché : glissando descendant et jappement plaintif', async () => {
     const { engine, ctx } = await createStartedEngine();
-    const played = sourcesPlayedBy(engine, ctx, [{ type: 'hit', racerId: PLAYER, by: 'bone', ownerId: OTHER }]);
+    const played = sourcesPlayedBy(engine, ctx, [
+      { type: 'hit', racerId: PLAYER, by: 'bone', ownerId: OTHER },
+    ]);
     const oscillators = oscillatorsIn(played);
     // Glissando : plus d'une octave vers le grave.
-    const glissando = oscillators.filter((osc) => rampOf(osc.frequency).to < rampOf(osc.frequency).from / 2);
+    const glissando = oscillators.filter(
+      (osc) => rampOf(osc.frequency).to < rampOf(osc.frequency).from / 2,
+    );
     expect(glissando.length).toBeGreaterThan(0);
     // Jappement : un second son, lui aussi descendant, avec un formant de bruit.
     expect(oscillators.length).toBeGreaterThan(glissando.length);
@@ -513,7 +536,9 @@ describe('AudioEngine avec un contexte', () => {
 
   it('toucher un adversaire : deux jappements joyeux (≈ 600 → 350 Hz) avec un formant de bruit', async () => {
     const { engine, ctx } = await createStartedEngine();
-    const played = sourcesPlayedBy(engine, ctx, [{ type: 'hit', racerId: OTHER, by: 'tennis-ball', ownerId: PLAYER }]);
+    const played = sourcesPlayedBy(engine, ctx, [
+      { type: 'hit', racerId: OTHER, by: 'tennis-ball', ownerId: PLAYER },
+    ]);
     const barks = oscillatorsIn(played);
     expect(barks).toHaveLength(2);
     for (const bark of barks) {
@@ -532,8 +557,12 @@ describe('AudioEngine avec un contexte', () => {
 
   it('un joueur touché par son propre objet entend le son « touché », pas les jappements joyeux', async () => {
     const { engine, ctx } = await createStartedEngine();
-    const hurt = sourcesCreatedBy(engine, ctx, [{ type: 'hit', racerId: PLAYER, by: 'mud', ownerId: OTHER }]);
-    expect(sourcesCreatedBy(engine, ctx, [{ type: 'hit', racerId: PLAYER, by: 'mud', ownerId: PLAYER }])).toBe(hurt);
+    const hurt = sourcesCreatedBy(engine, ctx, [
+      { type: 'hit', racerId: PLAYER, by: 'mud', ownerId: OTHER },
+    ]);
+    expect(
+      sourcesCreatedBy(engine, ctx, [{ type: 'hit', racerId: PLAYER, by: 'mud', ownerId: PLAYER }]),
+    ).toBe(hurt);
   });
 
   it('le dernier tour remplace le carillon de tour du même lot', async () => {
@@ -567,7 +596,9 @@ describe('AudioEngine avec un contexte', () => {
     const { engine, ctx } = await createStartedEngine();
     const peaksFor = (intensity: number): number[] => {
       ctx.currentTime += 1;
-      return sourcesPlayedBy(engine, ctx, [{ type: 'wall', racerId: PLAYER, intensity }]).map(envelopePeak);
+      return sourcesPlayedBy(engine, ctx, [{ type: 'wall', racerId: PLAYER, intensity }]).map(
+        envelopePeak,
+      );
     };
     const strong = peaksFor(1);
     const weak = peaksFor(0.25);
@@ -588,15 +619,19 @@ describe('AudioEngine avec un contexte', () => {
 
   it('choc entre karts : plus léger qu’un choc contre une haie, proportionnel à l’intensité', async () => {
     const { engine, ctx } = await createStartedEngine();
-    const wall = sourcesPlayedBy(engine, ctx, [{ type: 'wall', racerId: PLAYER, intensity: 1 }]).map(envelopePeak);
-    const bump = sourcesPlayedBy(engine, ctx, [{ type: 'bump', racerId: PLAYER, otherId: OTHER, intensity: 1 }]).map(envelopePeak);
+    const wall = sourcesPlayedBy(engine, ctx, [
+      { type: 'wall', racerId: PLAYER, intensity: 1 },
+    ]).map(envelopePeak);
+    const bump = sourcesPlayedBy(engine, ctx, [
+      { type: 'bump', racerId: PLAYER, otherId: OTHER, intensity: 1 },
+    ]).map(envelopePeak);
     expect(bump.length).toBeGreaterThan(0);
     expect(Math.max(...bump)).toBeLessThan(Math.max(...wall));
 
     ctx.currentTime += 1;
-    const half = sourcesPlayedBy(engine, ctx, [{ type: 'bump', racerId: OTHER, otherId: PLAYER, intensity: 0.5 }]).map(
-      envelopePeak,
-    );
+    const half = sourcesPlayedBy(engine, ctx, [
+      { type: 'bump', racerId: OTHER, otherId: PLAYER, intensity: 0.5 },
+    ]).map(envelopePeak);
     expect(half).toHaveLength(bump.length);
     half.forEach((peak, i) => expect(peak / bump[i]).toBeCloseTo(0.5));
   });
@@ -639,7 +674,11 @@ describe('AudioEngine avec un contexte', () => {
     const playing = burstSources.filter((source) => source.playingAt(ctx.currentTime));
     expect(playing).toHaveLength(MAX_VOICES * perVoice);
     // Ce sont les plus récentes qui jouent encore.
-    expect(burstSources.slice(-MAX_VOICES * perVoice).every((source) => source.playingAt(ctx.currentTime))).toBe(true);
+    expect(
+      burstSources
+        .slice(-MAX_VOICES * perVoice)
+        .every((source) => source.playingAt(ctx.currentTime)),
+    ).toBe(true);
   });
 
   it('les voix terminées sont déconnectées', async () => {
@@ -679,7 +718,9 @@ describe('AudioEngine avec un contexte', () => {
     const { engineOsc } = continuousSounds(ctx);
     const lowpass = filterAfter(engineOsc);
     expect(lowpass.type).toBe('lowpass');
-    const square = ctx.oscillators.find((osc) => osc.type === 'square' && downstream(osc).includes(lowpass));
+    const square = ctx.oscillators.find(
+      (osc) => osc.type === 'square' && downstream(osc).includes(lowpass),
+    );
     if (!square) throw new Error('oscillateur carré du moteur introuvable');
     expect(square.detune.value).not.toBe(0);
     expect(Math.abs(square.detune.value)).toBeLessThan(50);
@@ -689,9 +730,13 @@ describe('AudioEngine avec un contexte', () => {
 
     // Vibrato : un oscillateur lent module la fréquence des deux oscillateurs.
     const vibrato = ctx.gains.find(
-      (gain) => gain.connections.includes(engineOsc.frequency) && gain.connections.includes(square.frequency),
+      (gain) =>
+        gain.connections.includes(engineOsc.frequency) &&
+        gain.connections.includes(square.frequency),
     );
-    const lfo = ctx.oscillators.find((osc) => vibrato !== undefined && osc.connections.includes(vibrato));
+    const lfo = ctx.oscillators.find(
+      (osc) => vibrato !== undefined && osc.connections.includes(vibrato),
+    );
     expect(lfo?.frequency.value).toBeLessThan(20);
     expect(vibrato?.gain.value).toBeGreaterThan(0);
     expect(vibrato?.gain.value).toBeLessThan(10);
@@ -784,7 +829,9 @@ describe('AudioEngine avec un contexte', () => {
 
     await expect(engine.resume()).resolves.toBeUndefined();
     expect(ctx.sources.length).toBeGreaterThan(0);
-    expect(ctx.sources.every((source) => source.stopTime !== null && source.disconnected)).toBe(true);
+    expect(ctx.sources.every((source) => source.stopTime !== null && source.disconnected)).toBe(
+      true,
+    );
     expect(() => engine.updatePlayer(RUNNING)).not.toThrow();
     expect(sourcesCreatedBy(engine, ctx, [{ type: 'go' }])).toBeGreaterThan(0);
   });
@@ -806,11 +853,10 @@ describe('AudioEngine : caractère des bruitages', () => {
       const { engine, ctx } = await createStartedEngine();
       for (const source of sourcesPlayedBy(engine, ctx, [event])) {
         const calls = envelopeOf(source).gain.calls;
-        expect(calls.map((call) => call.method), event.type).toEqual([
-          'setValueAtTime',
-          'linearRampToValueAtTime',
-          'exponentialRampToValueAtTime',
-        ]);
+        expect(
+          calls.map((call) => call.method),
+          event.type,
+        ).toEqual(['setValueAtTime', 'linearRampToValueAtTime', 'exponentialRampToValueAtTime']);
         const [start, peak, end] = calls;
         expect(peak.value, event.type).toBeGreaterThan(start.value);
         expect(end.value, event.type).toBeLessThan(peak.value);
@@ -825,7 +871,9 @@ describe('AudioEngine : caractère des bruitages', () => {
   it('le « ting » de dérapage monte avec le palier', async () => {
     const { engine, ctx } = await createStartedEngine();
     const pitchOf = (tier: DriftTier): number => {
-      const tones = oscillatorsIn(sourcesPlayedBy(engine, ctx, [{ type: 'drift-tier', racerId: PLAYER, tier }]));
+      const tones = oscillatorsIn(
+        sourcesPlayedBy(engine, ctx, [{ type: 'drift-tier', racerId: PLAYER, tier }]),
+      );
       return Math.min(...tones.map((osc) => rampOf(osc.frequency).from));
     };
     expectRising([pitchOf(1), pitchOf(2), pitchOf(3)]);
@@ -834,11 +882,14 @@ describe('AudioEngine : caractère des bruitages', () => {
   it('boost : souffle filtré qui monte et oscillateur qui glisse vers l’aigu', async () => {
     for (const boost of [
       { type: 'boost', racerId: PLAYER, source: 'drift', tier: 2 },
-      { type: 'boost', racerId: PLAYER, source: 'item', tier: 0 },
+      { type: 'boost', racerId: PLAYER, source: 'item' },
+      { type: 'boost', racerId: PLAYER, source: 'slipstream' },
     ] satisfies GameEvent[]) {
       const { engine, ctx } = await createStartedEngine();
       const played = sourcesPlayedBy(engine, ctx, [boost]);
-      const rising = oscillatorsIn(played).filter((osc) => rampOf(osc.frequency).to > rampOf(osc.frequency).from);
+      const rising = oscillatorsIn(played).filter(
+        (osc) => rampOf(osc.frequency).to > rampOf(osc.frequency).from,
+      );
       expect(rising.length, boost.source).toBeGreaterThan(0);
       const rush = noisesIn(played);
       expect(rush.length, boost.source).toBeGreaterThan(0);
@@ -851,7 +902,9 @@ describe('AudioEngine : caractère des bruitages', () => {
 
   it('boîte à objets : arpège montant rapide', async () => {
     const { engine, ctx } = await createStartedEngine();
-    const notes = notesOf(oscillatorsIn(sourcesPlayedBy(engine, ctx, [{ type: 'item-box', racerId: PLAYER }])));
+    const notes = notesOf(
+      oscillatorsIn(sourcesPlayedBy(engine, ctx, [{ type: 'item-box', racerId: PLAYER }])),
+    );
     expect(notes.length).toBeGreaterThanOrEqual(3);
     expectRising(notes.map((note) => note.freq));
     expect(notes[notes.length - 1].time - notes[0].time).toBeLessThan(0.4);
@@ -859,11 +912,15 @@ describe('AudioEngine : caractère des bruitages', () => {
 
   it('objet prêt : « pop » très bref ; objet utilisé : « whoosh » de bruit balayé', async () => {
     const { engine, ctx } = await createStartedEngine();
-    const pop = sourcesPlayedBy(engine, ctx, [{ type: 'item-ready', racerId: PLAYER, item: 'bone' }]);
+    const pop = sourcesPlayedBy(engine, ctx, [
+      { type: 'item-ready', racerId: PLAYER, item: 'bone' },
+    ]);
     expect(pop.length).toBeGreaterThan(0);
     expect(pop.every((source) => durationOf(source) <= 0.15)).toBe(true);
 
-    const whoosh = noisesIn(sourcesPlayedBy(engine, ctx, [{ type: 'item-use', racerId: PLAYER, item: 'mud' }]));
+    const whoosh = noisesIn(
+      sourcesPlayedBy(engine, ctx, [{ type: 'item-use', racerId: PLAYER, item: 'mud' }]),
+    );
     expect(whoosh.length).toBeGreaterThan(0);
     for (const noise of whoosh) {
       const sweep = rampOf(filterAfter(noise).frequency);
@@ -873,9 +930,13 @@ describe('AudioEngine : caractère des bruitages', () => {
 
   it('tour : carillon de deux notes ; dernier tour : trois notes montantes', async () => {
     const { engine, ctx } = await createStartedEngine();
-    const lap = notesOf(oscillatorsIn(sourcesPlayedBy(engine, ctx, [{ type: 'lap', racerId: PLAYER, lap: 2 }])));
+    const lap = notesOf(
+      oscillatorsIn(sourcesPlayedBy(engine, ctx, [{ type: 'lap', racerId: PLAYER, lap: 2 }])),
+    );
     expect(lap).toHaveLength(2);
-    const finalLap = notesOf(oscillatorsIn(sourcesPlayedBy(engine, ctx, [{ type: 'final-lap', racerId: PLAYER }])));
+    const finalLap = notesOf(
+      oscillatorsIn(sourcesPlayedBy(engine, ctx, [{ type: 'final-lap', racerId: PLAYER }])),
+    );
     expect(finalLap).toHaveLength(3);
     expectRising(finalLap.map((note) => note.freq));
   });

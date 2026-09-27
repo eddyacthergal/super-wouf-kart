@@ -27,6 +27,7 @@ import { updateProgress } from './progress';
 import { createRaceState } from './race-setup';
 import { computeRanks } from './ranking';
 import { computeResults } from './results';
+import { stepSlipstream } from './slipstream';
 
 export interface RaceSimulationOptions {
   laps?: number;
@@ -148,6 +149,7 @@ export class RaceSimulation {
       if (input.useItem) useItem(state, racer, track, input.brake, this.emit);
     }
 
+    stepSlipstream(racers, dt, this.emit);
     resolveKartCollisions(racers, this.emit);
     stepItems(state, track, this.rng, dt, this.emit);
     for (const racer of racers) updateProgress(racer, state, track, this.emit);

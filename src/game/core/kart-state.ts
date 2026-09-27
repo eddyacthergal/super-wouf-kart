@@ -12,6 +12,7 @@ export function createKartState(position: Vec2, heading: number, trackIndex = 0)
     drift: { active: false, direction: 0, charge: 0, tier: 0 },
     boostTime: 0,
     boostStrength: 1,
+    slipstream: 0,
     hopTime: 0,
     spinTime: 0,
     offroad: false,

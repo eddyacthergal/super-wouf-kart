@@ -129,3 +129,19 @@ export const ITEMS = {
   /** Délai (s) avant qu'un objet lancé puisse toucher son propre lanceur. */
   armTime: 0.35,
 } as const;
+
+/** Aspiration : rouler dans le sillage d'un kart remplit une jauge, puis donne un turbo. */
+export const SLIPSTREAM = {
+  minDistance: 3,
+  maxDistance: 14,
+  /** Demi-angle du cône devant le kart (rad). */
+  halfAngle: (12 * Math.PI) / 180,
+  /** Fraction de la vitesse max en dessous de laquelle l'aspiration ne joue pas. */
+  minSpeedRatio: 0.6,
+  /** Temps (s) pour remplir la jauge. */
+  chargeTime: 1.2,
+  /** Hors du sillage, la jauge se vide ce nombre de fois plus vite. */
+  decayFactor: 2,
+  boostDuration: 1.0,
+  boostStrength: 1.2,
+} as const;

@@ -116,6 +116,8 @@ export interface KartState {
   boostTime: number;
   /** Multiplicateur de vitesse max pendant le boost en cours. */
   boostStrength: number;
+  /** Jauge d'aspiration (0 à 1) ; pleine, elle donne un turbo. */
+  slipstream: number;
   /** Temps restant du petit saut de début de dérapage (visuel). */
   hopTime: number;
   /** Temps restant de tête-à-queue après un impact (aucun contrôle). */
@@ -325,7 +327,8 @@ export type GameEvent =
   | { type: 'go' }
   | { type: 'drift-start'; racerId: number }
   | { type: 'drift-tier'; racerId: number; tier: DriftTier }
-  | { type: 'boost'; racerId: number; source: 'drift' | 'item'; tier: DriftTier }
+  | { type: 'boost'; racerId: number; source: 'drift'; tier: DriftTier }
+  | { type: 'boost'; racerId: number; source: 'item' | 'slipstream' }
   | { type: 'wall'; racerId: number; intensity: number }
   | { type: 'bump'; racerId: number; otherId: number; intensity: number }
   | { type: 'item-box'; racerId: number }
