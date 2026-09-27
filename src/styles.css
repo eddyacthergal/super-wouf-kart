@@ -180,7 +180,9 @@ body {
     box-shadow: 0 4px 12px rgb(0 0 0 / 0.3);
   }
 
-  /* Joystick tactile : base ronde translucide (8rem, cf. STICK_BASE_HALF) et bouton qui suit le pouce. */
+  /* Joystick tactile : base ronde translucide (8rem), centrée sur le point de contact par un
+     translate(-50%, -50%) côté composant (touch-controls.ts, sur la branche active seulement),
+     et bouton qui suit le pouce. */
   .touch-stick-base {
     display: grid;
     place-items: center;
