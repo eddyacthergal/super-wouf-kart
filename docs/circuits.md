@@ -97,6 +97,10 @@ est ignoré par le loader.
    - les règles communes de `validateTrack` (voir tableau plus bas) ;
    - une course complète de 8 IA : tout le monde finit, entre 20 et 70 s au tour, sans traverser
      les murs ;
+   - un tour au clavier avec l'assistance au dérapage (`keyboard-drift.spec.ts`) : au moins 5
+     dérapages par tour, sans choc, sans contresens ni sortie de piste, et plus vite que sans
+     déraper — prévoir au moins 5 vrais virages ;
+   - que le circuit a du relief : au moins 5 m de dénivelé et un virage relevé ;
    - que la définition passe telle quelle en JSON.
 
 ## Messages du loader et du validateur

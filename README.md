@@ -7,12 +7,13 @@ Construit avec **Angular 22** pour l'interface et **three.js** pour la 3D.
 
 ## Fonctionnalités
 
-- **5 circuits dans 3 univers**, au choix après « Jouer » (choix mémorisé) :
-  - **Grand Jardin** (911 m, jardin) : épingle de la niche, chicane, grande courbe, longue ligne droite de départ ;
-  - **Potager** (763 m, jardin) : plus court et sinueux, un S au fond du jardin et l'épingle des salades ;
-  - **Parc enneigé** (649 m, neige) : sapins et bonhommes de neige, flocons qui tombent, une longue diagonale et deux épingles ;
-  - **Plage au couchant** (768 m, plage) : le long de la mer, virages en vagues, palmiers, parasols, château de sable ; mouettes, crabes et dauphins animés ;
-  - **La Colline** (697 m, jardin) : relief, avec une montée, un faux plat, une descente et des virages relevés.
+- **5 circuits dans 3 univers**, tous avec du **relief** (côtes, descentes, virages relevés), au choix après « Jouer » (choix mémorisé) :
+  - **Grand Jardin** (911 m, jardin) : longue ligne droite de départ, chicane en montée, grande courbe relevée, plongée dans le vallon et épingle de la niche en hauteur ;
+  - **Potager** (763 m, jardin) : plus court et sinueux, une bosse dans le S du fond et l'épingle des salades, tout en bas ;
+  - **Parc enneigé** (649 m, neige) : sapins et bonhommes de neige, flocons qui tombent ; une piste de luge avec la montée par la longue diagonale, le virage du sommet et la descente en S ;
+  - **Plage au couchant** (768 m, plage) : la ligne droite au niveau de la mer, puis la montée dans les dunes et la vague de la descente ; palmiers, parasols, château de sable ; mouettes, crabes et dauphins animés ;
+  - **La Colline** (697 m, jardin) : une longue montée, un faux plat au sommet, la grande descente et des virages relevés.
+- **Le relief compte** : une côte ralentit, une descente permet de dépasser sa vitesse maximale (les chiens lourds en profitent plus, les légers perdent moins en montée), et les virages relevés tiennent mieux.
 - **Course de 3 tours à 8 pilotes** : toi contre 7 chiens pilotés par l'ordinateur, compte à rebours, classement en direct, écran de résultats.
 - **4 races**, chacune avec ses statistiques :
 
@@ -179,4 +180,4 @@ La structure permet de les ajouter progressivement :
 
 - **une nouvelle race** : une entrée de données dans `src/game/dogs/breeds.ts` ;
 - **un nouvel accessoire** : une entrée dans `skins-catalog.ts` et son constructeur dans `skin-models.ts` ;
-- **un nouveau circuit** : une définition de données dans `src/game/track/circuits/`, inscrite au catalogue (voir [`docs/circuits.md`](docs/circuits.md)).
+- **un nouveau circuit** : un fichier JSON dans `src/game/track/circuits/` (coins, rayons, altitude, dévers), inscrit au catalogue (voir [`docs/circuits.md`](docs/circuits.md)).
