@@ -138,7 +138,7 @@ src/
     kart/              ← physique arcade, dérapage, mini-turbo
     items/             ← boîtes à objets, tirage, projectiles, pièges, impacts
     ai/                ← pilotes IA (trajectoire, freinage, dérapage, objets)
-    race/              ← grille, tours, classement, collisions, résultats, simulation
+    race/              ← grille, tours, classement, collisions, aspiration, résultats, simulation
     dogs/              ← races et accessoires (données) + modèles 3D construits par code
     render/            ← rendu three.js : jardin, karts, objets, effets, caméra
     audio/             ← bruitages Web Audio procéduraux
