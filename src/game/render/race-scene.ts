@@ -50,7 +50,7 @@ export class RaceScene {
   private readonly items: ItemVisuals;
   private readonly effects: Effects;
   private readonly rig: CameraRig;
-  private readonly target: CameraTarget = { x: 0, z: 0, heading: 0, boosting: false };
+  private readonly target: CameraTarget = { x: 0, z: 0, heading: 0, boosting: false, y: 0 };
   private time = 0;
   private disposed = false;
 
@@ -63,7 +63,7 @@ export class RaceScene {
     this.camera.name = 'chase-camera';
     const terrain = createTerrain(track);
     this.terrain = terrain;
-    this.rig = new CameraRig(this.camera, options.reducedMotion);
+    this.rig = new CameraRig(this.camera, options.reducedMotion, (x, z) => terrain.groundAt(x, z));
     this.lighting.addTo(this.scene);
 
     let world: ThemeWorld | null = null;
@@ -75,7 +75,7 @@ export class RaceScene {
       this.racers = racerVisuals;
       this.sky = buildSkyDome(this.bag, theme.sky);
       this.items = new ItemVisuals(this.bag);
-      this.effects = new Effects(racerVisuals, this.bag, track);
+      this.effects = new Effects(racerVisuals, this.bag, track, terrain);
     } catch (error) {
       racerVisuals?.dispose();
       world?.dispose();
@@ -111,9 +111,10 @@ export class RaceScene {
       this.target.z = visual.position.z;
       this.target.heading = visual.heading;
       this.target.boosting = followed.kart.boostTime > 0;
+      this.target.y = visual.position.y;
       this.shakeOnEvents(events, followed.id);
       this.rig.update(this.target, state.phase, state.countdown, dt);
-      this.lighting.follow(visual.position.x, visual.position.z);
+      this.lighting.follow(visual.position.x, visual.position.z, visual.position.y);
     }
 
     this.items.update(state, blend, dt, this.time);

@@ -1,7 +1,7 @@
 import type * as THREE from 'three';
 import { afterEach, describe, expect, it } from 'vitest';
 import { DisposalBag } from './resources';
-import { SKID_MARK_LIFE, SkidMarks } from './skid-marks';
+import { MARK_Y, SKID_MARK_LIFE, SkidMarks } from './skid-marks';
 
 const bags: DisposalBag[] = [];
 
@@ -48,6 +48,13 @@ describe('SkidMarks', () => {
     expect(Math.min(...zs)).toBeCloseTo(0, 9);
     expect(Math.max(...zs)).toBeCloseTo(2, 9);
     expect(attribute(marks, 'alpha').getX(0)).toBeGreaterThan(0.3);
+  });
+
+  it('pose les sommets à la hauteur donnée (y0 côté départ, y1 côté arrivée)', () => {
+    const marks = create();
+    marks.add(0, 0, 1, 0, 2, 2);
+    const vertices = segment(marks, 0);
+    for (const { y } of vertices) expect(y).toBeCloseTo(2 + MARK_Y, 6);
   });
 
   it('ignore les tronçons de longueur nulle ou invalides', () => {

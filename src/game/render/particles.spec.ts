@@ -52,6 +52,15 @@ describe('ParticlePool', () => {
     bag.dispose();
   });
 
+  it('ne descend jamais sous le plancher personnalisé', () => {
+    const bag = new DisposalBag();
+    const pool = new ParticlePool(4, true, bag);
+    pool.emit(0, 4, 0, 0, 0, 0, WHITE, 0.1, 5, { gravity: -20, floor: 3 });
+    for (let i = 0; i < 30; i++) pool.update(0.1);
+    expect(pool.points.geometry.getAttribute('position').getY(0)).toBeGreaterThanOrEqual(3);
+    bag.dispose();
+  });
+
   it('ne descend pas sous le sol et garde une taille positive', () => {
     const bag = new DisposalBag();
     const pool = new ParticlePool(4, true, bag);

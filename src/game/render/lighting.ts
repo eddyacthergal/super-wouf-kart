@@ -62,11 +62,13 @@ export class SceneLighting {
     this.follow(0, 0);
   }
 
-  /** Centre la zone d'ombre sur (x, z). */
-  follow(x: number, z: number): void {
-    const a = Math.round((x * this.right.x + z * this.right.z) / this.texel) * this.texel;
-    const b = Math.round((x * this.up.x + z * this.up.z) / this.texel) * this.texel;
-    const c = x * this.sunDirection.x + z * this.sunDirection.z;
+  /** Centre la zone d'ombre sur (x, y, z) : y = hauteur du sol sous le joueur (0 par défaut). */
+  follow(x: number, z: number, y = 0): void {
+    const a =
+      Math.round((x * this.right.x + y * this.right.y + z * this.right.z) / this.texel) *
+      this.texel;
+    const b = Math.round((x * this.up.x + y * this.up.y + z * this.up.z) / this.texel) * this.texel;
+    const c = x * this.sunDirection.x + y * this.sunDirection.y + z * this.sunDirection.z;
     this.snapped
       .copy(this.right)
       .multiplyScalar(a)
