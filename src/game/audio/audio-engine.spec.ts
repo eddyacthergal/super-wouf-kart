@@ -384,6 +384,7 @@ function racerEvents(racerId: number): GameEvent[] {
     { type: 'item-ready', racerId, item: 'bone' },
     { type: 'item-use', racerId, item: 'tennis-ball' },
     { type: 'hit', racerId, by: 'bone', ownerId: racerId === OTHER ? 5 : OTHER },
+    { type: 'stun', racerId, ownerId: racerId === OTHER ? 5 : OTHER },
     { type: 'lap', racerId, lap: 2 },
     { type: 'final-lap', racerId },
     { type: 'finish', racerId, rank: 1 },
@@ -926,6 +927,25 @@ describe('AudioEngine : caractère des bruitages', () => {
       const sweep = rampOf(filterAfter(noise).frequency);
       expect(sweep.to).not.toBe(sweep.from);
     }
+  });
+
+  it('sifflet utilisé : deux notes aiguës, pas le « whoosh » générique', async () => {
+    const { engine, ctx } = await createStartedEngine();
+    const played = sourcesPlayedBy(engine, ctx, [
+      { type: 'item-use', racerId: PLAYER, item: 'whistle' },
+    ]);
+    const tones = oscillatorsIn(played);
+    expect(tones.length).toBeGreaterThanOrEqual(2);
+    expect(tones.every((osc) => rampOf(osc.frequency).from > 1000)).toBe(true);
+    expect(noisesIn(played)).toHaveLength(0);
+  });
+
+  it('coup de sifflet subi : le pilote touché l’entend', async () => {
+    const { engine, ctx } = await createStartedEngine();
+    const played = sourcesPlayedBy(engine, ctx, [
+      { type: 'stun', racerId: PLAYER, ownerId: OTHER },
+    ]);
+    expect(oscillatorsIn(played).length).toBeGreaterThanOrEqual(2);
   });
 
   it('tour : carillon de deux notes ; dernier tour : trois notes montantes', async () => {

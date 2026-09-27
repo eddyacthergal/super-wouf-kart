@@ -90,6 +90,29 @@ import type { ItemKind } from '../../../../game/core/types';
             stroke-linejoin="round"
           />
         }
+        @case ('whistle') {
+          <rect
+            x="8"
+            y="20"
+            width="22"
+            height="14"
+            rx="7"
+            fill="#c9d3dc"
+            stroke="#44515c"
+            stroke-width="2"
+          />
+          <rect
+            x="28"
+            y="22"
+            width="12"
+            height="6"
+            rx="2"
+            fill="#c9d3dc"
+            stroke="#44515c"
+            stroke-width="2"
+          />
+          <circle cx="15" cy="27" r="3" fill="#44515c" />
+        }
       }
     </svg>
   `,

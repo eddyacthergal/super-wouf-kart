@@ -73,6 +73,7 @@ const PUFF = color('#f4f1ea');
 const SMOKE = color('#ece8e0');
 const HIT = color('#ffe066');
 const LEAF = color('#4caf3c');
+const NOTE_COLOR = '#2b2d42';
 
 /**
  * Étincelle : cœur opaque (mélange normal) qui garde la couleur du palier même sur le gravier
@@ -121,6 +122,9 @@ export class Effects {
   readonly soft: ParticlePool;
   readonly skids: SkidMarks;
   private readonly stars: THREE.InstancedMesh;
+  /** Notes de musique au-dessus des karts arrêtés par un sifflet. */
+  private readonly noteHeads: THREE.InstancedMesh;
+  private readonly noteStems: THREE.InstancedMesh;
   /** Flammes de chaque pilote : un groupe par pot d'échappement. */
   private readonly flames = new Map<number, THREE.Group[]>();
   private readonly emitters = new Map<number, Emitter>();
@@ -169,6 +173,30 @@ export class Effects {
     this.stars.frustumCulled = false;
     this.stars.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.group.add(this.stars);
+
+    const noteCapacity = Math.max(1, racers.list.length);
+    const noteMaterial = bag.add(new THREE.MeshBasicMaterial({ color: NOTE_COLOR }));
+    this.noteHeads = new THREE.InstancedMesh(
+      bag.add(new THREE.SphereGeometry(0.12, 10, 8).scale(1.3, 1, 0.5)),
+      noteMaterial,
+      noteCapacity,
+    );
+    this.noteHeads.name = 'note-heads';
+    this.noteHeads.count = 0;
+    this.noteHeads.frustumCulled = false;
+    this.noteHeads.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    this.group.add(this.noteHeads);
+
+    this.noteStems = new THREE.InstancedMesh(
+      bag.add(new THREE.BoxGeometry(0.035, 0.42, 0.035).translate(0.13, 0.21, 0)),
+      noteMaterial,
+      noteCapacity,
+    );
+    this.noteStems.name = 'note-stems';
+    this.noteStems.count = 0;
+    this.noteStems.frustumCulled = false;
+    this.noteStems.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    this.group.add(this.noteStems);
 
     const outer = bag.add(flameGeometry(0.14, 0.75));
     const inner = bag.add(flameGeometry(0.08, 0.5));
@@ -294,6 +322,7 @@ export class Effects {
 
   update(state: RaceState, racers: RacerVisuals, dt: number, time: number): void {
     let stars = 0;
+    let notes = 0;
     for (const racer of state.racers) {
       const visual = racers.get(racer.id);
       const emitter = this.emitters.get(racer.id);
@@ -387,9 +416,30 @@ export class Effects {
           );
         }
       }
+
+      // Note de musique au-dessus d'un kart arrêté net par un sifflet.
+      if (kart.stunTime > 0 && notes < this.noteHeads.instanceMatrix.count) {
+        this.point.set(
+          visual.position.x,
+          visual.position.y + 2.1 + Math.sin(time * 8 + racer.id) * 0.1,
+          visual.position.z,
+        );
+        this.quaternion.setFromEuler(this.euler.set(0, time * 3, 0));
+        this.scale.setScalar(1);
+        this.matrix.compose(this.point, this.quaternion, this.scale);
+        this.noteHeads.setMatrixAt(notes, this.matrix);
+        this.noteStems.setMatrixAt(notes, this.matrix);
+        notes++;
+      }
     }
     this.stars.count = stars;
     if (stars > 0) this.stars.instanceMatrix.needsUpdate = true;
+    this.noteHeads.count = notes;
+    this.noteStems.count = notes;
+    if (notes > 0) {
+      this.noteHeads.instanceMatrix.needsUpdate = true;
+      this.noteStems.instanceMatrix.needsUpdate = true;
+    }
 
     this.glow.update(dt);
     this.soft.update(dt);

@@ -194,6 +194,9 @@ export class AudioEngine {
         if (event.racerId === playerId) sfx.hurtYelp(this.startVoice(graph));
         else if (event.ownerId === playerId) sfx.happyBarks(this.startVoice(graph));
         return;
+      case 'stun':
+        if (event.racerId === playerId) sfx.whistle(this.startVoice(graph));
+        return;
       case 'bump':
         if (
           (event.racerId === playerId || event.otherId === playerId) &&
@@ -230,7 +233,8 @@ export class AudioEngine {
         sfx.itemPop(this.startVoice(graph));
         return;
       case 'item-use':
-        sfx.itemWhoosh(this.startVoice(graph));
+        if (event.item === 'whistle') sfx.whistle(this.startVoice(graph));
+        else sfx.itemWhoosh(this.startVoice(graph));
         return;
       case 'lap':
         if (!lapSuperseded) sfx.lapChime(this.startVoice(graph));

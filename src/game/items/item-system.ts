@@ -160,6 +160,14 @@ export function useItem(
       applyBoost(kart, ITEMS.turboDuration, ITEMS.turboStrength);
       emit({ type: 'boost', racerId: racer.id, source: 'item' });
       break;
+    case 'whistle':
+      // Tous les pilotes mieux classés s'arrêtent net pour écouter.
+      for (const other of race.racers) {
+        if (other.id === racer.id || other.finished || other.rank >= racer.rank) continue;
+        other.kart.stunTime = ITEMS.whistleStun;
+        emit({ type: 'stun', racerId: other.id, ownerId: racer.id });
+      }
+      break;
   }
 }
 

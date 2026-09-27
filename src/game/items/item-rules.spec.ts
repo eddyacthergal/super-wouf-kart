@@ -29,6 +29,7 @@ function drawProportions(
     'tennis-ball': 0,
     'kibble-turbo': 0,
     'golden-bone': 0,
+    whistle: 0,
   };
   for (let i = 0; i < draws; i++) counts[rollItem(rank, racerCount, rng)]++;
   for (const kind of ITEM_KINDS) counts[kind] /= draws;
@@ -43,6 +44,7 @@ describe('itemWeights', () => {
       'tennis-ball': 5,
       'kibble-turbo': 10,
       'golden-bone': 0,
+      whistle: 0,
     });
     expect(itemWeights(3, 5)).toEqual({
       bone: 25,
@@ -50,6 +52,7 @@ describe('itemWeights', () => {
       'tennis-ball': 20,
       'kibble-turbo': 20,
       'golden-bone': 10,
+      whistle: 3,
     });
     expect(itemWeights(8, 8)).toEqual({
       bone: 10,
@@ -57,6 +60,7 @@ describe('itemWeights', () => {
       'tennis-ball': 20,
       'kibble-turbo': 15,
       'golden-bone': 15,
+      whistle: 8,
     });
   });
 
@@ -68,6 +72,7 @@ describe('itemWeights', () => {
     expect(weights['tennis-ball']).toBeCloseTo(12.5);
     expect(weights['kibble-turbo']).toBeCloseTo(15);
     expect(weights['golden-bone']).toBeCloseTo(5);
+    expect(weights.whistle).toBeCloseTo(1.5);
   });
 
   it('favorise balle, croquette et os en or vers la fin du peloton', () => {
@@ -121,25 +126,27 @@ describe('rollItem', () => {
   });
 
   it('découpe [0, 1[ en tranches cumulées dans l’ordre de ITEM_KINDS', () => {
-    // Dernier (poids 10 | 5 | 20 | 15 | 15, somme 65) : os [0 ; 10/65[, flaque [10/65 ; 15/65[,
-    // balle [15/65 ; 35/65[, croquette [35/65 ; 50/65[, os en or [50/65 ; 1[.
+    // Dernier (poids 10 | 5 | 20 | 15 | 15 | 8, somme 73) : os [0 ; 10/73[, flaque [10/73 ; 15/73[,
+    // balle [15/73 ; 35/73[, croquette [35/73 ; 50/73[, os en or [50/73 ; 65/73[, sifflet [65/73 ; 1[.
     const cases: [number, ItemKind][] = [
       [0, 'bone'],
-      [0.153, 'bone'],
-      [0.155, 'mud'],
-      [0.229, 'mud'],
-      [0.232, 'tennis-ball'],
-      [0.537, 'tennis-ball'],
-      [0.54, 'kibble-turbo'],
-      [0.768, 'kibble-turbo'],
-      [0.77, 'golden-bone'],
-      [0.999, 'golden-bone'],
+      [0.135, 'bone'],
+      [0.138, 'mud'],
+      [0.204, 'mud'],
+      [0.206, 'tennis-ball'],
+      [0.478, 'tennis-ball'],
+      [0.481, 'kibble-turbo'],
+      [0.683, 'kibble-turbo'],
+      [0.686, 'golden-bone'],
+      [0.889, 'golden-bone'],
+      [0.891, 'whistle'],
+      [0.999, 'whistle'],
     ];
     for (const [value, kind] of cases) expect(rollItem(8, 8, fixedRng(value))).toBe(kind);
   });
 
   it('renvoie un objet valide même si le tirage atteint 1 (filet contre les arrondis)', () => {
-    expect(rollItem(1, 8, fixedRng(1))).toBe('golden-bone');
-    expect(rollItem(8, 8, fixedRng(1))).toBe('golden-bone');
+    expect(rollItem(1, 8, fixedRng(1))).toBe('whistle');
+    expect(rollItem(8, 8, fixedRng(1))).toBe('whistle');
   });
 });

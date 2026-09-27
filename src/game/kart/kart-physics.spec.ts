@@ -847,6 +847,21 @@ describe('stepKart — tête-à-queue', () => {
   });
 });
 
+describe('stepKart — sifflet', () => {
+  it('arrêté par un sifflet : ralentit fort, ignore gaz et braquage, garde son turbo', () => {
+    const kart = kartOn(STRAIGHT, 0, 0, 25);
+    kart.stunTime = 1;
+    kart.boostTime = 2;
+    const heading = kart.heading;
+    run(kart, 0.5, { throttle: true, steer: 1 });
+    expect(kart.speed).toBeLessThan(25 - 30 * 0.5 + 1);
+    expect(Math.abs(wrapAngle(kart.heading - heading))).toBeLessThan(0.02);
+    expect(kart.boostTime).toBeGreaterThan(1);
+    run(kart, 0.6, { throttle: true });
+    expect(kart.stunTime).toBe(0);
+  });
+});
+
 describe('stepKart — interpolation', () => {
   it('mémorise la position et le cap du début de pas', () => {
     const kart = kartOn(STRAIGHT, 0, 0, 20);

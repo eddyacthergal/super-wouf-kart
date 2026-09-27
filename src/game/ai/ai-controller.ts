@@ -455,6 +455,8 @@ export class AiController implements DriverController {
         return waited && racer.rank > 1;
       case 'mud':
         return waited || hasRacerBehind(race, racer, MUD_RANGE);
+      case 'whistle':
+        return waited && racer.rank > 1;
     }
   }
 
@@ -472,6 +474,8 @@ export class AiController implements DriverController {
         return 0;
       case 'golden-bone':
         return 0;
+      case 'whistle':
+        return this.rng.range(0.3, 1);
     }
   }
 

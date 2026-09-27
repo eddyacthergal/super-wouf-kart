@@ -34,6 +34,12 @@ describe('aspiration', () => {
     expect(inSlipstream(follower, [follower, leader])).toBe(false);
   });
 
+  it('pas d’aspiration arrêté par un sifflet', () => {
+    const [follower, leader] = pair(8);
+    follower.kart.stunTime = 0.5;
+    expect(inSlipstream(follower, [follower, leader])).toBe(false);
+  });
+
   it('la jauge se remplit en 1,2 s puis donne un turbo, une seule fois', () => {
     const [follower, leader] = pair(8);
     const events: GameEvent[] = [];

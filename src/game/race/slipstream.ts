@@ -10,7 +10,7 @@ import { wrapAngle } from '../core/vec2';
 /** Vrai si `self` roule dans le sillage d'un autre pilote. */
 export function inSlipstream(self: RacerState, racers: readonly RacerState[]): boolean {
   const kart = self.kart;
-  if (kart.spinTime > 0) return false;
+  if (kart.spinTime > 0 || kart.stunTime > 0) return false;
   if (kart.speed < SLIPSTREAM.minSpeedRatio * self.tuning.maxSpeed) return false;
   const minSq = SLIPSTREAM.minDistance ** 2;
   const maxSq = SLIPSTREAM.maxDistance ** 2;

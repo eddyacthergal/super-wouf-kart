@@ -831,6 +831,17 @@ describe('AiController', () => {
       ).toBeNull();
     });
 
+    it('sifflet : utilisé entre 0,3 et 1 s au rang 3', () => {
+      const time = scenario({ item: 'whistle', overrides: { rank: 3 } }).firstUse(1.2);
+      expect(time).not.toBeNull();
+      expect(time).toBeGreaterThanOrEqual(0.3);
+      expect(time).toBeLessThanOrEqual(1);
+    });
+
+    it('sifflet : gardé au rang 1 (premier)', () => {
+      expect(scenario({ item: 'whistle', overrides: { rank: 1 } }).firstUse(2)).toBeNull();
+    });
+
     it('aucun usage pendant la roulette', () => {
       expect(
         scenario({ item: 'kibble-turbo', overrides: { itemRoulette: 1 } }).firstUse(5),

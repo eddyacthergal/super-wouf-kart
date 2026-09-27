@@ -122,6 +122,8 @@ export interface KartState {
   hopTime: number;
   /** Temps restant de tête-à-queue après un impact (aucun contrôle). */
   spinTime: number;
+  /** Temps restant d'arrêt net (sifflet) : ni gaz ni braquage. */
+  stunTime: number;
   /** Vrai si le kart roule sur le bas-côté. */
   offroad: boolean;
   /** Vrai si le kart a touché une haie pendant le dernier pas. */
@@ -230,11 +232,12 @@ export interface TrackQuery {
 
 /**
  * Os (projectile droit), balle de tennis (autoguidée), flaque de boue (piège), croquette turbo
- * (boost), os en or (turbo à chaque appui pendant sa durée, reste dans la case).
+ * (boost), os en or (turbo à chaque appui pendant sa durée, reste dans la case), sifflet (arrête
+ * net les pilotes mieux classés).
  */
-export type ItemKind = 'bone' | 'tennis-ball' | 'mud' | 'kibble-turbo' | 'golden-bone';
+export type ItemKind = 'bone' | 'tennis-ball' | 'mud' | 'kibble-turbo' | 'golden-bone' | 'whistle';
 
-export type ItemEntityKind = Exclude<ItemKind, 'kibble-turbo' | 'golden-bone'>;
+export type ItemEntityKind = Exclude<ItemKind, 'kibble-turbo' | 'golden-bone' | 'whistle'>;
 
 export interface ItemEntity {
   id: number;
@@ -340,6 +343,7 @@ export type GameEvent =
   | { type: 'item-ready'; racerId: number; item: ItemKind }
   | { type: 'item-use'; racerId: number; item: ItemKind }
   | { type: 'hit'; racerId: number; by: ItemEntityKind; ownerId: number }
+  | { type: 'stun'; racerId: number; ownerId: number }
   | { type: 'lap'; racerId: number; lap: number }
   | { type: 'final-lap'; racerId: number }
   | { type: 'finish'; racerId: number; rank: number };

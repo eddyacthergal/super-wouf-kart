@@ -105,6 +105,27 @@ export function itemPop(voice: Voice): void {
   });
 }
 
+/** Coup de sifflet : deux notes aiguës. */
+export function whistle(voice: Voice): void {
+  voice.tone({
+    type: 'sine',
+    freq: 2100,
+    freqEnd: 2500,
+    duration: 0.14,
+    peak: 0.18,
+    attack: 0.005,
+  });
+  voice.tone({
+    type: 'sine',
+    freq: 2450,
+    freqEnd: 2300,
+    duration: 0.32,
+    peak: 0.16,
+    attack: 0.01,
+    delay: 0.16,
+  });
+}
+
 /** « Whoosh » : objet lancé ou utilisé. */
 export function itemWhoosh(voice: Voice): void {
   voice.noise({

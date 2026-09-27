@@ -174,10 +174,11 @@ describe('boîtes et roulette', () => {
     leader.kart.position = clone(race.itemBoxes[0].position);
     last.kart.position = clone(race.itemBoxes[4].position);
 
-    // Tirage à mi-hauteur : flaque pour le premier (45 | 45 | 5 | 5), balle pour le dernier (15 | 5 | 40 | 40).
+    // Tirage à mi-hauteur : flaque pour le premier (poids 40|40|5|10|0|0, seuil à 47,5 dans la flaque),
+    // croquette turbo pour le dernier (poids 10|5|20|15|15|8, seuil à 36,5 dans la croquette).
     stepItems(race, track, fixedRng(0.5), FIXED_DT, () => undefined);
     expect(leader.items).toEqual(['mud']);
-    expect(last.items).toEqual(['tennis-ball']);
+    expect(last.items).toEqual(['kibble-turbo']);
   });
 
   it.each([
@@ -833,6 +834,37 @@ describe('os en or', () => {
     race.itemBoxes = [{ id: 0, position: clone(racer.kart.position), respawn: 0, height: 0 }];
     stepItems(race, track, fixedRng(0), FIXED_DT, () => undefined);
     expect(racer.items).toEqual(['golden-bone', 'mud']);
+  });
+});
+
+describe('sifflet', () => {
+  it('arrête 1 s les pilotes mieux classés, pas les autres', () => {
+    const track = createCircleTrack(STRAIGHT_RADIUS);
+    const race = createTestRace(track, 4);
+    const [first, second, thrower, last] = race.racers;
+    [first.rank, second.rank, thrower.rank, last.rank] = [1, 2, 3, 4];
+    thrower.items = ['whistle'];
+    const { events, emit } = recorder();
+    useItem(race, thrower, track, false, emit);
+    expect(first.kart.stunTime).toBe(ITEMS.whistleStun);
+    expect(second.kart.stunTime).toBe(ITEMS.whistleStun);
+    expect(last.kart.stunTime).toBe(0);
+    expect(thrower.kart.stunTime).toBe(0);
+    const stuns = events.filter(
+      (e): e is Extract<GameEvent, { type: 'stun' }> => e.type === 'stun',
+    );
+    expect(stuns.map((e) => e.racerId).sort()).toEqual([first.id, second.id].sort());
+  });
+
+  it('utilisé par le premier : personne n’est arrêté, l’objet est consommé', () => {
+    const track = createCircleTrack(STRAIGHT_RADIUS);
+    const race = createTestRace(track, 3);
+    const [leader, ...others] = race.racers;
+    leader.rank = 1;
+    leader.items = ['whistle'];
+    useItem(race, leader, track, false, () => undefined);
+    expect(leader.items).toEqual([]);
+    for (const other of others) expect(other.kart.stunTime).toBe(0);
   });
 });
 

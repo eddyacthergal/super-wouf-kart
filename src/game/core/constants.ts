@@ -134,6 +134,10 @@ export const ITEMS = {
   goldenBoneTurboDuration: 1.0,
   /** Os en or : multiplicateur de vitesse max du turbo donné à chaque appui. */
   goldenBoneTurboStrength: 1.3,
+  /** Sifflet : durée de l'arrêt net infligé aux pilotes mieux classés (s). */
+  whistleStun: 1,
+  /** Sifflet : décélération pendant l'arrêt net (m/s²). */
+  stunDeceleration: 30,
 } as const;
 
 /** Aspiration : rouler dans le sillage d'un kart remplit une jauge, puis donne un turbo. */

@@ -12,6 +12,7 @@ export const ITEM_KINDS: readonly ItemKind[] = [
   'tennis-ball',
   'kibble-turbo',
   'golden-bone',
+  'whistle',
 ];
 
 /** Poids aux positions relatives 0 (premier), 0,5 (milieu) et 1 (dernier). */
@@ -21,6 +22,7 @@ const WEIGHT_TABLE: Readonly<Record<ItemKind, readonly [number, number, number]>
   'tennis-ball': [5, 20, 20],
   'kibble-turbo': [10, 20, 15],
   'golden-bone': [0, 10, 15],
+  whistle: [0, 3, 8],
 };
 
 /** Position relative dans le classement : 0 = premier, 1 = dernier (0 si les données sont invalides). */
