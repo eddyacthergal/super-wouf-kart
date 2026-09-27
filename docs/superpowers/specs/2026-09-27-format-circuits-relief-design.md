@@ -34,24 +34,24 @@ Un fichier par circuit : `src/game/track/circuits/<id>.json`, validé dans l'éd
     { "x": -112, "z": -40, "y": 6 },
     { "x": -112, "z": 10, "radius": 22, "y": 6, "bank": 12 },
     { "x": 90, "z": 10, "radius": 30, "bank": 8 },
-    { "x": 90, "z": -90, "radius": 30, "y": 0 }
+    { "x": 90, "z": -90, "radius": 30, "y": 0 },
   ],
-  "decor": { "landmarks": [{ "kind": "doghouse", "x": -60, "z": -40, "radius": 5.5 }] }
+  "decor": { "landmarks": [{ "kind": "doghouse", "x": -60, "z": -40, "radius": 5.5 }] },
 }
 ```
 
 Lecture : départ vers l'ouest sur la droite z = -90, virage 1 à plat, montée de 6 m jusqu'au virage 2
 relevé, descente sur le virage 3 relevé, retour à plat avant le virage 4 et la ligne droite de départ.
 
-| Champ | Règle |
-|---|---|
-| `id`, `name`, `description`, `theme`, `laps`, `decor` | inchangés par rapport à `TrackDefinition` |
-| `corners` | polygone fermé, dans l'ordre de course, au moins 3 coins avec rayon |
-| `corners[].radius` | (m) le coin devient un arc tangent aux deux droites voisines |
-| coin sans `radius` | repère d'altitude sur une droite ; refusé si la ligne y fait un angle de plus de 1° |
-| `corners[].y` | (m) altitude au sommet de l'arc ou au repère. Un coin sans `y` n'est pas un repère : son altitude est interpolée entre les repères voisins. Aucun `y` : circuit plat ; un seul : altitude constante |
-| `corners[].bank` | (°) dévers vers l'intérieur du virage, facultatif, uniquement sur un coin avec rayon |
-| `start` | point sur la droite qui arrive au premier coin : ligne de départ et grille |
+| Champ                                                 | Règle                                                                                                                                                                                               |
+| ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`, `name`, `description`, `theme`, `laps`, `decor` | inchangés par rapport à `TrackDefinition`                                                                                                                                                           |
+| `corners`                                             | polygone fermé, dans l'ordre de course, au moins 3 coins avec rayon                                                                                                                                 |
+| `corners[].radius`                                    | (m) le coin devient un arc tangent aux deux droites voisines                                                                                                                                        |
+| coin sans `radius`                                    | repère d'altitude sur une droite ; refusé si la ligne y fait un angle de plus de 1°                                                                                                                 |
+| `corners[].y`                                         | (m) altitude au sommet de l'arc ou au repère. Un coin sans `y` n'est pas un repère : son altitude est interpolée entre les repères voisins. Aucun `y` : circuit plat ; un seul : altitude constante |
+| `corners[].bank`                                      | (°) dévers vers l'intérieur du virage, facultatif, uniquement sur un coin avec rayon                                                                                                                |
+| `start`                                               | point sur la droite qui arrive au premier coin : ligne de départ et grille                                                                                                                          |
 
 `controlPoints` disparaît ; `TrackDefinition` est remplacé par ce format (type `CircuitDefinition`).
 
@@ -80,13 +80,13 @@ relevé, descente sur le virage 3 relevé, retour à plat avant le virage 4 et l
 
 ### Nouvelles règles du validateur (`TRACK_RULES`)
 
-| Règle | Valeur initiale |
-|---|---|
-| `maxGrade` | 20 % |
-| `maxBank` | 20° |
-| `minHeight` / `maxHeight` | 0 / 25 m |
-| `startMaxGrade` | 2 % sur les ±60 m du départ |
-| `minCrestRadius` | 40 m (rayon vertical des sommets, tant que les sauts n'existent pas) |
+| Règle                     | Valeur initiale                                                      |
+| ------------------------- | -------------------------------------------------------------------- |
+| `maxGrade`                | 20 %                                                                 |
+| `maxBank`                 | 20°                                                                  |
+| `minHeight` / `maxHeight` | 0 / 25 m                                                             |
+| `startMaxGrade`           | 2 % sur les ±60 m du départ                                          |
+| `minCrestRadius`          | 40 m (rayon vertical des sommets, tant que les sauts n'existent pas) |
 
 Les règles actuelles restent (longueur, rayon mini, lignes droites du départ, écart entre portions,
 emprise, rangées de boîtes).
@@ -97,9 +97,9 @@ emprise, rangées de boîtes).
   mesurée dans la direction du cap (pente de la piste et dévers compris).
   - En montée l'équilibre s'établit sous la vitesse max ; en descente au-dessus, freiné par
     `OVERSPEED_DECELERATION`.
-  - Poids : gravité × (1 + `slopeWeightInfluence` · écart), avec `écart = (masse − masse moyenne des
-    races) / masse moyenne`, en montée comme en descente : un lourd prend plus d'élan en descente et
-    ralentit plus en montée.
+  - Poids : gravité × (1 + `slopeWeightInfluence` · écart), avec
+    `écart = (masse − masse moyenne des races) / masse moyenne`, en montée comme en descente : un
+    lourd prend plus d'élan en descente et ralentit plus en montée.
 - Dévers : en tournant vers l'intérieur d'un virage relevé, taux de braquage × (1 + `bankGrip` · dévers).
 - `KartState` gagne `height`, `pitch`, `roll`, `prevHeight`, `prevPitch`, `prevRoll`, calculés depuis
   la projection déjà faite dans `collideWithTrack`.
@@ -143,3 +143,34 @@ emprise, rangées de boîtes).
 - Tremplins et sauts : spec 2.
 - Chargement de circuits sans recompiler, éditeur visuel.
 - Couleurs de l'aperçu de l'écran Circuits selon le thème (correction séparée).
+
+## Écarts avec l'implémentation
+
+- Le type des définitions garde son nom `TrackDefinition` (`track-definition.ts`) : pas de nouveau
+  type `CircuitDefinition`, pour changer moins de fichiers.
+- La « masse moyenne des races » de la section Physique est en fait une **masse de référence**
+  fixe, celle d'une race à 3 points de poids (`REFERENCE_MASS`, `kart-physics.ts`), pas une moyenne
+  calculée sur les races réellement en course.
+- Le sol en relief (section Rendu) est un **maillage séparé** (`terrain`, ajouté dans
+  `garden-world.ts` seulement quand `terrain.hilly`), distinct de la pelouse lointaine ; celle-ci est
+  abaissée de 0,5 m (`LAWN_DROP`) pour se raccorder sans couture au bord du maillage de relief. Sur
+  un circuit plat, ce maillage est **absent** (pas seulement plat) : rien n'est calculé ni ajouté à
+  la scène (`FLAT_TERRAIN`).
+- La pente ne fait pas qu'ajouter une accélération constante (`slopeGravity`) : elle réduit aussi la
+  vitesse maximale effective en montée et l'augmente en descente, via `PHYSICS.slopeSpeedFactor`
+  (`stepSpeed`, `kart-physics.ts`).
+- Le test de « budget de meshes » cité en section 5 pour la scène n'existe pas. Il est remplacé par
+  le test « circuit plat : pas de maillage de relief » (`garden-world.spec.ts`), qui vérifie
+  l'absence du maillage sur un circuit sans relief et sa présence sur un circuit vallonné.
+- Le bump de version (`npm run release:minor`, 0.4.1 → 0.5.0) a eu lieu avec la tâche de physique du
+  relief, pas à la fin comme rangé en section 5 : la règle du dépôt (un seul bump par PR) l'imposait
+  dès la première tâche qui touchait au comportement.
+- Le circuit de démonstration « La Colline » a **7 coins**, pas 5 comme l'exemple de la section 1 :
+  son dernier virage, proche de 90°, est scindé en deux coins de 26,6° puis 63,4°, pour que le test
+  existant de dérapage au clavier (`keyboard-drift.spec.ts`) trouve au moins 5 dérapages par tour sur
+  ce circuit aussi.
+- `CameraTarget.y` (`camera-rig.ts`) est **facultatif**, par défaut 0 : un détail d'implémentation
+  non fixé par la spec.
+- La conversion des 4 circuits existants s'écarte de l'ancienne ligne médiane d'au plus **0,49 m**,
+  et non de « quelques centimètres » comme annoncé en section 5 ; le seuil du plan (0,5 m) était le
+  bon repère.

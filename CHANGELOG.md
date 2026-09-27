@@ -4,7 +4,9 @@ Versionnage sémantique. Dates de fusion dans `main`.
 
 ## [0.5.0] – 27/09/2026
 
-- Ajout : physique du relief (pente, poids, dévers, hauteur du kart).
+- Ajout : circuits décrits en fichiers JSON (coins, rayons, altitude, dévers).
+- Ajout : relief : côtes, descentes et virages relevés, qui changent la vitesse.
+- Ajout : circuit La Colline.
 
 ## [0.4.1] – 27/09/2026
 
