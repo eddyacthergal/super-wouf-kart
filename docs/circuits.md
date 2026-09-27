@@ -34,6 +34,10 @@ mètres environ (murs, grille de départ, rangées de boîtes d'objets, trajecto
 aperçu de l'écran de choix et décor en dérivent). `surfaceAt(s, lateral)` (`surface.ts`) donne la
 hauteur et la pente du sol de la piste en un point quelconque, haies comprises.
 
+Les cinq circuits du catalogue (Grand Jardin, Potager, Parc enneigé, Plage au couchant, La Colline)
+ont tous du relief : altitude et virages relevés, dans l'esprit propre à chacun (vallon et épingle
+en hauteur, bosse et plongée, piste de luge, dunes en bord de mer…). Aucun n'est plat.
+
 ## Le format JSON d'un circuit
 
 ```jsonc
