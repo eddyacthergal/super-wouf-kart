@@ -37,6 +37,11 @@ export interface RaceSimulationOptions {
    * sans l'effet du trafic.
    */
   slipstream?: boolean;
+  /**
+   * Boîtes d'objets sur la piste (vrai par défaut) ; un test peut les retirer pour mesurer un
+   * autre mécanisme sans les objets.
+   */
+  items?: boolean;
 }
 
 /** Rubber band : écart de progression (m) qui donne la pleine correction de vitesse… */
@@ -73,7 +78,7 @@ export class RaceSimulation {
     this.track = track;
     this.rng = options.rng;
     this.slipstreamEnabled = options.slipstream ?? true;
-    this.state = createRaceState(track, entries, { laps: options.laps });
+    this.state = createRaceState(track, entries, { laps: options.laps, items: options.items });
     this.effectiveTunings = this.state.racers.map((racer) => ({ ...racer.tuning }));
     this.kartEmitters = this.state.racers.map(
       (racer) => (event: KartEvent) => this.events?.push({ ...event, racerId: racer.id }),

@@ -102,6 +102,12 @@ describe('createRaceState', () => {
     expect(race.itemBoxes.every((box) => box.respawn === 0)).toBe(true);
   });
 
+  it('items: false ne pose aucune boîte ; par défaut, ou explicitement à vrai, elles restent posées', () => {
+    expect(createRaceState(track, roster, { items: false }).itemBoxes).toEqual([]);
+    expect(createRaceState(track, roster, { items: true }).itemBoxes).toHaveLength(12);
+    expect(createRaceState(track, roster).itemBoxes).toHaveLength(12);
+  });
+
   it('pose les karts sur la route, même quand le départ est en altitude', () => {
     const track = createCircleTrack(300, 'left', { height: 5 });
     const race = createRaceState(track, roster);

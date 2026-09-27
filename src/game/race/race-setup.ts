@@ -11,6 +11,11 @@ import { computeRanks } from './ranking';
 export interface RaceOptions {
   /** Nombre de tours (RACE_LAPS par défaut). */
   laps?: number;
+  /**
+   * Boîtes d'objets sur la piste (vrai par défaut) ; un test peut les retirer pour mesurer un
+   * autre mécanisme sans les objets.
+   */
+  items?: boolean;
 }
 
 export function createRaceState(
@@ -29,7 +34,7 @@ export function createRaceState(
     racers,
     playerId: player?.id ?? -1,
     items: [],
-    itemBoxes: createItemBoxes(track),
+    itemBoxes: options.items === false ? [] : createItemBoxes(track),
     nextEntityId: 1,
     finishOrder: [],
   };
