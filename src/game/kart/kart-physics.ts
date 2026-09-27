@@ -250,6 +250,7 @@ function tickTimers(kart: KartState, dt: number): void {
   kart.hopTime = Math.max(0, kart.hopTime - dt);
   kart.spinTime = Math.max(0, kart.spinTime - dt);
   kart.stunTime = Math.max(0, kart.stunTime - dt);
+  kart.collarTime = Math.max(0, kart.collarTime - dt);
   if (kart.boostTime > 0) {
     kart.boostTime = Math.max(0, kart.boostTime - dt);
     if (kart.boostTime === 0) kart.boostStrength = 1;
@@ -361,10 +362,12 @@ function stepSpeed(kart: KartState, input: DriverInput, tuning: KartTuning, dt: 
     SLOPE_FACTOR_MIN,
     SLOPE_FACTOR_MAX,
   );
+  const collar = kart.collarTime > 0;
   const maxSpeed =
     tuning.maxSpeed *
     (boosting ? kart.boostStrength : 1) *
-    (kart.offroad && !boosting ? tuning.offroadFactor : 1) *
+    (collar ? ITEMS.collarSpeedFactor : 1) *
+    (kart.offroad && !boosting && !collar ? tuning.offroadFactor : 1) *
     slopeFactor;
 
   if (input.brake) {

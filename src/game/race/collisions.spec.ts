@@ -157,6 +157,30 @@ describe('resolveKartCollisions', () => {
     expect(pairs).toContain('1-2');
   });
 
+  it('le porteur du super-collier fait partir l’autre en tête-à-queue sans ralentir', () => {
+    const holder = createTestRacer(0, { x: 0, z: 0 }, 0);
+    const other = createTestRacer(1, { x: 0, z: 1.5 }, 0);
+    holder.kart.speed = 30;
+    other.kart.speed = 10;
+    holder.kart.collarTime = 3;
+    const events: GameEvent[] = [];
+    resolveKartCollisions([holder, other], (e) => events.push(e));
+    expect(other.kart.spinTime).toBeGreaterThan(0);
+    expect(holder.kart.speed).toBe(30);
+    expect(events).toContainEqual({ type: 'hit', racerId: 1, by: 'super-collar', ownerId: 0 });
+  });
+
+  it('deux porteurs du super-collier : simple choc, pas de tête-à-queue', () => {
+    const a = createTestRacer(0, { x: 0, z: 0 }, 0);
+    const b = createTestRacer(1, { x: 0, z: 1.5 }, 0);
+    a.kart.speed = 30;
+    a.kart.collarTime = 3;
+    b.kart.collarTime = 3;
+    resolveKartCollisions([a, b], () => undefined);
+    expect(a.kart.spinTime).toBe(0);
+    expect(b.kart.spinTime).toBe(0);
+  });
+
   it('centres confondus : séparation déterministe, sans NaN', () => {
     const a = createTestRacer(0, { x: 5, z: 5 }, 0.3);
     const b = createTestRacer(1, { x: 5, z: 5 }, 0.3);

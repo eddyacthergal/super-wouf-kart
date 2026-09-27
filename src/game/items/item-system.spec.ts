@@ -174,8 +174,8 @@ describe('boîtes et roulette', () => {
     leader.kart.position = clone(race.itemBoxes[0].position);
     last.kart.position = clone(race.itemBoxes[4].position);
 
-    // Tirage à mi-hauteur : flaque pour le premier (poids 40|40|5|10|0|0, seuil à 47,5 dans la flaque),
-    // croquette turbo pour le dernier (poids 10|5|20|15|15|8, seuil à 36,5 dans la croquette).
+    // Tirage à mi-hauteur : flaque pour le premier (poids 40|40|5|10|0|0|0, seuil à 47,5 dans la flaque),
+    // croquette turbo pour le dernier (poids 10|5|20|15|15|8|12, seuil à 42,5 dans la croquette).
     stepItems(race, track, fixedRng(0.5), FIXED_DT, () => undefined);
     expect(leader.items).toEqual(['mud']);
     expect(last.items).toEqual(['kibble-turbo']);
@@ -865,6 +865,28 @@ describe('sifflet', () => {
     useItem(race, leader, track, false, () => undefined);
     expect(leader.items).toEqual([]);
     for (const other of others) expect(other.kart.stunTime).toBe(0);
+  });
+});
+
+describe('super-collier', () => {
+  it('rend insensible aux os et au sifflet pendant 6 s', () => {
+    const track = createCircleTrack(STRAIGHT_RADIUS);
+    const race = createTestRace(track, 2);
+    const [thrower, victim] = race.racers;
+    placeOnTrack(thrower, track, 100);
+    placeOnTrack(victim, track, 130);
+    victim.items = ['super-collar'];
+    useItem(race, victim, track, false, () => undefined);
+    expect(victim.kart.collarTime).toBe(ITEMS.collarDuration);
+    thrower.items = ['bone'];
+    const { events, emit } = recorder();
+    useItem(race, thrower, track, false, emit);
+    stepUntil(race, track, emit, 90, () => false);
+    expect(hits(events)).toEqual([]);
+    [victim.rank, thrower.rank] = [1, 2];
+    thrower.items = ['whistle'];
+    useItem(race, thrower, track, false, emit);
+    expect(victim.kart.stunTime).toBe(0);
   });
 });
 

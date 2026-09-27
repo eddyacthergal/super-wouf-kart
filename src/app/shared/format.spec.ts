@@ -73,6 +73,8 @@ describe('noms', () => {
     expect(itemHint('golden-bone')).toBe('Turbo à chaque appui, 7 s');
     expect(itemName('whistle')).toBe('Sifflet');
     expect(itemHint('whistle')).toBe('Arrête net les chiens devant');
+    expect(itemName('super-collar')).toBe('Super-collier');
+    expect(itemHint('super-collar')).toBe('Invincible 6 s');
   });
 
   it('joinWithEt énumère à la française', () => {

@@ -54,6 +54,7 @@ const ITEM_NAMES: Readonly<Record<ItemKind, string>> = {
   'kibble-turbo': 'Croquette turbo',
   'golden-bone': 'Os en or',
   whistle: 'Sifflet',
+  'super-collar': 'Super-collier',
 };
 
 export function itemName(kind: ItemKind): string {
@@ -68,6 +69,7 @@ const ITEM_HINTS: Readonly<Record<ItemKind, string>> = {
   'kibble-turbo': 'Coup de turbo',
   'golden-bone': 'Turbo à chaque appui, 7 s',
   whistle: 'Arrête net les chiens devant',
+  'super-collar': 'Invincible 6 s',
 };
 
 export function itemHint(kind: ItemKind): string {

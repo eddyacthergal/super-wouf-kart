@@ -16,6 +16,7 @@ export function createKartState(position: Vec2, heading: number, trackIndex = 0)
     hopTime: 0,
     spinTime: 0,
     stunTime: 0,
+    collarTime: 0,
     offroad: false,
     wallContact: false,
     visualYaw: 0,

@@ -161,12 +161,21 @@ export function useItem(
       emit({ type: 'boost', racerId: racer.id, source: 'item' });
       break;
     case 'whistle':
-      // Tous les pilotes mieux classés s'arrêtent net pour écouter.
+      // Tous les pilotes mieux classés s'arrêtent net pour écouter (sauf sous super-collier).
       for (const other of race.racers) {
-        if (other.id === racer.id || other.finished || other.rank >= racer.rank) continue;
+        if (
+          other.id === racer.id ||
+          other.finished ||
+          other.rank >= racer.rank ||
+          other.kart.collarTime > 0
+        )
+          continue;
         other.kart.stunTime = ITEMS.whistleStun;
         emit({ type: 'stun', racerId: other.id, ownerId: racer.id });
       }
+      break;
+    case 'super-collar':
+      racer.kart.collarTime = ITEMS.collarDuration;
       break;
   }
 }
@@ -377,8 +386,8 @@ function collideWithRacers(race: RaceState, emit: EmitEvent): void {
     const hitRadiusSq = (KART_RADIUS + entityRadius(entity.kind)) ** 2;
     for (const racer of race.racers) {
       if (racer.id === entity.ownerId && entity.armTime > 0) continue;
-      // Pilote invulnérable : les projectiles le traversent, la flaque reste en place.
-      if (racer.hitImmunity > 0) continue;
+      // Pilote invulnérable (ou sous super-collier) : les projectiles le traversent, la flaque reste en place.
+      if (racer.hitImmunity > 0 || racer.kart.collarTime > 0) continue;
       if (sweptDistanceSq(racer.kart.position, entity) >= hitRadiusSq) continue;
       applySpinOut(racer.kart);
       racer.hitImmunity = ITEMS.hitImmunity;

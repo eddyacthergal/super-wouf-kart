@@ -125,6 +125,8 @@ export class Effects {
   /** Notes de musique au-dessus des karts arrêtés par un sifflet. */
   private readonly noteHeads: THREE.InstancedMesh;
   private readonly noteStems: THREE.InstancedMesh;
+  /** Halo doré autour de chaque kart porteur du super-collier. */
+  private readonly collarHalos: THREE.InstancedMesh;
   /** Flammes de chaque pilote : un groupe par pot d'échappement. */
   private readonly flames = new Map<number, THREE.Group[]>();
   private readonly emitters = new Map<number, Emitter>();
@@ -197,6 +199,25 @@ export class Effects {
     this.noteStems.frustumCulled = false;
     this.noteStems.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.group.add(this.noteStems);
+
+    this.collarHalos = new THREE.InstancedMesh(
+      bag.add(new THREE.TorusGeometry(1.35, 0.07, 8, 32).rotateX(Math.PI / 2)),
+      bag.add(
+        new THREE.MeshBasicMaterial({
+          color: '#ffd23f',
+          transparent: true,
+          opacity: 0.85,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+        }),
+      ),
+      Math.max(1, racers.list.length),
+    );
+    this.collarHalos.name = 'collar-halos';
+    this.collarHalos.count = 0;
+    this.collarHalos.frustumCulled = false;
+    this.collarHalos.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    this.group.add(this.collarHalos);
 
     const outer = bag.add(flameGeometry(0.14, 0.75));
     const inner = bag.add(flameGeometry(0.08, 0.5));
@@ -323,6 +344,7 @@ export class Effects {
   update(state: RaceState, racers: RacerVisuals, dt: number, time: number): void {
     let stars = 0;
     let notes = 0;
+    let halos = 0;
     for (const racer of state.racers) {
       const visual = racers.get(racer.id);
       const emitter = this.emitters.get(racer.id);
@@ -431,6 +453,17 @@ export class Effects {
         this.noteStems.setMatrixAt(notes, this.matrix);
         notes++;
       }
+
+      // Halo doré autour d'un kart porteur du super-collier.
+      if (kart.collarTime > 0 && halos < this.collarHalos.instanceMatrix.count) {
+        this.point.set(visual.position.x, visual.position.y + 0.55, visual.position.z);
+        this.quaternion.setFromEuler(this.euler.set(0, time * 4, 0));
+        this.scale.setScalar(1 + Math.sin(time * 10) * 0.05);
+        this.collarHalos.setMatrixAt(
+          halos++,
+          this.matrix.compose(this.point, this.quaternion, this.scale),
+        );
+      }
     }
     this.stars.count = stars;
     if (stars > 0) this.stars.instanceMatrix.needsUpdate = true;
@@ -440,6 +473,8 @@ export class Effects {
       this.noteHeads.instanceMatrix.needsUpdate = true;
       this.noteStems.instanceMatrix.needsUpdate = true;
     }
+    this.collarHalos.count = halos;
+    if (halos > 0) this.collarHalos.instanceMatrix.needsUpdate = true;
 
     this.glow.update(dt);
     this.soft.update(dt);

@@ -126,6 +126,20 @@ export function whistle(voice: Voice): void {
   });
 }
 
+/** Super-collier : arpège montant et brillant. */
+export function collarChime(voice: Voice): void {
+  [660, 880, 1100, 1320].forEach((freq, i) =>
+    voice.tone({
+      type: 'triangle',
+      freq,
+      duration: 0.14,
+      peak: 0.14,
+      attack: 0.005,
+      delay: i * 0.06,
+    }),
+  );
+}
+
 /** « Whoosh » : objet lancé ou utilisé. */
 export function itemWhoosh(voice: Voice): void {
   voice.noise({

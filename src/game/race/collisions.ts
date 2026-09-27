@@ -4,6 +4,7 @@
  * de la nouvelle vitesse le long du cap est conservée.
  */
 import { KART_RADIUS } from '../core/constants';
+import { applySpinOut } from '../core/kart-state';
 import type { EmitEvent, KartState, RacerState } from '../core/types';
 import { clamp } from '../core/vec2';
 
@@ -44,6 +45,19 @@ export function resolveKartCollisions(racers: readonly RacerState[], emit: EmitE
       const inverseB = 1 / Math.max(b.tuning.mass, MIN_MASS);
       const inverseSum = inverseA + inverseB;
 
+      // Super-collier : l'autre part en tête-à-queue, le porteur garde sa vitesse.
+      const collarA = a.kart.collarTime > 0;
+      const collarB = b.kart.collarTime > 0;
+      const holder = collarA !== collarB ? (collarA ? a : b) : null;
+      const holderSpeed = holder?.kart.speed ?? 0;
+      if (holder) {
+        const victim = holder === a ? b : a;
+        if (victim.kart.spinTime <= 0) {
+          applySpinOut(victim.kart);
+          emit({ type: 'hit', racerId: victim.id, by: 'super-collar', ownerId: holder.id });
+        }
+      }
+
       separate(
         a.kart,
         b.kart,
@@ -55,6 +69,7 @@ export function resolveKartCollisions(racers: readonly RacerState[], emit: EmitE
       );
 
       const closing = exchangeImpulse(a.kart, b.kart, nx, nz, inverseA, inverseB);
+      if (holder) holder.kart.speed = holderSpeed;
       if (closing > BUMP_MIN_SPEED) {
         emit({
           type: 'bump',

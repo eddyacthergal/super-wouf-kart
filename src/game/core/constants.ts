@@ -138,6 +138,10 @@ export const ITEMS = {
   whistleStun: 1,
   /** Sifflet : décélération pendant l'arrêt net (m/s²). */
   stunDeceleration: 30,
+  /** Super-collier : durée de l'invincibilité et de la vitesse max majorée (s). */
+  collarDuration: 6,
+  /** Super-collier : multiplicateur de vitesse max pendant sa durée. */
+  collarSpeedFactor: 1.15,
 } as const;
 
 /** Aspiration : rouler dans le sillage d'un kart remplit une jauge, puis donne un turbo. */

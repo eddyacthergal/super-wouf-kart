@@ -234,6 +234,7 @@ export class AudioEngine {
         return;
       case 'item-use':
         if (event.item === 'whistle') sfx.whistle(this.startVoice(graph));
+        else if (event.item === 'super-collar') sfx.collarChime(this.startVoice(graph));
         else sfx.itemWhoosh(this.startVoice(graph));
         return;
       case 'lap':

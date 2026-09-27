@@ -113,6 +113,15 @@ import type { ItemKind } from '../../../../game/core/types';
           />
           <circle cx="15" cy="27" r="3" fill="#44515c" />
         }
+        @case ('super-collar') {
+          <circle cx="24" cy="22" r="13" fill="none" stroke="#f5c542" stroke-width="5" />
+          <path
+            d="M24 33 l3 6 6 1 -4.5 4 1 6 -5.5 -3 -5.5 3 1 -6 -4.5 -4 6 -1z"
+            fill="#ffe27a"
+            stroke="#8a6a12"
+            stroke-width="1.2"
+          />
+        }
       }
     </svg>
   `,

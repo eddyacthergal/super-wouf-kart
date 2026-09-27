@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DRIFT, FIXED_DT, KART_RADIUS, PHYSICS, ROAD_HALF_WIDTH } from '../core/constants';
+import { DRIFT, FIXED_DT, ITEMS, KART_RADIUS, PHYSICS, ROAD_HALF_WIDTH } from '../core/constants';
 import { applyBoost, applySpinOut, createKartState } from '../core/kart-state';
 import {
   NEUTRAL_INPUT,
@@ -859,6 +859,27 @@ describe('stepKart — sifflet', () => {
     expect(kart.boostTime).toBeGreaterThan(1);
     run(kart, 0.6, { throttle: true });
     expect(kart.stunTime).toBe(0);
+  });
+});
+
+describe('stepKart — super-collier', () => {
+  it('relève la vitesse de croisière au-delà de 1,1 × maxSpeed', () => {
+    const kart = kartOn(STRAIGHT, 0);
+    run(kart, 8, (k) => {
+      k.collarTime = ITEMS.collarDuration;
+      return { throttle: true, steer: followLine(k, STRAIGHT) };
+    });
+    expect(kart.speed).toBeGreaterThan(1.1 * TEST_TUNING.maxSpeed);
+  });
+
+  it('annule le malus du bas-côté : la vitesse reste au-dessus de 0,95 × maxSpeed', () => {
+    const kart = kartOn(STRAIGHT, 0, 8.5);
+    run(kart, 8, (k) => {
+      k.collarTime = ITEMS.collarDuration;
+      return { throttle: true, steer: followLine(k, STRAIGHT, 8.5) };
+    });
+    expect(kart.offroad).toBe(true);
+    expect(kart.speed).toBeGreaterThan(0.95 * TEST_TUNING.maxSpeed);
   });
 });
 

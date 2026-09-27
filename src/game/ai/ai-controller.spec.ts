@@ -842,6 +842,13 @@ describe('AiController', () => {
       expect(scenario({ item: 'whistle', overrides: { rank: 1 } }).firstUse(2)).toBeNull();
     });
 
+    it('super-collier : utilisé entre 0,5 et 1,5 s', () => {
+      const time = scenario({ item: 'super-collar' }).firstUse(2);
+      expect(time).not.toBeNull();
+      expect(time).toBeGreaterThanOrEqual(0.5);
+      expect(time).toBeLessThanOrEqual(1.5);
+    });
+
     it('aucun usage pendant la roulette', () => {
       expect(
         scenario({ item: 'kibble-turbo', overrides: { itemRoulette: 1 } }).firstUse(5),
