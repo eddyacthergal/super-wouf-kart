@@ -2,11 +2,13 @@ import * as THREE from 'three';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { TrackQuery } from '../core/types';
 import { createCircleTrack } from '../testing/fake-track';
+import { createHillyTrack } from '../testing/hilly-track';
 import { createGardenTrack } from '../track/track';
 import { DECOR_CORRIDOR_MARGIN, planDecor } from './decor-plan';
 import { buildGardenWorld, type GardenWorld } from './garden-world';
 import { buildHedges, HEDGE_CENTER_OFFSET } from './hedges';
 import { DisposalBag } from './resources';
+import { createTerrain } from './terrain';
 
 /** Distance à la ligne médiane, calculée indépendamment du code testé (segments entre échantillons). */
 function centerlineDistance(track: TrackQuery, x: number, z: number): number {
@@ -451,5 +453,46 @@ describe('buildGardenWorld', () => {
     local.dispose();
     for (const spy of spies) expect(spy).toHaveBeenCalled();
     expect(local.root.parent).toBeNull();
+  });
+});
+
+describe('monde en relief', () => {
+  it('circuit plat : pas de maillage de relief, pelouse à 0 comme avant', () => {
+    const world = buildGardenWorld(createGardenTrack());
+    expect(world.root.getObjectByName('terrain')).toBeUndefined();
+    expect(world.root.getObjectByName('lawn')!.position.y).toBe(0);
+    world.dispose();
+  });
+
+  it('circuit vallonné : maillage de relief et route à la hauteur de la piste', () => {
+    const track = createHillyTrack();
+    const world = buildGardenWorld(track);
+    const terrain = world.root.getObjectByName('terrain') as THREE.Mesh;
+    expect(terrain).toBeDefined();
+    const road = world.root.getObjectByName('road') as THREE.Mesh;
+    const positions = road.geometry.getAttribute('position');
+    let highest = -Infinity;
+    for (let i = 0; i < positions.count; i++) highest = Math.max(highest, positions.getY(i));
+    expect(highest).toBeGreaterThan(7);
+    world.dispose();
+  });
+
+  // Repère explicite (0, 0) : centre de l'infield du stade, largement accepté par le planificateur
+  // de décor (marge de dégagement ≈ 44 m pour un rayon minimal requis de 18 m).
+  it('le décor est posé sur le relief', () => {
+    const track = createHillyTrack();
+    const terrain = createTerrain(track);
+    const world = buildGardenWorld(
+      track,
+      { landmarks: [{ kind: 'doghouse', x: 0, z: 0, radius: 5.5 }] },
+      undefined,
+      terrain,
+    );
+    world.root.updateMatrixWorld(true);
+    const doghouse = world.root.getObjectByName('doghouse');
+    expect(doghouse).toBeDefined();
+    const p = doghouse!.getWorldPosition(new THREE.Vector3());
+    expect(p.y).toBeCloseTo(terrain.groundAt(p.x, p.z), 3);
+    world.dispose();
   });
 });

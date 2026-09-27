@@ -26,6 +26,17 @@ export const TRACK_RULES = {
   /** Rangées de boîtes d'objets : au moins ce nombre, espacées d'au moins `itemRowGap` m. */
   itemRows: 3,
   itemRowGap: 100,
+  /** Pente maximale (0,2 = 20 %) : au-delà, la côte bloque et la descente jette dans les haies. */
+  maxGrade: 0.2,
+  /** Dévers maximal (degrés). */
+  maxBank: 20,
+  /** Altitude de la ligne médiane (m) : le sol de base est à 0, le brouillard cache au-delà de 25 m. */
+  minHeight: 0,
+  maxHeight: 25,
+  /** Pente maximale autour du départ (sur straightBefore / straightAfter) : la grille est à plat. */
+  startMaxGrade: 0.02,
+  /** Rayon vertical minimal (m) d'un sommet de côte : pas de décollage tant que les sauts n'existent pas. */
+  minCrestRadius: 40,
 } as const;
 
 export interface TrackIssue {
@@ -109,6 +120,56 @@ export function validateTrack(track: TrackQuery): TrackIssue[] {
       message: `Le circuit dépasse la zone de jeu : ${Math.round(extent + track.wallHalfWidth)} m > ${R.maxExtent} m.`,
     });
   }
+
+  const steepest = samples.reduce((max, sample) => Math.max(max, Math.abs(sample.grade)), 0);
+  if (steepest > R.maxGrade)
+    issues.push({
+      rule: 'maxGrade',
+      message: `Pente trop forte : ${(steepest * 100).toFixed(1)} % > ${R.maxGrade * 100} %.`,
+    });
+
+  const bankiest = samples.reduce((max, sample) => Math.max(max, Math.abs(sample.bank)), 0);
+  if (bankiest > (R.maxBank * Math.PI) / 180 + 1e-9)
+    issues.push({
+      rule: 'maxBank',
+      message: `Dévers trop fort : ${((bankiest * 180) / Math.PI).toFixed(1)}° > ${R.maxBank}°.`,
+    });
+
+  const lowest = Math.min(...samples.map((sample) => sample.height));
+  const highest = Math.max(...samples.map((sample) => sample.height));
+  if (lowest < R.minHeight - 1e-9)
+    issues.push({
+      rule: 'minHeight',
+      message: `Altitude trop basse : ${lowest.toFixed(1)} m < ${R.minHeight} m.`,
+    });
+  if (highest > R.maxHeight + 1e-9)
+    issues.push({
+      rule: 'maxHeight',
+      message: `Altitude trop haute : ${highest.toFixed(1)} m > ${R.maxHeight} m.`,
+    });
+
+  for (let s = -R.straightBefore; s <= R.straightAfter; s += 1) {
+    const grade = track.sampleAt(s).grade;
+    if (Math.abs(grade) > R.startMaxGrade) {
+      issues.push({
+        rule: 'startMaxGrade',
+        message: `Départ en pente : ${(grade * 100).toFixed(1)} % > ${R.startMaxGrade * 100} % à ${s} m de la ligne.`,
+      });
+      break;
+    }
+  }
+
+  // Sommet de côte : la pente diminue ; rayon vertical = 1 / |dpente/ds|.
+  let sharpestCrest = 0;
+  for (let i = 0; i < n; i++) {
+    const change = (samples[(i + 1) % n].grade - samples[(i - 1 + n) % n].grade) / (2 * step);
+    if (change < 0) sharpestCrest = Math.max(sharpestCrest, -change);
+  }
+  if (sharpestCrest > 1 / R.minCrestRadius)
+    issues.push({
+      rule: 'minCrestRadius',
+      message: `Sommet de côte trop vif : rayon ${(1 / sharpestCrest).toFixed(1)} m < ${R.minCrestRadius} m.`,
+    });
 
   const rows = [...track.itemBoxRows].sort((a, b) => a - b);
   const rowGaps = rows.map((row, k) => {

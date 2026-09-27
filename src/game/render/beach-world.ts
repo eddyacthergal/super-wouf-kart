@@ -25,6 +25,7 @@ import {
 } from './garden-world';
 import { type DisposalBag, paintedMaterial } from './resources';
 import type { SceneTheme } from './scene-theme';
+import { FLAT_TERRAIN, type Terrain } from './terrain';
 import { createGravelTexture, createMulchTexture } from './textures';
 
 /** La mer commence à cette distance (m) au-delà de la clôture, côté +Z. */
@@ -90,7 +91,11 @@ function byKind(placements: readonly DecorPlacement[], kind: DecorKind): DecorPl
 }
 
 /** Palmiers : troncs courbés fixes, couronnes qui se balancent au vent. */
-function buildPalms(palms: readonly DecorPlacement[], bag: DisposalBag): WorldPart {
+function buildPalms(
+  palms: readonly DecorPlacement[],
+  bag: DisposalBag,
+  terrain: Terrain = FLAT_TERRAIN,
+): WorldPart {
   const material = bag.add(paintedMaterial(0.8));
   const trunkGeometry = bag.add(palmTrunkGeometry());
   const crownGeometry = bag.add(palmCrownGeometry());
@@ -110,16 +115,17 @@ function buildPalms(palms: readonly DecorPlacement[], bag: DisposalBag): WorldPa
   const scale = new THREE.Vector3();
   palms.forEach((palm, i) => {
     const h = palm.size;
+    const ground = terrain.groundAt(palm.x, palm.z);
     quaternion.setFromEuler(euler.set(0, palm.rotation, 0));
     trunks.setMatrixAt(
       i,
-      matrix.compose(new THREE.Vector3(palm.x, 0, palm.z), quaternion, scale.setScalar(h)),
+      matrix.compose(new THREE.Vector3(palm.x, ground, palm.z), quaternion, scale.setScalar(h)),
     );
     // Sommet du tronc courbé (voir palmTrunkGeometry : décalage de 0,18 h vers l'avant).
     tops.push(
       new THREE.Vector3(
         palm.x + Math.sin(palm.rotation) * h * 0.18,
-        h,
+        ground + h,
         palm.z + Math.cos(palm.rotation) * h * 0.18,
       ),
     );
@@ -142,7 +148,11 @@ function buildPalms(palms: readonly DecorPlacement[], bag: DisposalBag): WorldPa
 }
 
 /** Parasols (une géométrie par couleur), ballons et pièces uniques de la plage. */
-function buildBeachProps(placements: readonly DecorPlacement[], bag: DisposalBag): WorldPart {
+function buildBeachProps(
+  placements: readonly DecorPlacement[],
+  bag: DisposalBag,
+  terrain: Terrain = FLAT_TERRAIN,
+): WorldPart {
   const material = bag.add(paintedMaterial(0.7));
   const group = new THREE.Group();
   group.name = 'beach-props';
@@ -162,7 +172,7 @@ function buildBeachProps(placements: readonly DecorPlacement[], bag: DisposalBag
     y = 0,
     yaw = placement.rotation,
   ): void => {
-    mesh.position.set(placement.x, y, placement.z);
+    mesh.position.set(placement.x, terrain.groundAt(placement.x, placement.z) + y, placement.z);
     mesh.rotation.y = yaw;
     mesh.castShadow = true;
     mesh.receiveShadow = true;
@@ -277,7 +287,7 @@ function buildSea(shoreZ: number, centerX: number, bag: DisposalBag): WorldPart 
 }
 
 /** Éléments propres à la plage, posés d'après le plan de décor. */
-function beachExtras({ plan, bounds, bag }: WorldContext): WorldPart[] {
+function beachExtras({ plan, bounds, bag, terrain }: WorldContext): WorldPart[] {
   const shoreZ = plan.fence.maxZ + SHORE_GAP;
   const centerX = (bounds.minX + bounds.maxX) / 2;
   const centerZ = (bounds.minZ + bounds.maxZ) / 2;
@@ -286,10 +296,10 @@ function beachExtras({ plan, bounds, bag }: WorldContext): WorldPart[] {
   const dry = plan.placements.filter((placement) => placement.z + placement.radius < shoreZ - 4);
   return [
     buildSea(shoreZ, centerX, bag),
-    buildPalms(byKind(dry, 'palm'), bag),
-    buildBeachProps(dry, bag),
-    buildCrabs(byKind(dry, 'crab'), bag),
-    buildGulls({ x: centerX, z: centerZ + 40 }, reach, bag),
+    buildPalms(byKind(dry, 'palm'), bag, terrain),
+    buildBeachProps(dry, bag, terrain),
+    buildCrabs(byKind(dry, 'crab'), bag, terrain),
+    buildGulls({ x: centerX, z: centerZ + 40 }, reach, bag, terrain),
     buildDolphins(shoreZ, centerX, bag),
   ];
 }
@@ -339,5 +349,5 @@ export const BEACH_THEME: SceneTheme = {
     sunIntensity: 2.6,
   },
   clouds: BEACH_STYLE.clouds,
-  buildWorld: (track, decor) => buildGardenWorld(track, decor, BEACH_STYLE),
+  buildWorld: (track, decor, terrain) => buildGardenWorld(track, decor, BEACH_STYLE, terrain),
 };

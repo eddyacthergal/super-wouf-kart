@@ -24,7 +24,10 @@ export const sub = (a: Vec2, b: Vec2): Vec2 => ({ x: a.x - b.x, z: a.z - b.z });
 export const scale = (a: Vec2, k: number): Vec2 => ({ x: a.x * k, z: a.z * k });
 
 /** a + b * k */
-export const addScaled = (a: Vec2, b: Vec2, k: number): Vec2 => ({ x: a.x + b.x * k, z: a.z + b.z * k });
+export const addScaled = (a: Vec2, b: Vec2, k: number): Vec2 => ({
+  x: a.x + b.x * k,
+  z: a.z + b.z * k,
+});
 
 export const dot = (a: Vec2, b: Vec2): number => a.x * b.x + a.z * b.z;
 
@@ -44,10 +47,16 @@ export function normalize(a: Vec2): Vec2 {
   return len > 1e-9 ? { x: a.x / len, z: a.z / len } : { x: 0, z: 0 };
 }
 
-export const lerp = (a: Vec2, b: Vec2, t: number): Vec2 => ({ x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t });
+export const lerp = (a: Vec2, b: Vec2, t: number): Vec2 => ({
+  x: a.x + (b.x - a.x) * t,
+  z: a.z + (b.z - a.z) * t,
+});
 
 /** Vecteur « avant » pour un cap θ. */
-export const forwardOf = (heading: number): Vec2 => ({ x: Math.sin(heading), z: Math.cos(heading) });
+export const forwardOf = (heading: number): Vec2 => ({
+  x: Math.sin(heading),
+  z: Math.cos(heading),
+});
 
 /** Vecteur « gauche du pilote » pour un cap θ. */
 export const leftOf = (heading: number): Vec2 => ({ x: Math.cos(heading), z: -Math.sin(heading) });
@@ -70,7 +79,8 @@ export function wrapAngle(a: number): number {
 /** Interpolation d'angle par le plus court chemin. */
 export const lerpAngle = (a: number, b: number, t: number): number => a + wrapAngle(b - a) * t;
 
-export const clamp = (v: number, min: number, max: number): number => (v < min ? min : v > max ? max : v);
+export const clamp = (v: number, min: number, max: number): number =>
+  v < min ? min : v > max ? max : v;
 
 /** Rapproche `current` de `target` d'au plus `maxDelta`. */
 export function approach(current: number, target: number, maxDelta: number): number {

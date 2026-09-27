@@ -15,6 +15,7 @@ import {
 import type { DecorPlacement } from './decor-plan';
 import type { WorldPart } from './garden-world';
 import { type DisposalBag, paintedMaterial } from './resources';
+import { FLAT_TERRAIN, type Terrain } from './terrain';
 
 const GULLS = 10;
 const DOLPHINS = 3;
@@ -39,7 +40,9 @@ export function buildGulls(
   center: { x: number; z: number },
   reach: number,
   bag: DisposalBag,
+  terrain: Terrain = FLAT_TERRAIN,
 ): WorldPart {
+  const ground = terrain.groundAt(center.x, center.z);
   const rng = createRng(0x9011);
   const material = bag.add(paintedMaterial(0.8));
   const body = bag.add(gullBodyGeometry());
@@ -74,7 +77,7 @@ export function buildGulls(
       const angle = gull.phase + time * gull.speed;
       const x = gull.cx + Math.cos(angle) * gull.radius;
       const z = gull.cz + Math.sin(angle) * gull.radius;
-      const y = gull.height + Math.sin(time * 0.5 + gull.phase) * 2;
+      const y = ground + gull.height + Math.sin(time * 0.5 + gull.phase) * 2;
       gull.node.position.set(x, y, z);
       // Cap tangent au cercle, légère inclinaison dans le virage.
       const direction = Math.sign(gull.speed);
@@ -100,13 +103,19 @@ interface Crab {
   claws: [THREE.Object3D, THREE.Object3D];
   x: number;
   z: number;
+  /** Hauteur du sol sous le crabe (relief). */
+  ground: number;
   yaw: number;
   phase: number;
   stride: number;
 }
 
 /** Crabes du plan de décor : va-et-vient latéral, dandinement, pinces qui claquent. */
-export function buildCrabs(placements: readonly DecorPlacement[], bag: DisposalBag): WorldPart {
+export function buildCrabs(
+  placements: readonly DecorPlacement[],
+  bag: DisposalBag,
+  terrain: Terrain = FLAT_TERRAIN,
+): WorldPart {
   const rng = createRng(0xc4ab);
   const material = bag.add(paintedMaterial(0.55));
   const body = bag.add(crabBodyGeometry());
@@ -137,6 +146,7 @@ export function buildCrabs(placements: readonly DecorPlacement[], bag: DisposalB
       claws,
       x: placement.x,
       z: placement.z,
+      ground: terrain.groundAt(placement.x, placement.z),
       yaw: placement.rotation,
       phase: rng.range(0, Math.PI * 2),
       stride: rng.range(1.5, 3),
@@ -149,7 +159,7 @@ export function buildCrabs(placements: readonly DecorPlacement[], bag: DisposalB
       const offset = Math.sin(t) * crab.stride;
       crab.node.position.set(
         crab.x + Math.cos(crab.yaw) * offset,
-        Math.abs(Math.sin(t * 6)) * 0.08,
+        crab.ground + Math.abs(Math.sin(t * 6)) * 0.08,
         crab.z - Math.sin(crab.yaw) * offset,
       );
       crab.node.rotation.set(0, crab.yaw, Math.sin(t * 6) * 0.05);

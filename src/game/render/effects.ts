@@ -7,11 +7,13 @@
 import * as THREE from 'three';
 import { createRng } from '../core/rng';
 import type { GameEvent, RaceState, TrackQuery } from '../core/types';
+import { REAR_WHEEL } from '../dogs/kart-model';
 import { DRIFT_TIER_COLORS } from './palette';
 import { type ParticleOptions, ParticlePool } from './particles';
 import type { RacerVisual, RacerVisuals } from './racer-visuals';
 import type { DisposalBag } from './resources';
 import { SkidMarks } from './skid-marks';
+import { FLAT_TERRAIN, type Terrain } from './terrain';
 
 const GLOW_CAPACITY = 1600;
 const SOFT_CAPACITY = 1200;
@@ -40,13 +42,20 @@ const SKID_CAPACITY = 1600;
 const SKID_MIN_STEP = 0.35;
 const SKID_MAX_STEP = 5;
 const SKID_COLOR = '#2b2622';
+/**
+ * Écart (m) entre le centre d'une roue arrière et le sol, sous elle : son rayon (`REAR_WHEEL.radius`,
+ * `kart-model.ts`). Sert à déduire le sol à l'aplomb d'une roue arrière depuis sa position monde
+ * (`getWorldPosition`, qui inclut déjà la hauteur, le tangage et le roulis interpolés du kart), sans
+ * appeler `terrain.groundAt` par roue et par image.
+ */
+const WHEEL_GROUND_OFFSET = REAR_WHEEL.radius;
 
 interface Emitter {
   spark: number;
   dust: number;
   flame: number;
   smoke: number;
-  /** Dernier point au sol (x, z) de chaque roue arrière, NaN hors dérapage. */
+  /** Dernier point au sol (x, z, y) de chaque roue arrière, NaN hors dérapage. */
   skid: Float64Array;
 }
 
@@ -118,11 +127,25 @@ export class Effects {
   private readonly euler = new THREE.Euler();
   private readonly hue = new THREE.Color();
   private readonly burstOptions: ParticleOptions = { gravity: 0, drag: 2.5, growth: 0 };
+  // Copies propres à cette instance (jamais les constantes du module) : `floor` y est réglé à
+  // chaque émission selon le relief local, sans risque d'interférence entre plusieurs scènes.
+  private readonly smokeOptions: ParticleOptions = { ...SMOKE_OPTIONS };
+  private readonly dustOptions: ParticleOptions = { ...DUST_OPTIONS };
+  /**
+   * Hauteur du sol à l'aplomb d'un point (relief du circuit, plat par défaut) : réservé aux
+   * événements ponctuels (chocs, objets, étoiles). Les effets par roue et par image (fumée,
+   * poussière, traces, halo) utilisent `wheelGround`, moins coûteux et déjà au fait du tangage et
+   * du roulis du kart.
+   */
+  private readonly ground = (x: number, z: number): number => this.terrain.groundAt(x, z);
+  /** Sol à l'aplomb d'une roue dont la position monde vient d'être lue dans `this.point`. */
+  private readonly wheelGround = (): number => this.point.y - WHEEL_GROUND_OFFSET;
 
   constructor(
     racers: RacerVisuals,
     bag: DisposalBag,
     private readonly track: TrackQuery,
+    private readonly terrain: Terrain = FLAT_TERRAIN,
   ) {
     this.group.name = 'effects';
     this.glow = new ParticlePool(GLOW_CAPACITY, true, bag);
@@ -172,7 +195,7 @@ export class Effects {
         dust: 0,
         flame: 0,
         smoke: 0,
-        skid: new Float64Array(4).fill(Number.NaN),
+        skid: new Float64Array(6).fill(Number.NaN),
       });
     }
   }
@@ -184,18 +207,19 @@ export class Effects {
       const visual = racers.get(event.racerId);
       if (!visual) continue;
       const { x, z } = visual.position;
+      const ground = this.ground(x, z);
       switch (event.type) {
         case 'hit':
-          this.burst(this.glow, x, 0.9, z, 24, HIT, 4, 8, 0.24, 0.45, -6);
-          this.burst(this.soft, x, 0.7, z, 10, PUFF, 1.5, 3, 0.5, 0.55, 0);
+          this.burst(this.glow, x, ground + 0.9, z, 24, HIT, 4, 8, 0.24, 0.45, -6);
+          this.burst(this.soft, x, ground + 0.7, z, 10, PUFF, 1.5, 3, 0.5, 0.55, 0);
           break;
         case 'item-use':
-          this.burst(this.soft, x, 0.8, z, 12, PUFF, 1.5, 3, 0.45, 0.5, 0);
+          this.burst(this.soft, x, ground + 0.8, z, 12, PUFF, 1.5, 3, 0.45, 0.5, 0);
           break;
         case 'item-box':
           for (let i = 0; i < 18; i++) {
             this.hue.setHSL(this.rng.next(), 0.9, 0.62);
-            this.burst(this.glow, x, 1.1, z, 1, this.hue, 3, 6, 0.2, 0.5, -4);
+            this.burst(this.glow, x, ground + 1.1, z, 1, this.hue, 3, 6, 0.2, 0.5, -4);
           }
           break;
         case 'boost': {
@@ -236,11 +260,13 @@ export class Effects {
             }
           }
           const count = 4 + Math.round(event.intensity * 8);
+          const wallPointX = x + wallX * 0.9;
+          const wallPointZ = z + wallZ * 0.9;
           this.burst(
             this.soft,
-            x + wallX * 0.9,
-            0.8,
-            z + wallZ * 0.9,
+            wallPointX,
+            this.ground(wallPointX, wallPointZ) + 0.8,
+            wallPointZ,
             count,
             LEAF,
             1,
@@ -328,7 +354,7 @@ export class Effects {
           const angle = time * 6 + (k / STARS_PER_KART) * Math.PI * 2;
           this.point.set(
             visual.position.x + Math.sin(angle) * 0.7,
-            1.95 + Math.sin(time * 9 + k) * 0.08,
+            visual.position.y + 1.95 + Math.sin(time * 9 + k) * 0.08,
             visual.position.z + Math.cos(angle) * 0.7,
           );
           this.quaternion.setFromEuler(this.euler.set(0, angle * 2, 0));
@@ -405,7 +431,7 @@ export class Effects {
     for (let w = 0; w < wheels.length; w++) {
       wheels[w].getWorldPosition(this.point);
       const size = base * (1 + Math.sin(time * 53 + w * 2.1 + visual.id) * 0.18);
-      const y = Math.max(0.08, this.point.y - 0.18);
+      const y = Math.max(this.wheelGround() + 0.08, this.point.y - 0.18);
       this.soft.emit(
         this.point.x,
         y,
@@ -430,9 +456,11 @@ export class Effects {
     for (const wheel of visual.model.rearWheels) {
       wheel.getWorldPosition(this.point);
       const back = rng.range(1, 2.5);
+      const ground = this.wheelGround();
+      this.smokeOptions.floor = ground + 0.03;
       this.soft.emit(
         this.point.x,
-        0.15,
+        ground + 0.15,
         this.point.z,
         -forwardX * back + rng.range(-0.5, 0.5),
         rng.range(0.3, 0.9),
@@ -440,30 +468,33 @@ export class Effects {
         SMOKE,
         rng.range(0.28, 0.4),
         rng.range(0.4, 0.6),
-        SMOKE_OPTIONS,
+        this.smokeOptions,
       );
     }
   }
 
   /**
-   * Prolonge la trace de chaque roue arrière depuis son dernier point au sol (x, z dans `last`).
+   * Prolonge la trace de chaque roue arrière depuis son dernier point au sol (x, z, y dans `last`).
    * Premier point, ou saut trop grand (image très longue) : on repart de la position actuelle.
    */
   private traceSkids(visual: RacerVisual, last: Float64Array): void {
     const wheels = visual.model.rearWheels;
-    const count = Math.min(wheels.length, last.length / 2);
+    const count = Math.min(wheels.length, last.length / 3);
     for (let w = 0; w < count; w++) {
       wheels[w].getWorldPosition(this.point);
       const x = this.point.x;
       const z = this.point.z;
-      const lastX = last[w * 2];
-      const lastZ = last[w * 2 + 1];
+      const y = this.wheelGround();
+      const lastX = last[w * 3];
+      const lastZ = last[w * 3 + 1];
+      const lastY = last[w * 3 + 2];
       // NaN sans point précédent : les deux comparaisons sont fausses, on pose juste le point.
       const step = Math.hypot(x - lastX, z - lastZ);
       if (step < SKID_MIN_STEP) continue;
-      if (step <= SKID_MAX_STEP) this.skids.add(lastX, lastZ, x, z);
-      last[w * 2] = x;
-      last[w * 2 + 1] = z;
+      if (step <= SKID_MAX_STEP) this.skids.add(lastX, lastZ, x, z, lastY, y);
+      last[w * 3] = x;
+      last[w * 3 + 1] = z;
+      last[w * 3 + 2] = y;
     }
   }
 
@@ -474,9 +505,11 @@ export class Effects {
     for (const wheel of visual.model.rearWheels) {
       wheel.getWorldPosition(this.point);
       const back = rng.range(0.5, 2);
+      const ground = this.wheelGround();
+      this.dustOptions.floor = ground + 0.03;
       this.soft.emit(
         this.point.x + rng.range(-0.2, 0.2),
-        0.2,
+        ground + 0.2,
         this.point.z + rng.range(-0.2, 0.2),
         -forwardX * back + rng.range(-0.6, 0.6),
         rng.range(0.6, 1.6),
@@ -484,7 +517,7 @@ export class Effects {
         DUST,
         rng.range(0.35, 0.55),
         rng.range(0.55, 0.85),
-        DUST_OPTIONS,
+        this.dustOptions,
       );
     }
   }

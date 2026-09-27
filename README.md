@@ -7,20 +7,21 @@ Construit avec **Angular 22** pour l'interface et **three.js** pour la 3D.
 
 ## Fonctionnalités
 
-- **4 circuits dans 3 univers**, au choix après « Jouer » (choix mémorisé) :
+- **5 circuits dans 3 univers**, au choix après « Jouer » (choix mémorisé) :
   - **Grand Jardin** (911 m, jardin) : épingle de la niche, chicane, grande courbe, longue ligne droite de départ ;
   - **Potager** (763 m, jardin) : plus court et sinueux, un S au fond du jardin et l'épingle des salades ;
   - **Parc enneigé** (649 m, neige) : sapins et bonhommes de neige, flocons qui tombent, une longue diagonale et deux épingles ;
-  - **Plage au couchant** (768 m, plage) : le long de la mer, virages en vagues, palmiers, parasols, château de sable ; mouettes, crabes et dauphins animés.
+  - **Plage au couchant** (768 m, plage) : le long de la mer, virages en vagues, palmiers, parasols, château de sable ; mouettes, crabes et dauphins animés ;
+  - **La Colline** (697 m, jardin) : relief, avec une montée, un faux plat, une descente et des virages relevés.
 - **Course de 3 tours à 8 pilotes** : toi contre 7 chiens pilotés par l'ordinateur, compte à rebours, classement en direct, écran de résultats.
 - **4 races**, chacune avec ses statistiques :
 
-  | Race | Vitesse | Accélération | Poids | Maniabilité |
-  |---|---|---|---|---|
-  | Chihuahua | 3 | 5 | 1 | 5 |
-  | Carlin | 4 | 2 | 5 | 3 |
-  | Teckel | 5 | 3 | 4 | 2 |
-  | Jack Russell | 4 | 4 | 3 | 3 |
+  | Race         | Vitesse | Accélération | Poids | Maniabilité |
+  | ------------ | ------- | ------------ | ----- | ----------- |
+  | Chihuahua    | 3       | 5            | 1     | 5           |
+  | Carlin       | 4       | 2            | 5     | 3           |
+  | Teckel       | 5       | 3            | 4     | 2           |
+  | Jack Russell | 4       | 4            | 3     | 3           |
 
 - **Accessoires** à choisir au garage, un par emplacement :
   - tête : casquette, couronne, bonnet à pompon, chapeau de fête ;
@@ -28,15 +29,16 @@ Construit avec **Angular 22** pour l'interface et **three.js** pour la 3D.
   - corps : pull rayé, cape de héros.
 
   Tes choix sont mémorisés.
+
 - **Dérapage et mini-turbo**, comme dans Mario Kart : appuie sur Saut **en tournant** (ou tourne pendant le saut) pour choisir le sens, puis garde Saut : grâce à l'**assistance au dérapage**, le kart suit le virage tout seul sans toucher à la direction ; en braquant, il serre (épingles) ; en contre-braquant, il s'élargit. Traces de pneus et étincelles, 3 paliers de turbo (bleu, orange, violet) au relâchement. Un saut sans braquer reste un simple saut, et un gros choc casse le dérapage.
 - **4 objets canins**, tirés dans les boîtes à objets :
 
-  | Objet | Effet |
-  |---|---|
-  | Os | Lancé tout droit (ou en arrière en maintenant le frein), rebondit sur les haies |
-  | Balle de tennis | Autoguidée vers le pilote juste devant |
-  | Flaque de boue | Piège déposé derrière soi |
-  | Croquette turbo | Boost immédiat |
+  | Objet           | Effet                                                                           |
+  | --------------- | ------------------------------------------------------------------------------- |
+  | Os              | Lancé tout droit (ou en arrière en maintenant le frein), rebondit sur les haies |
+  | Balle de tennis | Autoguidée vers le pilote juste devant                                          |
+  | Flaque de boue  | Piège déposé derrière soi                                                       |
+  | Croquette turbo | Boost immédiat                                                                  |
 
 - **Bruitages** générés en temps réel avec Web Audio (aucun fichier son), avec un bouton pour couper le son.
 - **Aperçu 3D** de ton chien dans le garage.
@@ -58,14 +60,14 @@ Puis ouvre http://localhost:4200.
 
 ## Commandes de jeu
 
-| Action | Clavier | Écran tactile (téléphone, tablette) |
-|---|---|---|
-| Accélérer | ↑ ou Z / W | automatique |
-| Tourner | ← ou Q / A · → ou D | joystick : pouce gauche n'importe où sur la moitié gauche de l'écran, puis glisser à gauche ou à droite |
-| Freiner, reculer | ↓ ou S | bouton **Frein** |
-| Sauter, déraper (maintenir en tournant) | Espace | bouton **Saut** |
-| Utiliser l'objet | E ou Maj | bouton **Objet** |
-| Pause | Échap ou P | bouton pause en haut à droite |
+| Action                                  | Clavier             | Écran tactile (téléphone, tablette)                                                                     |
+| --------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------- |
+| Accélérer                               | ↑ ou Z / W          | automatique                                                                                             |
+| Tourner                                 | ← ou Q / A · → ou D | joystick : pouce gauche n'importe où sur la moitié gauche de l'écran, puis glisser à gauche ou à droite |
+| Freiner, reculer                        | ↓ ou S              | bouton **Frein**                                                                                        |
+| Sauter, déraper (maintenir en tournant) | Espace              | bouton **Saut**                                                                                         |
+| Utiliser l'objet                        | E ou Maj            | bouton **Objet**                                                                                        |
+| Pause                                   | Échap ou P          | bouton pause en haut à droite                                                                           |
 
 - **Clavier** : les touches sont physiques, **ZQSD** sur un clavier AZERTY correspond à **WASD** sur un clavier QWERTY.
 - **Écran tactile** : tiens l'appareil à l'horizontale. Les commandes s'affichent d'elles-mêmes quand le pointeur
@@ -78,22 +80,22 @@ Puis ouvre http://localhost:4200.
 
 ### Paramètres d'URL (développement)
 
-| URL | Effet |
-|---|---|
-| `/course?autopilot=1` | Ton kart est piloté par l'IA (démo, vérifications automatiques) |
-| `/course?debug=1` | Journalise les événements clés dans la console, préfixés par `[WoufKart]` |
-| `/course?touch=1` | Force les commandes tactiles (pour les essayer à la souris sur ordinateur) ; `touch=0` les retire |
+| URL                   | Effet                                                                                             |
+| --------------------- | ------------------------------------------------------------------------------------------------- |
+| `/course?autopilot=1` | Ton kart est piloté par l'IA (démo, vérifications automatiques)                                   |
+| `/course?debug=1`     | Journalise les événements clés dans la console, préfixés par `[WoufKart]`                         |
+| `/course?touch=1`     | Force les commandes tactiles (pour les essayer à la souris sur ordinateur) ; `touch=0` les retire |
 
 ## Scripts
 
-| Commande | Rôle |
-|---|---|
-| `npm start` | Serveur de développement (`ng serve`) |
-| `npm run build` | Build de production dans `dist/` |
-| `npm test` | Tests unitaires (Vitest, via `ng test`) |
-| `npm run watch` | Build de développement en continu |
-| `npm run build-info` | Écrit `public/build-info.json` (date du build), lancé automatiquement par `start`, `build` et `watch` |
-| `npm run release:patch` / `release:minor` / `release:major` | Incrémente la version (`package.json` et `package-lock.json`) |
+| Commande                                                    | Rôle                                                                                                  |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `npm start`                                                 | Serveur de développement (`ng serve`)                                                                 |
+| `npm run build`                                             | Build de production dans `dist/`                                                                      |
+| `npm test`                                                  | Tests unitaires (Vitest, via `ng test`)                                                               |
+| `npm run watch`                                             | Build de développement en continu                                                                     |
+| `npm run build-info`                                        | Écrit `public/build-info.json` (date du build), lancé automatiquement par `start`, `build` et `watch` |
+| `npm run release:patch` / `release:minor` / `release:major` | Incrémente la version (`package.json` et `package-lock.json`)                                         |
 
 ## Versionnage
 
@@ -124,7 +126,7 @@ src/
     shared/            ← formatage (temps, rangs), préférence « réduire les animations »
   game/                ← moteur de jeu, sans aucune dépendance à Angular
     core/              ← contrats partagés : types, vecteurs 2D, constantes de réglage, RNG déterministe
-    track/             ← circuits (données), catalogue, validateur, spline Catmull-Rom, projection
+    track/             ← circuits (fichiers JSON), catalogue, validateur, relief, projection
     kart/              ← physique arcade, dérapage, mini-turbo
     items/             ← boîtes à objets, tirage, projectiles, pièges, impacts
     ai/                ← pilotes IA (trajectoire, freinage, dérapage, objets)
@@ -156,6 +158,7 @@ Principes :
 ## Accessibilité
 
 L'interface vise **WCAG AA** et **0 violation AXE** :
+
 - menus entièrement utilisables au clavier, focus visible et géré (dialogue de pause, résultats, changement de page) ;
 - annonces `aria-live` pour les tours, le dernier tour et l'arrivée ;
 - contrastes AA, y compris sur le HUD posé sur la 3D ;
@@ -173,6 +176,7 @@ L'interface vise **WCAG AA** et **0 violation AXE** :
 Hors du périmètre du prototype : multijoueur (écran partagé ou en ligne), manette, musique, progression et déblocages. Le thème cuisine géante est prévu.
 
 La structure permet de les ajouter progressivement :
+
 - **une nouvelle race** : une entrée de données dans `src/game/dogs/breeds.ts` ;
 - **un nouvel accessoire** : une entrée dans `skins-catalog.ts` et son constructeur dans `skin-models.ts` ;
 - **un nouveau circuit** : une définition de données dans `src/game/track/circuits/`, inscrite au catalogue (voir [`docs/circuits.md`](docs/circuits.md)).

@@ -30,6 +30,10 @@ const ORBIT = { distance: 9, height: 3.6, speed: 0.3, blendRate: 1.2 } as const;
 const SHAKE = { decay: 6, max: 0.6 } as const;
 /** Pas de temps maximal pris en compte (onglet masqué, à-coups). */
 const MAX_DT = 0.1;
+/** Vitesse de convergence de la hauteur suivie par la caméra (1/s). */
+const CAMERA_Y_RATE = 6;
+/** Garde-fou (m) : la caméra reste toujours au moins ceci au-dessus du sol sous elle. */
+const CAMERA_CLEARANCE = 1.2;
 
 export interface CameraTarget {
   x: number;
@@ -37,6 +41,8 @@ export interface CameraTarget {
   /** Cap du kart (sans la rotation visuelle du dérapage). */
   heading: number;
   boosting: boolean;
+  /** Hauteur du sol sous le kart (m, 0 par défaut). */
+  y?: number;
 }
 
 export class CameraRig {
@@ -48,11 +54,13 @@ export class CameraRig {
   private orbiting = false;
   private orbitAngle = 0;
   private orbitBlend = 0;
+  private groundY = 0;
   private readonly lookTarget = new THREE.Vector3();
 
   constructor(
     readonly camera: THREE.PerspectiveCamera,
     private readonly reducedMotion: boolean,
+    private readonly groundAt: (x: number, z: number) => number = () => -Infinity,
   ) {
     camera.fov = fitFovToAspect(CHASE.fov, camera.aspect);
     camera.updateProjectionMatrix();
@@ -66,17 +74,23 @@ export class CameraRig {
 
   update(target: CameraTarget, phase: RacePhase, countdown: number, frameDt: number): void {
     const dt = clamp(Number.isFinite(frameDt) ? frameDt : 0, 0, MAX_DT);
+    const y = target.y ?? 0;
     // Cible invalide : on garde le dernier cadrage plutôt que d'empoisonner le cap lissé avec NaN.
     const valid =
-      Number.isFinite(target.x) && Number.isFinite(target.z) && Number.isFinite(target.heading);
+      Number.isFinite(target.x) &&
+      Number.isFinite(target.z) &&
+      Number.isFinite(target.heading) &&
+      Number.isFinite(y);
     if (!valid) return;
     this.time += dt;
     if (!this.initialized) {
       // Première image : cap exact du kart, sans glissement depuis 0.
       this.initialized = true;
       this.heading = target.heading;
+      this.groundY = y;
     } else {
       this.heading = lerpAngle(this.heading, target.heading, 1 - Math.exp(-CHASE.headingRate * dt));
+      this.groundY = smoothTowards(this.groundY, y, CAMERA_Y_RATE, dt);
     }
     const chaseAngle = this.heading + Math.PI;
 
@@ -113,12 +127,17 @@ export class CameraRig {
     const camera = this.camera;
     camera.position.set(
       target.x + Math.sin(angle) * distance,
-      height,
+      this.groundY + height,
       target.z + Math.cos(angle) * distance,
+    );
+    // En descente, la caméra (derrière, donc plus haut sur la pente) reste au-dessus du sol.
+    camera.position.y = Math.max(
+      camera.position.y,
+      this.groundAt(camera.position.x, camera.position.z) + CAMERA_CLEARANCE,
     );
     this.lookTarget.set(
       target.x + forwardX * lookAhead,
-      CHASE.lookHeight,
+      this.groundY + CHASE.lookHeight,
       target.z + forwardZ * lookAhead,
     );
 

@@ -32,6 +32,7 @@ import {
 import { assistedTurnFactor, driftAssistFactor } from '../kart/kart-physics';
 import { createCircleTrack } from '../testing/fake-track';
 import { createTestRace, createTestRacer, TEST_TUNING } from '../testing/fixtures';
+import { surfaceOf } from '../track/surface';
 import { AiController } from './ai-controller';
 import { createAiPersonality, type AiPersonality } from './personality';
 
@@ -84,6 +85,9 @@ function createSegmentTrack(segments: readonly Segment[]): TrackQuery {
       left: leftOfDirection(tangent),
       halfWidth: ROAD_HALF_WIDTH,
       curvature: segment.curvature,
+      height: 0,
+      grade: 0,
+      bank: 0,
     };
   };
 
@@ -117,7 +121,16 @@ function createSegmentTrack(segments: readonly Segment[]): TrackQuery {
     return { position: addScaled(sample.position, sample.left, lateral), heading: headingOf(sample.tangent), progress };
   };
 
-  return { length, wallHalfWidth: WALL_HALF_WIDTH, samples, sampleAt, project, gridSlot, itemBoxRows: [] };
+  return {
+    length,
+    wallHalfWidth: WALL_HALF_WIDTH,
+    samples,
+    sampleAt,
+    project,
+    gridSlot,
+    itemBoxRows: [],
+    surfaceAt: (s, lateral) => surfaceOf(sampleAt(s), lateral),
+  };
 }
 
 // ---------------------------------------------------------------------------

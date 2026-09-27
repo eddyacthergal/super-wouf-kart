@@ -819,3 +819,31 @@ describe('durée de vie', () => {
     expect(race.items).toEqual([]);
   });
 });
+
+describe('objets — relief', () => {
+  it('boîtes et objets lancés prennent la hauteur de la piste sous eux', () => {
+    const track = createCircleTrack(2000, 'left', { height: 4, grade: 0.05 });
+    const boxes = createItemBoxes(track);
+    for (const box of boxes) {
+      const projection = track.project(box.position);
+      expect(box.height).toBeCloseTo(track.surfaceAt(projection.s, projection.lateral).height, 3);
+    }
+  });
+
+  it('un os lancé suit la hauteur de la piste en avançant', () => {
+    const track = createCircleTrack(2000, 'left', { height: 4, grade: 0.05 });
+    const race = createTestRace(track, 1);
+    const [thrower] = race.racers;
+    placeOnTrack(thrower, track, 100);
+    thrower.item = 'bone';
+    thrower.kart.speed = 20;
+    const { emit } = recorder();
+    useItem(race, thrower, track, false, emit);
+    thrower.kart.position = { ...FAR_AWAY };
+    for (let i = 0; i < 60; i++) stepItems(race, track, fixedRng(0.5), FIXED_DT, emit);
+    const bone = race.items[0];
+    const projection = track.project(bone.position);
+    expect(bone.height).toBeCloseTo(track.surfaceAt(projection.s, projection.lateral).height, 3);
+    expect(bone.height).toBeGreaterThan(4 + 0.05 * 100);
+  });
+});

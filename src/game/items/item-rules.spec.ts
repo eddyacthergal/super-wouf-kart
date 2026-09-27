@@ -3,7 +3,8 @@ import { createRng } from '../core/rng';
 import type { ItemKind, Rng } from '../core/types';
 import { ITEM_KINDS, itemWeights, rankFraction, rollItem } from './item-rules';
 
-const sumOf = (weights: Record<ItemKind, number>): number => ITEM_KINDS.reduce((total, kind) => total + weights[kind], 0);
+const sumOf = (weights: Record<ItemKind, number>): number =>
+  ITEM_KINDS.reduce((total, kind) => total + weights[kind], 0);
 
 /** Rng qui renvoie toujours la même valeur (tirages prévisibles). */
 function fixedRng(value: number): Rng {
@@ -15,7 +16,12 @@ function fixedRng(value: number): Rng {
   };
 }
 
-function drawProportions(rank: number, racerCount: number, draws: number, seed: number): Record<ItemKind, number> {
+function drawProportions(
+  rank: number,
+  racerCount: number,
+  draws: number,
+  seed: number,
+): Record<ItemKind, number> {
   const rng = createRng(seed);
   const counts: Record<ItemKind, number> = { bone: 0, mud: 0, 'tennis-ball': 0, 'kibble-turbo': 0 };
   for (let i = 0; i < draws; i++) counts[rollItem(rank, racerCount, rng)]++;
@@ -67,13 +73,15 @@ describe('rollItem', () => {
   it('suit les poids du premier sur 5000 tirages', () => {
     const proportions = drawProportions(1, 8, 5000, 7);
     const weights = itemWeights(1, 8);
-    for (const kind of ITEM_KINDS) expect(Math.abs(proportions[kind] - weights[kind] / 100)).toBeLessThan(0.025);
+    for (const kind of ITEM_KINDS)
+      expect(Math.abs(proportions[kind] - weights[kind] / 100)).toBeLessThan(0.025);
   });
 
   it('suit les poids du dernier sur 5000 tirages', () => {
     const proportions = drawProportions(8, 8, 5000, 11);
     const weights = itemWeights(8, 8);
-    for (const kind of ITEM_KINDS) expect(Math.abs(proportions[kind] - weights[kind] / 100)).toBeLessThan(0.025);
+    for (const kind of ITEM_KINDS)
+      expect(Math.abs(proportions[kind] - weights[kind] / 100)).toBeLessThan(0.025);
   });
 
   it('est déterministe pour une même graine', () => {

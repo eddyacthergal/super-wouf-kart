@@ -14,7 +14,7 @@ import { createGravelTexture, createMulchTexture } from './textures';
 /** Nombre de flocons et volume (m) qui suit la caméra : largeur, hauteur. */
 const SNOWFLAKES = 2600;
 const SNOW_BOX = 110;
-const SNOW_HEIGHT = 36;
+export const SNOW_HEIGHT = 36;
 /** Vitesse de chute (m/s) et amplitude du balancement (m). */
 const FALL_SPEED: readonly [number, number] = [1.2, 2.4];
 const SWAY = 0.9;
@@ -79,7 +79,11 @@ function buildSnowfall(bag: DisposalBag): WorldPart {
       const sway = Math.sin(time * 0.8 + phase[i]) * SWAY;
       // Position dans la boîte, raccordée autour de la caméra : aucun flocon ne « saute » à l'écran.
       positions[i * 3] = focus.x - half + wrap(base[i * 3] + sway - focus.x + half, SNOW_BOX);
-      positions[i * 3 + 1] = wrap(base[i * 3 + 1] - time * speed[i], SNOW_HEIGHT);
+      // Bas de la colonne borné à 0 (le sol) : sur un circuit plat, la caméra est basse et
+      // `focus.y - SNOW_HEIGHT / 3` serait négatif, faisant tomber des flocons sous le sol.
+      positions[i * 3 + 1] =
+        Math.max(0, focus.y - SNOW_HEIGHT / 3) +
+        wrap(base[i * 3 + 1] - time * speed[i], SNOW_HEIGHT);
       positions[i * 3 + 2] =
         focus.z - half + wrap(base[i * 3 + 2] + sway * 0.6 - focus.z + half, SNOW_BOX);
     }
@@ -150,5 +154,5 @@ export const SNOW_THEME: SceneTheme = {
     sunIntensity: 2.2,
   },
   clouds: SNOW_STYLE.clouds,
-  buildWorld: (track, decor) => buildGardenWorld(track, decor, SNOW_STYLE),
+  buildWorld: (track, decor, terrain) => buildGardenWorld(track, decor, SNOW_STYLE, terrain),
 };

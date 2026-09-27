@@ -44,6 +44,8 @@ export interface ParticleOptions {
   drag?: number;
   /** Opacité de départ. */
   opacity?: number;
+  /** Plancher de la particule (m), pour rester au-dessus du relief ; 0,03 par défaut. */
+  floor?: number;
 }
 
 const NO_OPTIONS: ParticleOptions = {};
@@ -61,6 +63,7 @@ export class ParticlePool {
   private readonly growth: Float32Array;
   private readonly drag: Float32Array;
   private readonly opacity: Float32Array;
+  private readonly floor: Float32Array;
   private readonly geometry: THREE.BufferGeometry;
   private readonly attributes: readonly THREE.BufferAttribute[];
   private readonly material: THREE.ShaderMaterial;
@@ -84,6 +87,7 @@ export class ParticlePool {
     this.growth = new Float32Array(capacity);
     this.drag = new Float32Array(capacity);
     this.opacity = new Float32Array(capacity);
+    this.floor = new Float32Array(capacity);
 
     this.geometry = bag.add(new THREE.BufferGeometry());
     const attribute = (array: Float32Array, itemSize: number): THREE.BufferAttribute =>
@@ -157,6 +161,7 @@ export class ParticlePool {
     this.growth[i] = options.growth ?? 0;
     this.drag[i] = options.drag ?? 0;
     this.opacity[i] = options.opacity ?? 1;
+    this.floor[i] = options.floor ?? 0.03;
     this.alphas[i] = this.opacity[i];
   }
 
@@ -181,7 +186,7 @@ export class ParticlePool {
       this.velocities[i3 + 2] *= damping;
       this.positions[i3] += this.velocities[i3] * dt;
       this.positions[i3 + 1] = Math.max(
-        0.03,
+        this.floor[i],
         this.positions[i3 + 1] + this.velocities[i3 + 1] * dt,
       );
       this.positions[i3 + 2] += this.velocities[i3 + 2] * dt;

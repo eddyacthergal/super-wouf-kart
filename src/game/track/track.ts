@@ -1,29 +1,32 @@
 /**
- * Circuit : spline Catmull-Rom centripète fermée, rééchantillonnée à abscisse uniforme (~1 m).
- * s = 0 au point de contrôle 0 (ligne de départ/arrivée) ; la course suit les indices croissants.
+ * Circuit : ligne médiane exacte (droites et arcs), rééchantillonnée à abscisse uniforme (~1 m).
+ * s = 0 au point de départ ; la course suit les indices croissants.
  * Aucune dépendance à three.js : utilisable par la simulation et les tests en Node.
  */
 import { ROAD_HALF_WIDTH, WALL_HALF_WIDTH } from '../core/constants';
-import type { GridSlot, TrackProjection, TrackQuery, TrackSample } from '../core/types';
+import type {
+  GridSlot,
+  TrackProjection,
+  TrackQuery,
+  TrackSample,
+  TrackSurface,
+} from '../core/types';
 import {
   addScaled,
   clamp,
-  distance,
   distanceSq,
   headingOf,
   normalize,
   wrapAngle,
   type Vec2,
 } from '../core/vec2';
-import { GRAND_JARDIN } from './circuits/grand-jardin';
+import type { Centerline } from './centerline';
+import { buildCenterline } from './centerline';
+import { findTrack, DEFAULT_TRACK_ID } from './catalog';
+import { buildProfile, FLAT_PROFILE, type Profile } from './profile';
+import { surfaceOf } from './surface';
 import type { TrackDefinition } from './track-definition';
 
-/** Exposant de paramétrisation des nœuds : 0,5 = centripète (ni boucle ni pointe dans les virages serrés). */
-const SPLINE_ALPHA = 0.5;
-/** Subdivisions minimales d'un segment de spline pour l'évaluation fine. */
-const MIN_SUBDIVISIONS = 24;
-/** Subdivisions par mètre de corde (garde une évaluation fine sur les longs segments). */
-const SUBDIVISIONS_PER_METER = 4;
 /** Demi-fenêtre (en échantillons) du lissage de la courbure. */
 const CURVATURE_SMOOTHING = 3;
 /** Demi-fenêtre (en échantillons) de la recherche locale de project() avec indice. */
@@ -52,18 +55,14 @@ export class Track implements TrackQuery {
   /** Pas exact entre deux échantillons (m). */
   private readonly step: number;
 
-  constructor(controlPoints: readonly Vec2[]) {
-    if (controlPoints.length < 4)
-      throw new Error('Un circuit demande au moins 4 points de contrôle');
-    const { points, cumulative } = evaluateSpline(controlPoints);
-    const length = cumulative[cumulative.length - 1];
-    // Points confondus ou non finis : aucun pas d'échantillonnage valide (division par zéro, NaN).
-    if (!(Number.isFinite(length) && length > 0))
+  constructor(centerline: Centerline, profile: Profile = FLAT_PROFILE) {
+    const { points, cumulative, length } = centerline;
+    if (!(Number.isFinite(length) && length > 0) || points.length < 4)
       throw new Error('Circuit dégénéré : longueur nulle ou non finie');
     this.length = length;
     const count = Math.max(8, Math.round(this.length));
     this.step = this.length / count;
-    this.samples = buildSamples(points, cumulative, count, this.step);
+    this.samples = buildSamples([...points, points[0]], cumulative, count, this.step, profile);
     this.itemBoxRows = ITEM_ROW_FRACTIONS.map((fraction) =>
       this.findStraightNear(fraction * this.length),
     ).sort((a, b) => a - b);
@@ -80,6 +79,10 @@ export class Track implements TrackQuery {
       position - index,
       wrapped,
     );
+  }
+
+  surfaceAt(s: number, lateral: number): TrackSurface {
+    return surfaceOf(this.sampleAt(s), lateral);
   }
 
   /** L'indice ne fait qu'accélérer la recherche : entre les haies, le résultat est celui de la recherche globale. */
@@ -214,14 +217,15 @@ export class Track implements TrackQuery {
   }
 }
 
-/** Circuit construit à partir de sa définition (tracé). */
+/** Circuit construit à partir de sa définition : ligne médiane et profil. */
 export function createTrack(definition: TrackDefinition): Track {
-  return new Track(definition.controlPoints);
+  const centerline = buildCenterline(definition.start, definition.corners);
+  return new Track(centerline, buildProfile(centerline, definition.corners));
 }
 
-/** Circuit « Grand Jardin », le premier du catalogue (raccourci pour les tests). */
+/** Circuit par défaut du catalogue, le Grand Jardin (raccourci pour les tests). */
 export function createGardenTrack(): Track {
-  return createTrack(GRAND_JARDIN);
+  return createTrack(findTrack(DEFAULT_TRACK_ID));
 }
 
 /**
@@ -244,63 +248,13 @@ export function trackOutline(track: TrackQuery, step = 8): Vec2[] {
 // Construction
 // ---------------------------------------------------------------------------
 
-/** Évalue finement la spline fermée ; renvoie la polyligne (refermée) et la longueur d'arc cumulée. */
-function evaluateSpline(controlPoints: readonly Vec2[]): { points: Vec2[]; cumulative: number[] } {
-  const n = controlPoints.length;
-  const points: Vec2[] = [];
-  for (let i = 0; i < n; i++) {
-    const p0 = controlPoints[(i - 1 + n) % n];
-    const p1 = controlPoints[i];
-    const p2 = controlPoints[(i + 1) % n];
-    const p3 = controlPoints[(i + 2) % n];
-    const subdivisions = Math.max(
-      MIN_SUBDIVISIONS,
-      Math.ceil(distance(p1, p2) * SUBDIVISIONS_PER_METER),
-    );
-    for (let j = 0; j < subdivisions; j++)
-      points.push(catmullRom(p0, p1, p2, p3, j / subdivisions));
-  }
-  points.push({ ...points[0] });
-
-  const cumulative = [0];
-  for (let i = 1; i < points.length; i++) {
-    cumulative.push(cumulative[i - 1] + distance(points[i - 1], points[i]));
-  }
-  return { points, cumulative };
-}
-
-/** Point d'un segment Catmull-Rom centripète entre p1 et p2 (algorithme de Barry-Goldman), t dans [0, 1[. */
-function catmullRom(p0: Vec2, p1: Vec2, p2: Vec2, p3: Vec2, t: number): Vec2 {
-  const t0 = 0;
-  const t1 = t0 + knotInterval(p0, p1);
-  const t2 = t1 + knotInterval(p1, p2);
-  const t3 = t2 + knotInterval(p2, p3);
-  const u = t1 + (t2 - t1) * t;
-  const a1 = mix(p0, p1, t0, t1, u);
-  const a2 = mix(p1, p2, t1, t2, u);
-  const a3 = mix(p2, p3, t2, t3, u);
-  const b1 = mix(a1, a2, t0, t2, u);
-  const b2 = mix(a2, a3, t1, t3, u);
-  return mix(b1, b2, t1, t2, u);
-}
-
-function knotInterval(a: Vec2, b: Vec2): number {
-  // Évite un intervalle nul si deux points de contrôle sont confondus.
-  return Math.max(Math.pow(distanceSq(a, b), SPLINE_ALPHA / 2), 1e-6);
-}
-
-/** Interpolation de a (au nœud ta) vers b (au nœud tb), évaluée en u. */
-function mix(a: Vec2, b: Vec2, ta: number, tb: number, u: number): Vec2 {
-  const k = (u - ta) / (tb - ta);
-  return { x: a.x + (b.x - a.x) * k, z: a.z + (b.z - a.z) * k };
-}
-
-/** Rééchantillonne la polyligne à pas constant, puis calcule tangentes, normales et courbure lissée. */
+/** Rééchantillonne la polyligne à pas constant, puis calcule tangentes, normales, courbure lissée et profil. */
 function buildSamples(
   points: readonly Vec2[],
   cumulative: readonly number[],
   count: number,
   step: number,
+  profile: Profile,
 ): TrackSample[] {
   const positions: Vec2[] = [];
   let segment = 0;
@@ -336,6 +290,9 @@ function buildSamples(
       left: { x: tangent.z, z: -tangent.x },
       halfWidth: ROAD_HALF_WIDTH,
       curvature: sum / (2 * CURVATURE_SMOOTHING + 1),
+      height: profile.heightAt(i * step),
+      grade: profile.gradeAt(i * step),
+      bank: profile.bankAt(i * step),
     };
   });
 }
@@ -356,5 +313,8 @@ function interpolateSample(a: TrackSample, b: TrackSample, t: number, s: number)
     left: { x: tangent.z, z: -tangent.x },
     halfWidth: a.halfWidth + (b.halfWidth - a.halfWidth) * t,
     curvature: a.curvature + (b.curvature - a.curvature) * t,
+    height: a.height + (b.height - a.height) * t,
+    grade: a.grade + (b.grade - a.grade) * t,
+    bank: a.bank + (b.bank - a.bank) * t,
   };
 }

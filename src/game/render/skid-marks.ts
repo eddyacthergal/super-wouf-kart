@@ -6,8 +6,8 @@
 import * as THREE from 'three';
 import type { DisposalBag } from './resources';
 
-/** Hauteur des traces (m) : juste au-dessus de la route (0,02) et de ses marquages (0,028). */
-const MARK_Y = 0.034;
+/** Hauteur des traces (m) au-dessus de la route (0,02) et de ses marquages (0,028), sous le relief. */
+export const MARK_Y = 0.034;
 /** Demi-largeur d'une trace (m), un peu moins que celle d'un pneu arrière. */
 const HALF_WIDTH = 0.11;
 /** Durée de vie d'un tronçon (s), dont les FADE dernières secondes en fondu. */
@@ -93,8 +93,8 @@ export class SkidMarks {
     return this.alive;
   }
 
-  /** Pose un tronçon de trace entre (x0, z0) et (x1, z1). */
-  add(x0: number, z0: number, x1: number, z1: number): void {
+  /** Pose un tronçon de trace entre (x0, z0, y0) et (x1, z1, y1) (sol à l'aplomb de chaque bout). */
+  add(x0: number, z0: number, x1: number, z1: number, y0 = 0, y1 = y0): void {
     const dx = x1 - x0;
     const dz = z1 - z0;
     const length = Math.hypot(dx, dz);
@@ -109,12 +109,12 @@ export class SkidMarks {
     this.life[i] = SKID_MARK_LIFE;
     // Deux triangles : (a0, b0, b1) et (a0, b1, a1), a et b étant les deux bords de la trace.
     const v = i * VERTICES_PER_SEGMENT;
-    this.setVertex(v, x0 + nx, z0 + nz);
-    this.setVertex(v + 1, x0 - nx, z0 - nz);
-    this.setVertex(v + 2, x1 - nx, z1 - nz);
-    this.setVertex(v + 3, x0 + nx, z0 + nz);
-    this.setVertex(v + 4, x1 - nx, z1 - nz);
-    this.setVertex(v + 5, x1 + nx, z1 + nz);
+    this.setVertex(v, x0 + nx, z0 + nz, y0);
+    this.setVertex(v + 1, x0 - nx, z0 - nz, y0);
+    this.setVertex(v + 2, x1 - nx, z1 - nz, y1);
+    this.setVertex(v + 3, x0 + nx, z0 + nz, y0);
+    this.setVertex(v + 4, x1 - nx, z1 - nz, y1);
+    this.setVertex(v + 5, x1 + nx, z1 + nz, y1);
     this.alphas.fill(OPACITY, v, v + VERTICES_PER_SEGMENT);
     this.positionAttribute.needsUpdate = true;
     this.alphaAttribute.needsUpdate = true;
@@ -144,10 +144,10 @@ export class SkidMarks {
     this.alphaAttribute.needsUpdate = true;
   }
 
-  private setVertex(v: number, x: number, z: number): void {
+  private setVertex(v: number, x: number, z: number, y: number): void {
     const i3 = v * 3;
     this.positions[i3] = x;
-    this.positions[i3 + 1] = MARK_Y;
+    this.positions[i3 + 1] = MARK_Y + y;
     this.positions[i3 + 2] = z;
   }
 }

@@ -39,7 +39,7 @@ export interface RacerVisual {
   readonly id: number;
   readonly model: RacerModel;
   readonly tag: THREE.Sprite | null;
-  /** Position interpolée du kart (y = 0). */
+  /** Position interpolée du kart (y = hauteur du sol). */
   readonly position: THREE.Vector3;
   /** Cap interpolé (sans la rotation visuelle). */
   heading: number;
@@ -103,7 +103,7 @@ export class RacerVisuals {
       id: racer.id,
       model,
       tag,
-      position: new THREE.Vector3(racer.kart.position.x, 0, racer.kart.position.z),
+      position: new THREE.Vector3(racer.kart.position.x, racer.kart.height, racer.kart.position.z),
       heading: racer.kart.heading,
       visual: { speed: 0, steer: 0, driftDirection: 0, boosting: false, spinning: false, hop: 0 },
       top: modelTop(model.root),
@@ -125,13 +125,17 @@ export class RacerVisuals {
       const kart = racer.kart;
       visual.position.set(
         kart.prevPosition.x + (kart.position.x - kart.prevPosition.x) * alpha,
-        0,
+        kart.prevHeight + (kart.height - kart.prevHeight) * alpha,
         kart.prevPosition.z + (kart.position.z - kart.prevPosition.z) * alpha,
       );
       visual.heading = lerpAngle(kart.prevHeading, kart.heading, alpha);
       const root = visual.model.root;
       root.position.copy(visual.position);
-      root.rotation.y = visual.heading + kart.visualYaw;
+      // Lacet, puis tangage autour de l'axe latéral, puis roulis autour de l'axe avant.
+      root.rotation.order = 'YXZ';
+      const pitch = kart.prevPitch + (kart.pitch - kart.prevPitch) * alpha;
+      const roll = kart.prevRoll + (kart.roll - kart.prevRoll) * alpha;
+      root.rotation.set(-pitch, visual.heading + kart.visualYaw, -roll);
 
       const pose = visual.visual;
       pose.speed = kart.speed;

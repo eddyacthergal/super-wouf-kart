@@ -66,6 +66,28 @@ describe('RacerVisuals', () => {
     for (const spy of spies) expect(spy).toHaveBeenCalledWith(DT, expect.any(Object));
   });
 
+  it('pose le kart à sa hauteur interpolée, nez relevé en montée, penché à gauche si roll > 0', () => {
+    const { racers, race } = setup();
+    const racer = race.racers[0];
+    Object.assign(racer.kart, {
+      prevHeight: 2,
+      height: 4,
+      prevPitch: 0.2,
+      pitch: 0.2,
+      prevRoll: 0.15,
+      roll: 0.15,
+      visualYaw: 0,
+    });
+    racers.update(race, 0.5, DT);
+    const root = racers.get(racer.id)!.model.root;
+    expect(root.position.y).toBeCloseTo(3, 6);
+    root.updateMatrixWorld(true);
+    const nose = new THREE.Vector3(0, 0, 1).applyMatrix4(root.matrixWorld);
+    const leftSide = new THREE.Vector3(1, 0, 0).applyMatrix4(root.matrixWorld);
+    expect(nose.y).toBeGreaterThan(root.position.y + 0.1);
+    expect(leftSide.y).toBeLessThan(root.position.y - 0.05);
+  });
+
   it('ne crée pas d’étiquette sans canvas 2D (Node)', () => {
     const { racers } = setup();
     expect(racers.list.every((visual) => visual.tag === null)).toBe(true);

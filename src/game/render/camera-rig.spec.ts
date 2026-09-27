@@ -30,6 +30,16 @@ describe('CameraRig', () => {
     expect(wrapAngle(viewHeading(camera) - 2.2)).toBeCloseTo(0, 6);
   });
 
+  it('suit la hauteur du kart et ne descend jamais sous le sol', () => {
+    const target: CameraTarget = { x: 0, z: 0, heading: 0, boosting: false, y: 10 };
+    const camera = new THREE.PerspectiveCamera(50, 16 / 9, 0.5, 2000);
+    new CameraRig(camera, true, () => 20).update(target, 'racing', 0, DT);
+    expect(camera.position.y).toBeGreaterThanOrEqual(21.2 - 1e-9);
+    const { rig: flat, camera: free } = rig(true);
+    flat.update(target, 'racing', 0, DT);
+    expect(free.position.y).toBeCloseTo(10 + CHASE.height, 6);
+  });
+
   it('tourne moins vite que le kart puis le rattrape', () => {
     const { rig: chase, camera } = rig();
     const target: CameraTarget = { x: 0, z: 0, heading: 0, boosting: false };

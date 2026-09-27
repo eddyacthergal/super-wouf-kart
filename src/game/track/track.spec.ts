@@ -12,11 +12,11 @@ import {
   length,
   scale,
   wrapAngle,
-  type Vec2,
 } from '../core/vec2';
 import { createCircleTrack } from '../testing/fake-track';
 import { createTestRace } from '../testing/fixtures';
-import { GARDEN_CONTROL_POINTS } from './circuits/grand-jardin';
+import { findTrack } from './catalog';
+import { buildCenterline } from './centerline';
 import { Track, createGardenTrack, trackOutline } from './track';
 
 const DEG = Math.PI / 180;
@@ -78,21 +78,34 @@ function findTurns(track: TrackQuery, minCurvature: number, maxCurvature = Infin
   return turns;
 }
 
-/** Points sur un cercle de rayon r, parcourus vers la gauche (cap croissant) ou vers la droite. */
-function circlePoints(radius: number, count: number, direction: 'left' | 'right'): Vec2[] {
-  const sign = direction === 'left' ? -1 : 1;
-  return Array.from({ length: count }, (_, k) => {
-    const phi = (2 * Math.PI * k) / count;
-    return { x: radius * Math.cos(phi), z: sign * radius * Math.sin(phi) };
-  });
+/**
+ * Cercle de rayon r centré à l'origine : carré de côté 2r aux coins de rayon r (les arcs se touchent),
+ * départ en (0, −r), parcouru vers la gauche ou vers la droite.
+ */
+function circleTrack(r: number, direction: 'left' | 'right'): Track {
+  const corners =
+    direction === 'left'
+      ? [
+          { x: -r, z: -r, radius: r },
+          { x: -r, z: r, radius: r },
+          { x: r, z: r, radius: r },
+          { x: r, z: -r, radius: r },
+        ]
+      : [
+          { x: r, z: -r, radius: r },
+          { x: r, z: r, radius: r },
+          { x: -r, z: r, radius: r },
+          { x: -r, z: -r, radius: r },
+        ];
+  return new Track(buildCenterline({ x: 0, z: -r }, corners));
 }
 
-describe('Track (spline générique)', () => {
+describe('Track (ligne médiane générique)', () => {
   it.each(['left', 'right'] as const)(
     'suit un cercle parcouru vers la %s avec la bonne courbure',
     (direction) => {
       const radius = 50;
-      const track = new Track(circlePoints(radius, 24, direction));
+      const track = circleTrack(radius, direction);
       expect(track.length).toBeCloseTo(2 * Math.PI * radius, 0);
       const expected = (direction === 'left' ? 1 : -1) / radius;
       for (const sample of track.samples) {
@@ -106,7 +119,7 @@ describe('Track (spline générique)', () => {
     'relie signe de courbure, variation de cap et côté du centre (virage vers la %s)',
     (direction) => {
       const sign = direction === 'left' ? 1 : -1;
-      const track = new Track(circlePoints(40, 16, direction));
+      const track = circleTrack(40, direction);
       // Tourner à gauche augmente le cap, tourner à droite le diminue (spec §3).
       const turn = wrapAngle(
         headingOf(track.sampleAt(30).tangent) - headingOf(track.sampleAt(20).tangent),
@@ -116,14 +129,14 @@ describe('Track (spline générique)', () => {
       // Le centre du virage est du côté du virage : à gauche (lateral > 0) pour un virage à gauche.
       const sample = track.sampleAt(25);
       expect(Math.sign(dot(sample.left, scale(sample.position, -1)))).toBe(sign);
-      // Point à 10 m du bord, côté centre (la spline suit le cercle à quelques centimètres près).
+      // Point à 10 m du bord, côté centre (la ligne médiane suit le cercle exactement).
       const lateral = track.project(scale(sample.position, 0.75)).lateral;
       expect(Math.abs(lateral - sign * 10)).toBeLessThan(0.1);
     },
   );
 
   it('place les rangées de boîtes pile aux fractions visées quand tout le tour est peu courbé', () => {
-    const track = new Track(circlePoints(100, 32, 'left'));
+    const track = circleTrack(100, 'left');
     expect(track.itemBoxRows).toHaveLength(3);
     [0.18, 0.5, 0.8].forEach((fraction, k) =>
       expect(track.itemBoxRows[k]).toBeCloseTo(fraction * track.length, 9),
@@ -131,33 +144,22 @@ describe('Track (spline générique)', () => {
   });
 
   it('se replie sur la portion la moins courbe quand aucune n’est quasi droite', () => {
-    const track = new Track(circlePoints(40, 24, 'right'));
+    const track = circleTrack(40, 'right');
     const rows = track.itemBoxRows;
     expect(rows).toHaveLength(3);
     [0.18, 0.5, 0.8].forEach((fraction, k) => {
       expect(Number.isFinite(rows[k])).toBe(true);
-      expect(Math.abs(rows[k] - fraction * track.length)).toBeLessThanOrEqual(40);
+      // Cercle exact : la courbure est la même partout, un écart de flottant peut départager
+      // deux candidats à bord de la fenêtre de recherche (±40 m, epsilon près).
+      expect(Math.abs(rows[k] - fraction * track.length)).toBeLessThanOrEqual(40 + 1e-9);
       if (k > 0) expect(rows[k]).toBeGreaterThan(rows[k - 1]);
     });
   });
 
   it('refuse un tracé dégénéré (points confondus ou non finis)', () => {
-    expect(() => new Track(Array.from({ length: 5 }, () => ({ x: 3, z: 3 })))).toThrow(/dégénéré/);
-    const withNaN = circlePoints(50, 12, 'left').map((p, k) =>
-      k === 3 ? { x: Number.NaN, z: p.z } : p,
-    );
-    expect(() => new Track(withNaN)).toThrow(/dégénéré/);
-  });
-
-  it('refuse moins de 4 points de contrôle', () => {
     expect(
-      () =>
-        new Track([
-          { x: 0, z: 0 },
-          { x: 10, z: 0 },
-          { x: 0, z: 10 },
-        ]),
-    ).toThrow(/4 points/);
+      () => new Track({ points: [], cumulative: [0], length: 0, cornerS: [], arcs: [] }),
+    ).toThrow(/dégénéré/);
   });
 });
 
@@ -179,8 +181,8 @@ describe('circuit jardin', () => {
       });
     });
 
-    it('commence au point de contrôle 0 (ligne de départ)', () => {
-      expect(distance(samples[0].position, GARDEN_CONTROL_POINTS[0])).toBeLessThan(1e-6);
+    it('commence au point de départ', () => {
+      expect(distance(samples[0].position, findTrack('grand-jardin').start)).toBeLessThan(1e-3);
       expect(samples[0].s).toBe(0);
     });
 

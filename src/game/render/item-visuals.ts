@@ -196,7 +196,7 @@ export class ItemVisuals {
     for (const box of state.itemBoxes) {
       const visual = this.boxes.get(box.id) ?? this.createBox(box.id);
       visual.seen = frame;
-      visual.root.position.set(box.position.x, 0, box.position.z);
+      visual.root.position.set(box.position.x, box.height, box.position.z);
       if (box.respawn > 0) {
         visual.appear = 0;
         visual.root.visible = false;
@@ -228,16 +228,17 @@ export class ItemVisuals {
       );
       switch (visual.kind) {
         case 'bone':
-          object.position.y = BONE_HEIGHT;
+          object.position.y = entity.height + BONE_HEIGHT;
           object.rotation.y = entity.heading + visual.age * BONE_SPIN;
           break;
         case 'tennis-ball':
-          object.position.y = BALL_RADIUS + Math.abs(Math.sin(visual.age * 9)) * 0.35;
+          object.position.y =
+            entity.height + BALL_RADIUS + Math.abs(Math.sin(visual.age * 9)) * 0.35;
           visual.roll += (entity.speed * dt) / BALL_RADIUS;
           object.rotation.set(visual.roll, entity.heading, 0);
           break;
         case 'mud':
-          object.position.y = MUD_Y;
+          object.position.y = entity.height + MUD_Y;
           object.scale.setScalar(
             ITEMS.mudRadius * Math.min(1, 0.3 + (0.7 * visual.age) / MUD_SPREAD),
           );

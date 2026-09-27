@@ -1,13 +1,30 @@
 /** Fabriques d'états de course pour les tests unitaires. */
 import { RACE_LAPS } from '../core/constants';
 import { createKartState } from '../core/kart-state';
-import { EMPTY_SKINS, type KartTuning, type RaceState, type RacerState, type TrackQuery } from '../core/types';
+import {
+  EMPTY_SKINS,
+  type KartTuning,
+  type RaceState,
+  type RacerState,
+  type TrackQuery,
+} from '../core/types';
 import type { Vec2 } from '../core/vec2';
 
 /** Réglages moyens (équivalents à des stats 3/3/3/3). */
-export const TEST_TUNING: KartTuning = { maxSpeed: 28.5, acceleration: 13, turnRate: 2.2, mass: 1.1, offroadFactor: 0.59 };
+export const TEST_TUNING: KartTuning = {
+  maxSpeed: 28.5,
+  acceleration: 13,
+  turnRate: 2.2,
+  mass: 1.1,
+  offroadFactor: 0.59,
+};
 
-export function createTestRacer(id: number, position: Vec2, heading: number, overrides: Partial<RacerState> = {}): RacerState {
+export function createTestRacer(
+  id: number,
+  position: Vec2,
+  heading: number,
+  overrides: Partial<RacerState> = {},
+): RacerState {
   return {
     id,
     name: `Pilote ${id}`,

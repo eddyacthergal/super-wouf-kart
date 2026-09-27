@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { DRIFT, FIXED_DT, KART_RADIUS, PHYSICS, ROAD_HALF_WIDTH } from '../core/constants';
 import { applyBoost, applySpinOut, createKartState } from '../core/kart-state';
-import { NEUTRAL_INPUT, type DriverInput, type KartEvent, type KartState, type KartTuning, type TrackQuery } from '../core/types';
+import {
+  NEUTRAL_INPUT,
+  type DriverInput,
+  type KartEvent,
+  type KartState,
+  type KartTuning,
+  type TrackQuery,
+} from '../core/types';
 import { addScaled, clamp, dot, headingOf, leftOf, scale, sub, wrapAngle } from '../core/vec2';
 import { createCircleTrack } from '../testing/fake-track';
 import { TEST_TUNING } from '../testing/fixtures';
@@ -17,9 +24,18 @@ const WALL_LIMIT = STRAIGHT.wallHalfWidth - KART_RADIUS;
 type Controls = Partial<DriverInput> | ((kart: KartState) => Partial<DriverInput>);
 
 /** Kart posé sur le circuit à l'abscisse s, orienté selon la tangente (+ décalage de cap). */
-function kartOn(track: TrackQuery, s: number, lateral = 0, speed = 0, headingOffset = 0): KartState {
+function kartOn(
+  track: TrackQuery,
+  s: number,
+  lateral = 0,
+  speed = 0,
+  headingOffset = 0,
+): KartState {
   const sample = track.sampleAt(s);
-  const kart = createKartState(addScaled(sample.position, sample.left, lateral), headingOf(sample.tangent) + headingOffset);
+  const kart = createKartState(
+    addScaled(sample.position, sample.left, lateral),
+    headingOf(sample.tangent) + headingOffset,
+  );
   const projection = track.project(kart.position);
   kart.trackIndex = projection.index;
   kart.lateral = projection.lateral;
@@ -28,9 +44,16 @@ function kartOn(track: TrackQuery, s: number, lateral = 0, speed = 0, headingOff
 }
 
 /** Un pas de simulation ; renvoie les événements émis. */
-function step(kart: KartState, controls: Partial<DriverInput>, track = STRAIGHT, tuning: KartTuning = TEST_TUNING): KartEvent[] {
+function step(
+  kart: KartState,
+  controls: Partial<DriverInput>,
+  track = STRAIGHT,
+  tuning: KartTuning = TEST_TUNING,
+): KartEvent[] {
   const events: KartEvent[] = [];
-  stepKart(kart, { ...NEUTRAL_INPUT, ...controls }, tuning, track, FIXED_DT, (event) => events.push(event));
+  stepKart(kart, { ...NEUTRAL_INPUT, ...controls }, tuning, track, FIXED_DT, (event) =>
+    events.push(event),
+  );
   return events;
 }
 
@@ -39,7 +62,11 @@ function run(
   kart: KartState,
   seconds: number,
   controls: Controls,
-  options: { track?: TrackQuery; tuning?: KartTuning; observe?: (t: number, events: KartEvent[]) => void } = {},
+  options: {
+    track?: TrackQuery;
+    tuning?: KartTuning;
+    observe?: (t: number, events: KartEvent[]) => void;
+  } = {},
 ): KartEvent[] {
   const all: KartEvent[] = [];
   const steps = Math.round(seconds / FIXED_DT);
@@ -52,7 +79,10 @@ function run(
   return all;
 }
 
-const ofType = <T extends KartEvent['type']>(events: KartEvent[], type: T): Extract<KartEvent, { type: T }>[] =>
+const ofType = <T extends KartEvent['type']>(
+  events: KartEvent[],
+  type: T,
+): Extract<KartEvent, { type: T }>[] =>
   events.filter((event): event is Extract<KartEvent, { type: T }> => event.type === type);
 
 /** Pilote simple : vise un point en avant sur la ligne (décalée de `targetLateral`). */
@@ -148,14 +178,17 @@ describe('stepKart — direction', () => {
     expect(wrapAngle(kart.heading - heading0)).toBe(0);
   });
 
-  it.each([Number.NaN, Number.POSITIVE_INFINITY])('une consigne de braquage invalide (%d) vaut tout droit', (steer) => {
-    const kart = kartOn(STRAIGHT, 0, 0, 20);
-    const heading0 = kart.heading;
-    run(kart, 0.2, { throttle: true, steer });
-    expect(kart.steer).toBe(0);
-    expect(wrapAngle(kart.heading - heading0)).toBeCloseTo(0, 12);
-    expect(Number.isFinite(kart.position.x) && Number.isFinite(kart.position.z)).toBe(true);
-  });
+  it.each([Number.NaN, Number.POSITIVE_INFINITY])(
+    'une consigne de braquage invalide (%d) vaut tout droit',
+    (steer) => {
+      const kart = kartOn(STRAIGHT, 0, 0, 20);
+      const heading0 = kart.heading;
+      run(kart, 0.2, { throttle: true, steer });
+      expect(kart.steer).toBe(0);
+      expect(wrapAngle(kart.heading - heading0)).toBeCloseTo(0, 12);
+      expect(Number.isFinite(kart.position.x) && Number.isFinite(kart.position.z)).toBe(true);
+    },
+  );
 
   it('en marche arrière, le sens de rotation s’inverse', () => {
     const kart = kartOn(STRAIGHT, 0, 0, -PHYSICS.reverseMaxSpeed);
@@ -188,12 +221,20 @@ describe('stepKart — dérapage', () => {
     const kart = kartOn(OPEN, 0, 0, 25);
     step(kart, { throttle: true, drift: true, steer: 1 }, OPEN);
     const reached: { tier: number; t: number }[] = [];
-    run(kart, 3, { throttle: true, drift: true, steer: 0 }, {
-      track: OPEN,
-      observe: (t, events) => ofType(events, 'drift-tier').forEach(({ tier }) => reached.push({ tier, t })),
-    });
+    run(
+      kart,
+      3,
+      { throttle: true, drift: true, steer: 0 },
+      {
+        track: OPEN,
+        observe: (t, events) =>
+          ofType(events, 'drift-tier').forEach(({ tier }) => reached.push({ tier, t })),
+      },
+    );
     expect(reached.map(({ tier }) => tier)).toEqual([1, 2, 3]);
-    reached.forEach(({ t }, i) => expect(Math.abs(t - DRIFT.tierThresholds[i])).toBeLessThanOrEqual(FIXED_DT + 1e-9));
+    reached.forEach(({ t }, i) =>
+      expect(Math.abs(t - DRIFT.tierThresholds[i])).toBeLessThanOrEqual(FIXED_DT + 1e-9),
+    );
     expect(kart.drift.tier).toBe(3);
   });
 
@@ -202,24 +243,41 @@ describe('stepKart — dérapage', () => {
     [1, -1, 1],
     [-1, -1, 1.5],
     [-1, 1, 1],
-  ] as const)('dérapage %d, braquage %d : charge à la vitesse ×%d (le contre-braquage ne ralentit pas)', (direction, steer, rate) => {
-    const kart = kartOn(OPEN, 0, 0, 25);
-    step(kart, { throttle: true, drift: true, steer: direction }, OPEN);
-    let firstTierAt = 0;
-    run(kart, 1, { throttle: true, drift: true, steer }, {
-      track: OPEN,
-      observe: (t, events) => {
-        if (!firstTierAt && ofType(events, 'drift-tier').length) firstTierAt = t;
-      },
-    });
-    expect(Math.abs(firstTierAt - DRIFT.tierThresholds[0] / rate)).toBeLessThanOrEqual(FIXED_DT + 1e-9);
-  });
+  ] as const)(
+    'dérapage %d, braquage %d : charge à la vitesse ×%d (le contre-braquage ne ralentit pas)',
+    (direction, steer, rate) => {
+      const kart = kartOn(OPEN, 0, 0, 25);
+      step(kart, { throttle: true, drift: true, steer: direction }, OPEN);
+      let firstTierAt = 0;
+      run(
+        kart,
+        1,
+        { throttle: true, drift: true, steer },
+        {
+          track: OPEN,
+          observe: (t, events) => {
+            if (!firstTierAt && ofType(events, 'drift-tier').length) firstTierAt = t;
+          },
+        },
+      );
+      expect(Math.abs(firstTierAt - DRIFT.tierThresholds[0] / rate)).toBeLessThanOrEqual(
+        FIXED_DT + 1e-9,
+      );
+    },
+  );
 
   it('un grand pas qui franchit plusieurs paliers les signale tous, dans l’ordre', () => {
     const kart = kartOn(OPEN, 0, 0, 25);
     step(kart, { throttle: true, drift: true, steer: 1 }, OPEN);
     const events: KartEvent[] = [];
-    stepKart(kart, { ...NEUTRAL_INPUT, throttle: true, drift: true }, TEST_TUNING, OPEN, 3, (event) => events.push(event));
+    stepKart(
+      kart,
+      { ...NEUTRAL_INPUT, throttle: true, drift: true },
+      TEST_TUNING,
+      OPEN,
+      3,
+      (event) => events.push(event),
+    );
     expect(events).toEqual([
       { type: 'drift-tier', tier: 1 },
       { type: 'drift-tier', tier: 2 },
@@ -262,7 +320,12 @@ describe('stepKart — dérapage', () => {
   it('relâcher avant le palier 1 ne donne rien', () => {
     const kart = kartOn(OPEN, 0, 0, 25);
     // Braquage dans le sens du dérapage : charge ×1,5 ; on relâche à 80 % du premier seuil.
-    run(kart, (0.8 * DRIFT.tierThresholds[0]) / 1.5, { throttle: true, drift: true, steer: 1 }, { track: OPEN });
+    run(
+      kart,
+      (0.8 * DRIFT.tierThresholds[0]) / 1.5,
+      { throttle: true, drift: true, steer: 1 },
+      { track: OPEN },
+    );
     const events = step(kart, { throttle: true }, OPEN);
     expect(events).toEqual([]);
     expect(kart.boostTime).toBe(0);
@@ -274,15 +337,22 @@ describe('stepKart — dérapage', () => {
     run(kart, 1, { throttle: true, drift: true, steer: 1 }, { track: OPEN });
     expect(kart.drift.tier).toBeGreaterThan(0);
     let cancelSpeed = Number.NaN;
-    const events = run(kart, 1.5, { brake: true, drift: true, steer: 1 }, {
-      track: OPEN,
-      observe: () => {
-        if (!kart.drift.active && Number.isNaN(cancelSpeed)) cancelSpeed = kart.speed;
+    const events = run(
+      kart,
+      1.5,
+      { brake: true, drift: true, steer: 1 },
+      {
+        track: OPEN,
+        observe: () => {
+          if (!kart.drift.active && Number.isNaN(cancelSpeed)) cancelSpeed = kart.speed;
+        },
       },
-    });
+    );
     expect(kart.drift.active).toBe(false);
     expect(cancelSpeed).toBeLessThan(0.7 * DRIFT.minSpeed);
-    expect(cancelSpeed).toBeGreaterThan(0.7 * DRIFT.minSpeed - PHYSICS.brakeDeceleration * FIXED_DT * 2);
+    expect(cancelSpeed).toBeGreaterThan(
+      0.7 * DRIFT.minSpeed - PHYSICS.brakeDeceleration * FIXED_DT * 2,
+    );
     expect(ofType(events, 'boost')).toHaveLength(0);
     step(kart, {}, OPEN);
     expect(kart.boostTime).toBe(0);
@@ -292,12 +362,17 @@ describe('stepKart — dérapage', () => {
     const kart = kartOn(STRAIGHT, 0, 0, 20);
     let hops = 0;
     let previousHop = 0;
-    const events = run(kart, 1.5, { throttle: true, drift: true }, {
-      observe: () => {
-        if (kart.hopTime > previousHop) hops++;
-        previousHop = kart.hopTime;
+    const events = run(
+      kart,
+      1.5,
+      { throttle: true, drift: true },
+      {
+        observe: () => {
+          if (kart.hopTime > previousHop) hops++;
+          previousHop = kart.hopTime;
+        },
       },
-    });
+    );
     expect(hops).toBe(1);
     expect(kart.drift.active).toBe(false);
     expect(kart.hopTime).toBe(0);
@@ -340,26 +415,41 @@ describe('stepKart — dérapage', () => {
     expect(kart.drift.active).toBe(false);
   });
 
-  it.each([1, -1] as const)('le dérapage (sens %d) tourne dans son sens, de presque droit à très serré (sans assistance)', (direction) => {
-    /** Rotation par seconde une fois le volant de dérapage stabilisé sur `steer`. */
-    const turnRateWith = (steer: number): number => {
-      const kart = kartOn(OPEN, 0, 0, 25);
-      step(kart, { throttle: true, drift: true, steer: direction, driftAssist: false }, OPEN);
-      expect(kart.drift.direction).toBe(direction);
-      run(kart, 1, { throttle: true, drift: true, steer, driftAssist: false }, { track: OPEN });
-      const heading0 = kart.heading;
-      run(kart, 0.25, { throttle: true, drift: true, steer, driftAssist: false }, { track: OPEN });
-      return wrapAngle(kart.heading - heading0) / 0.25;
-    };
-    // Dérapage à droite (+1) : le cap diminue ; à gauche (-1) : il augmente.
-    expect(turnRateWith(-direction)).toBeCloseTo(-direction * TEST_TUNING.turnRate * DRIFT.turnWide, 6);
-    expect(turnRateWith(0)).toBeCloseTo(-direction * TEST_TUNING.turnRate * DRIFT.turnNeutral, 6);
-    expect(turnRateWith(direction)).toBeCloseTo(-direction * TEST_TUNING.turnRate * DRIFT.turnTight, 6);
-  });
+  it.each([1, -1] as const)(
+    'le dérapage (sens %d) tourne dans son sens, de presque droit à très serré (sans assistance)',
+    (direction) => {
+      /** Rotation par seconde une fois le volant de dérapage stabilisé sur `steer`. */
+      const turnRateWith = (steer: number): number => {
+        const kart = kartOn(OPEN, 0, 0, 25);
+        step(kart, { throttle: true, drift: true, steer: direction, driftAssist: false }, OPEN);
+        expect(kart.drift.direction).toBe(direction);
+        run(kart, 1, { throttle: true, drift: true, steer, driftAssist: false }, { track: OPEN });
+        const heading0 = kart.heading;
+        run(
+          kart,
+          0.25,
+          { throttle: true, drift: true, steer, driftAssist: false },
+          { track: OPEN },
+        );
+        return wrapAngle(kart.heading - heading0) / 0.25;
+      };
+      // Dérapage à droite (+1) : le cap diminue ; à gauche (-1) : il augmente.
+      expect(turnRateWith(-direction)).toBeCloseTo(
+        -direction * TEST_TUNING.turnRate * DRIFT.turnWide,
+        6,
+      );
+      expect(turnRateWith(0)).toBeCloseTo(-direction * TEST_TUNING.turnRate * DRIFT.turnNeutral, 6);
+      expect(turnRateWith(direction)).toBeCloseTo(
+        -direction * TEST_TUNING.turnRate * DRIFT.turnTight,
+        6,
+      );
+    },
+  );
 
   it('rayons à pleine vitesse (stats moyennes) : presque droit, virage courant, épingle', () => {
     const tuning = tuningFromStats({ speed: 3, acceleration: 3, weight: 3, handling: 3 });
-    const radius = (wheel: number): number => tuning.maxSpeed / (tuning.turnRate * driftTurnFactor(wheel));
+    const radius = (wheel: number): number =>
+      tuning.maxSpeed / (tuning.turnRate * driftTurnFactor(wheel));
     expect(radius(-1)).toBeGreaterThan(90);
     expect(radius(0)).toBeGreaterThan(30);
     expect(radius(0)).toBeLessThan(45);
@@ -383,24 +473,32 @@ describe('stepKart — dérapage', () => {
     expect(rate()).toBeCloseTo(DRIFT.turnTight, 6);
   });
 
-  it.each([25, 40, 70] as const)('assistance : sur un virage de %d m, dérapage mains libres sans quitter la route', (radius) => {
-    const circle = createCircleTrack(radius);
-    for (const direction of [1, -1] as const) {
-      // Le cercle tourne à gauche : le dérapage à gauche (-1) suit le virage, à droite il le quitte.
-      if (direction === 1) continue;
-      const kart = kartOn(circle, 0, 0, 22);
-      step(kart, { throttle: true, drift: true, steer: direction }, circle);
-      expect(kart.drift.active).toBe(true);
-      let widest = 0;
-      const events = run(kart, 4, { throttle: true, drift: true }, {
-        track: circle,
-        observe: () => (widest = Math.max(widest, Math.abs(kart.lateral))),
-      });
-      expect(kart.drift.active).toBe(true);
-      expect(ofType(events, 'wall')).toHaveLength(0);
-      expect(widest).toBeLessThan(ROAD_HALF_WIDTH);
-    }
-  });
+  it.each([25, 40, 70] as const)(
+    'assistance : sur un virage de %d m, dérapage mains libres sans quitter la route',
+    (radius) => {
+      const circle = createCircleTrack(radius);
+      for (const direction of [1, -1] as const) {
+        // Le cercle tourne à gauche : le dérapage à gauche (-1) suit le virage, à droite il le quitte.
+        if (direction === 1) continue;
+        const kart = kartOn(circle, 0, 0, 22);
+        step(kart, { throttle: true, drift: true, steer: direction }, circle);
+        expect(kart.drift.active).toBe(true);
+        let widest = 0;
+        const events = run(
+          kart,
+          4,
+          { throttle: true, drift: true },
+          {
+            track: circle,
+            observe: () => (widest = Math.max(widest, Math.abs(kart.lateral))),
+          },
+        );
+        expect(kart.drift.active).toBe(true);
+        expect(ofType(events, 'wall')).toHaveLength(0);
+        expect(widest).toBeLessThan(ROAD_HALF_WIDTH);
+      }
+    },
+  );
 
   it('assistance : braquer resserre, contre-braquer élargit, autour du virage suivi', () => {
     const circle = createCircleTrack(40);
@@ -422,13 +520,15 @@ describe('stepKart — dérapage', () => {
   });
 
   it('driftWheelFor est l’inverse de driftTurnFactor, bornée à [-1, 1]', () => {
-    for (const wheel of [-1, -0.5, 0, 0.3, 1]) expect(driftWheelFor(driftTurnFactor(wheel))).toBeCloseTo(wheel, 9);
+    for (const wheel of [-1, -0.5, 0, 0.3, 1])
+      expect(driftWheelFor(driftTurnFactor(wheel))).toBeCloseTo(wheel, 9);
     expect(driftWheelFor(0)).toBe(-1);
     expect(driftWheelFor(5)).toBe(1);
   });
 
   it('un choc franc contre une haie casse le dérapage, sans turbo ni relance automatique ; un frôlement le laisse continuer', () => {
-    const outward = (kart: KartState): number => headingOf(scale(STRAIGHT.project(kart.position).sample.left, -1));
+    const outward = (kart: KartState): number =>
+      headingOf(scale(STRAIGHT.project(kart.position).sample.left, -1));
     const graze = kartOn(STRAIGHT, 100, WALL_LIMIT - 0.05, 25, -0.02);
     step(graze, { throttle: true, drift: true, steer: 1 });
     run(graze, 0.2, { throttle: true, drift: true, steer: -1 });
@@ -461,20 +561,23 @@ describe('stepKart — dérapage', () => {
     expect(crash.drift.active).toBe(true);
   });
 
-  it.each([1, -1] as const)('pose visuelle (sens %d) : le kart glisse nez vers l’intérieur, selon le braquage, puis revient à 0', (direction) => {
-    const kart = kartOn(OPEN, 0, 0, 25);
-    step(kart, { throttle: true, drift: true, steer: direction }, OPEN);
-    run(kart, 1, { throttle: true, drift: true, steer: 0 }, { track: OPEN });
-    expect(kart.visualYaw).toBeCloseTo(-direction * DRIFT.visualYaw, 3);
-    run(kart, 1, { throttle: true, drift: true, steer: direction }, { track: OPEN });
-    expect(kart.visualYaw).toBeCloseTo(-direction * (DRIFT.visualYaw + DRIFT.visualYawSteer), 3);
-    run(kart, 1, { throttle: true, drift: true, steer: -direction }, { track: OPEN });
-    expect(kart.visualYaw).toBeCloseTo(-direction * (DRIFT.visualYaw - DRIFT.visualYawSteer), 3);
-    // Glisse nettement visible (plus de 20°) quel que soit le braquage.
-    expect(Math.abs(kart.visualYaw)).toBeGreaterThan((20 * Math.PI) / 180);
-    run(kart, 1.5, { throttle: true }, { track: OPEN });
-    expect(Math.abs(kart.visualYaw)).toBeLessThan(1e-3);
-  });
+  it.each([1, -1] as const)(
+    'pose visuelle (sens %d) : le kart glisse nez vers l’intérieur, selon le braquage, puis revient à 0',
+    (direction) => {
+      const kart = kartOn(OPEN, 0, 0, 25);
+      step(kart, { throttle: true, drift: true, steer: direction }, OPEN);
+      run(kart, 1, { throttle: true, drift: true, steer: 0 }, { track: OPEN });
+      expect(kart.visualYaw).toBeCloseTo(-direction * DRIFT.visualYaw, 3);
+      run(kart, 1, { throttle: true, drift: true, steer: direction }, { track: OPEN });
+      expect(kart.visualYaw).toBeCloseTo(-direction * (DRIFT.visualYaw + DRIFT.visualYawSteer), 3);
+      run(kart, 1, { throttle: true, drift: true, steer: -direction }, { track: OPEN });
+      expect(kart.visualYaw).toBeCloseTo(-direction * (DRIFT.visualYaw - DRIFT.visualYawSteer), 3);
+      // Glisse nettement visible (plus de 20°) quel que soit le braquage.
+      expect(Math.abs(kart.visualYaw)).toBeGreaterThan((20 * Math.PI) / 180);
+      run(kart, 1.5, { throttle: true }, { track: OPEN });
+      expect(Math.abs(kart.visualYaw)).toBeLessThan(1e-3);
+    },
+  );
 });
 
 describe('stepKart — boost', () => {
@@ -525,16 +628,24 @@ describe('stepKart — bas-côté', () => {
     expect(kart.speed).toBeCloseTo(TEST_TUNING.maxSpeed * TEST_TUNING.offroadFactor, 1);
   });
 
-  it.each([true, false])('un kart rapide qui quitte la route ralentit progressivement (gaz : %s)', (throttle) => {
-    const kart = kartOn(STRAIGHT, 0, offroadLateral, TEST_TUNING.maxSpeed);
-    step(kart, { throttle: true });
-    expect(kart.offroad).toBe(true);
-    step(kart, { throttle });
-    expect(kart.speed).toBeCloseTo(TEST_TUNING.maxSpeed - 12 * FIXED_DT, 9);
-  });
+  it.each([true, false])(
+    'un kart rapide qui quitte la route ralentit progressivement (gaz : %s)',
+    (throttle) => {
+      const kart = kartOn(STRAIGHT, 0, offroadLateral, TEST_TUNING.maxSpeed);
+      step(kart, { throttle: true });
+      expect(kart.offroad).toBe(true);
+      step(kart, { throttle });
+      expect(kart.speed).toBeCloseTo(TEST_TUNING.maxSpeed - 12 * FIXED_DT, 9);
+    },
+  );
 
   it('ne ralentit pas pendant un boost', () => {
-    const kart = kartOn(STRAIGHT, 0, offroadLateral, TEST_TUNING.maxSpeed * TEST_TUNING.offroadFactor);
+    const kart = kartOn(
+      STRAIGHT,
+      0,
+      offroadLateral,
+      TEST_TUNING.maxSpeed * TEST_TUNING.offroadFactor,
+    );
     step(kart, { throttle: true });
     expect(kart.offroad).toBe(true);
     applyBoost(kart, 1, DRIFT.boostStrength);
@@ -557,7 +668,9 @@ describe('stepKart — haies', () => {
     let contactSteps = 0;
     const observe = (): void => {
       expect(Math.abs(kart.lateral)).toBeLessThanOrEqual(WALL_LIMIT + 1e-6);
-      expect(Math.abs(STRAIGHT.project(kart.position).lateral)).toBeLessThanOrEqual(WALL_LIMIT + 1e-6);
+      expect(Math.abs(STRAIGHT.project(kart.position).lateral)).toBeLessThanOrEqual(
+        WALL_LIMIT + 1e-6,
+      );
       if (kart.wallContact) {
         contactSteps++;
         if (!speedAfterImpact) speedAfterImpact = kart.speed;
@@ -581,7 +694,9 @@ describe('stepKart — haies', () => {
     expect(contactSteps).toBeGreaterThan(60);
     expect(Math.sign(kart.lateral)).toBe(side);
     // Le cap a été ramené le long de la haie, dans le sens de la course.
-    expect(Math.abs(wrapAngle(kart.heading - headingOf(STRAIGHT.project(kart.position).sample.tangent)))).toBeLessThan(0.1);
+    expect(
+      Math.abs(wrapAngle(kart.heading - headingOf(STRAIGHT.project(kart.position).sample.tangent))),
+    ).toBeLessThan(0.1);
     expect(kart.speed).toBeGreaterThan(5);
   });
 
@@ -614,7 +729,8 @@ describe('stepKart — haies', () => {
 
   it('un nouveau choc (après avoir quitté la haie, ou fort en la frottant) émet un nouvel événement', () => {
     /** Cap perpendiculaire vers la haie extérieure (droite), à l'abscisse actuelle du kart. */
-    const outward = (kart: KartState): number => headingOf(scale(STRAIGHT.project(kart.position).sample.left, -1));
+    const outward = (kart: KartState): number =>
+      headingOf(scale(STRAIGHT.project(kart.position).sample.left, -1));
     const kart = kartOn(STRAIGHT, 100, 0, TEST_TUNING.maxSpeed);
     kart.heading = outward(kart);
     expect(ofType(run(kart, 1, { throttle: true }), 'wall')).toHaveLength(1);
@@ -627,7 +743,10 @@ describe('stepKart — haies', () => {
     expect(kart.wallContact).toBe(true);
     expect(strong).toHaveLength(1);
     expect(strong[0].intensity).toBeGreaterThan(0.3);
-    expect(kart.speed).toBeCloseTo((25 - PHYSICS.brakeDeceleration * FIXED_DT) * PHYSICS.wallSpeedRetention, 6);
+    expect(kart.speed).toBeCloseTo(
+      (25 - PHYSICS.brakeDeceleration * FIXED_DT) * PHYSICS.wallSpeedRetention,
+      6,
+    );
 
     // Le kart s'éloigne, puis revient frôler la haie : nouveau contact, donc nouvel événement même faible.
     kart.heading = wrapAngle(outward(kart) + Math.PI);
@@ -644,30 +763,42 @@ describe('stepKart — haies', () => {
     it.each([
       ['gauche', 1],
       ['droite', -1],
-    ] as const)('un kart lancé vers la haie de %s la touche de ce côté et reste contenu', (_label, side) => {
-      const kart = kartOn(track, 50, 0, TEST_TUNING.maxSpeed);
-      kart.heading = headingOf(scale(track.sampleAt(50).left, side));
-      let contactLateral = Number.NaN;
-      let stepsSinceContact = -1;
-      let headingError = Number.NaN;
-      const events = run(kart, 1, { throttle: true }, {
-        track,
-        observe: () => {
-          expect(Math.abs(track.project(kart.position).lateral)).toBeLessThanOrEqual(WALL_LIMIT + 1e-6);
-          if (stepsSinceContact < 0 && kart.wallContact) {
-            contactLateral = kart.lateral;
-            stepsSinceContact = 0;
-          } else if (stepsSinceContact >= 0 && ++stepsSinceContact === 10) {
-            headingError = Math.abs(wrapAngle(kart.heading - headingOf(track.project(kart.position).sample.tangent)));
-          }
-        },
-      });
-      // lateral > 0 = gauche, quel que soit le sens du virage.
-      expect(contactLateral).toBeCloseTo(side * WALL_LIMIT, 9);
-      expect(ofType(events, 'wall').length).toBeGreaterThanOrEqual(1);
-      // Peu après le choc, le kart est ramené dans le sens de la course.
-      expect(headingError).toBeLessThan(0.15);
-    });
+    ] as const)(
+      'un kart lancé vers la haie de %s la touche de ce côté et reste contenu',
+      (_label, side) => {
+        const kart = kartOn(track, 50, 0, TEST_TUNING.maxSpeed);
+        kart.heading = headingOf(scale(track.sampleAt(50).left, side));
+        let contactLateral = Number.NaN;
+        let stepsSinceContact = -1;
+        let headingError = Number.NaN;
+        const events = run(
+          kart,
+          1,
+          { throttle: true },
+          {
+            track,
+            observe: () => {
+              expect(Math.abs(track.project(kart.position).lateral)).toBeLessThanOrEqual(
+                WALL_LIMIT + 1e-6,
+              );
+              if (stepsSinceContact < 0 && kart.wallContact) {
+                contactLateral = kart.lateral;
+                stepsSinceContact = 0;
+              } else if (stepsSinceContact >= 0 && ++stepsSinceContact === 10) {
+                headingError = Math.abs(
+                  wrapAngle(kart.heading - headingOf(track.project(kart.position).sample.tangent)),
+                );
+              }
+            },
+          },
+        );
+        // lateral > 0 = gauche, quel que soit le sens du virage.
+        expect(contactLateral).toBeCloseTo(side * WALL_LIMIT, 9);
+        expect(ofType(events, 'wall').length).toBeGreaterThanOrEqual(1);
+        // Peu après le choc, le kart est ramené dans le sens de la course.
+        expect(headingError).toBeLessThan(0.15);
+      },
+    );
   });
 
   it('un kart qui longe la haie en s’en éloignant ne perd pas de vitesse', () => {
@@ -689,16 +820,21 @@ describe('stepKart — tête-à-queue', () => {
     const heading0 = kart.heading;
     let previousSpeed = kart.speed;
     let maxYaw = 0;
-    const spinEvents = run(kart, 0.95, { throttle: true, drift: true, steer: 1 }, {
-      observe: () => {
-        expect(kart.heading).toBe(heading0);
-        expect(kart.speed).toBeLessThanOrEqual(previousSpeed);
-        expect(kart.drift.active).toBe(false);
-        expect(kart.steer).toBe(0);
-        previousSpeed = kart.speed;
-        maxYaw = Math.max(maxYaw, Math.abs(kart.visualYaw));
+    const spinEvents = run(
+      kart,
+      0.95,
+      { throttle: true, drift: true, steer: 1 },
+      {
+        observe: () => {
+          expect(kart.heading).toBe(heading0);
+          expect(kart.speed).toBeLessThanOrEqual(previousSpeed);
+          expect(kart.drift.active).toBe(false);
+          expect(kart.steer).toBe(0);
+          previousSpeed = kart.speed;
+          maxYaw = Math.max(maxYaw, Math.abs(kart.visualYaw));
+        },
       },
-    });
+    );
     expect(spinEvents).toEqual([]);
     expect(kart.speed).toBe(0);
     expect(maxYaw).toBeGreaterThan(2);
@@ -725,32 +861,100 @@ describe('stepKart — interpolation', () => {
   });
 });
 
-describe.each(['left', 'right'] as const)('stepKart — un tour complet (virage à %s)', (direction) => {
-  it('un pilote simple boucle le cercle de 60 m sans toucher les haies', () => {
-    const track = createCircleTrack(60, direction);
-    const kart = kartOn(track, 0);
-    let travelled = 0;
-    let turned = 0;
-    let lastS = track.project(kart.position).s;
-    let wallSteps = 0;
-    let maxLateral = 0;
-    const events: KartEvent[] = [];
-    for (let i = 0; i < 60 * 30 && travelled < track.length; i++) {
-      events.push(...step(kart, { throttle: true, steer: followLine(kart, track) }, track));
-      const s = track.project(kart.position).s;
-      travelled += wrapAngle(((s - lastS) / track.length) * 2 * Math.PI) * (track.length / (2 * Math.PI));
-      lastS = s;
-      turned += wrapAngle(kart.heading - kart.prevHeading);
-      if (kart.wallContact) wallSteps++;
-      maxLateral = Math.max(maxLateral, Math.abs(kart.lateral));
-    }
-    expect(travelled).toBeGreaterThanOrEqual(track.length);
-    expect(wallSteps).toBe(0);
-    expect(ofType(events, 'wall')).toHaveLength(0);
-    expect(maxLateral).toBeLessThan(ROAD_HALF_WIDTH);
-    // Virage à gauche = cap qui augmente (un tour ≈ +2π), à droite = cap qui diminue.
-    expect(Math.sign(turned)).toBe(direction === 'left' ? 1 : -1);
-    expect(Math.abs(turned)).toBeGreaterThan(1.8 * Math.PI);
-    expect(kart.speed).toBeGreaterThan(0.9 * TEST_TUNING.maxSpeed);
+const UPHILL = createCircleTrack(2000, 'left', { grade: 0.1 });
+const DOWNHILL = createCircleTrack(2000, 'left', { grade: -0.1 });
+
+describe('stepKart — relief', () => {
+  it('suit la hauteur, le tangage et le roulis du sol', () => {
+    const track = createCircleTrack(2000, 'left', { height: 5, grade: 0.1, bank: 0.2 });
+    const kart = kartOn(track, 30, 2, 10);
+    step(kart, {}, track);
+    const expected = track.surfaceAt(track.project(kart.position, kart.trackIndex).s, kart.lateral);
+    expect(kart.height).toBeCloseTo(expected.height, 3);
+    expect(kart.pitch).toBeCloseTo(Math.atan(0.1), 2);
+    expect(kart.roll).toBeCloseTo(0.2, 2);
+    expect(kart.prevHeight).not.toBe(kart.height);
+  });
+
+  it('une côte abaisse la vitesse de croisière, une descente l’élève au-delà du max', () => {
+    const cruise = (track: TrackQuery) => {
+      const kart = kartOn(track, 0);
+      run(kart, 12, (k) => ({ throttle: true, steer: followLine(k, track) }), { track });
+      return kart.speed;
+    };
+    expect(cruise(UPHILL)).toBeLessThan(0.9 * TEST_TUNING.maxSpeed);
+    expect(cruise(DOWNHILL)).toBeGreaterThan(1.05 * TEST_TUNING.maxSpeed);
+  });
+
+  it('le poids amplifie la pente : les lourds gagnent en descente, les légers en montée', () => {
+    const heavy = tuningFromStats({ speed: 3, acceleration: 3, weight: 5, handling: 3 });
+    const light = tuningFromStats({ speed: 3, acceleration: 3, weight: 1, handling: 3 });
+    const cruise = (track: TrackQuery, tuning: KartTuning) => {
+      const kart = kartOn(track, 0);
+      run(kart, 12, (k) => ({ throttle: true, steer: followLine(k, track) }), { track, tuning });
+      return kart.speed;
+    };
+    expect(cruise(DOWNHILL, heavy)).toBeGreaterThan(cruise(DOWNHILL, light));
+    expect(cruise(UPHILL, light)).toBeGreaterThan(cruise(UPHILL, heavy));
+  });
+
+  it('arrêté sur une pente sans gaz, le kart ne part pas à la dérive', () => {
+    const kart = kartOn(UPHILL, 0);
+    run(kart, 5, {}, { track: UPHILL });
+    expect(Math.abs(kart.speed)).toBeLessThan(0.05);
+  });
+
+  it('la pente se mesure dans le sens du cap : à contresens, une montée devient une descente', () => {
+    const kart = kartOn(UPHILL, 400, 0, 0, Math.PI);
+    run(kart, 6, { throttle: true }, { track: UPHILL });
+    expect(kart.pitch).toBeLessThan(-0.05);
+    expect(kart.speed).toBeGreaterThan(1.02 * TEST_TUNING.maxSpeed);
+  });
+
+  it('dans un virage relevé, tourner vers l’intérieur tourne plus, vers l’extérieur non', () => {
+    const turned = (bank: number, steer: number) => {
+      const track = createCircleTrack(2000, 'left', { bank });
+      const kart = kartOn(track, 0, 0, 20);
+      const start = kart.heading;
+      run(kart, 0.5, { throttle: true, steer }, { track });
+      return Math.abs(wrapAngle(kart.heading - start));
+    };
+    // Dévers > 0 : bord gauche plus bas ; steer < 0 = à gauche = vers l'intérieur.
+    expect(turned(0.3, -1)).toBeGreaterThan(turned(0, -1) * 1.08);
+    expect(turned(0.3, 1)).toBeCloseTo(turned(0, 1), 3);
   });
 });
+
+describe.each(['left', 'right'] as const)(
+  'stepKart — un tour complet (virage à %s)',
+  (direction) => {
+    it('un pilote simple boucle le cercle de 60 m sans toucher les haies', () => {
+      const track = createCircleTrack(60, direction);
+      const kart = kartOn(track, 0);
+      let travelled = 0;
+      let turned = 0;
+      let lastS = track.project(kart.position).s;
+      let wallSteps = 0;
+      let maxLateral = 0;
+      const events: KartEvent[] = [];
+      for (let i = 0; i < 60 * 30 && travelled < track.length; i++) {
+        events.push(...step(kart, { throttle: true, steer: followLine(kart, track) }, track));
+        const s = track.project(kart.position).s;
+        travelled +=
+          wrapAngle(((s - lastS) / track.length) * 2 * Math.PI) * (track.length / (2 * Math.PI));
+        lastS = s;
+        turned += wrapAngle(kart.heading - kart.prevHeading);
+        if (kart.wallContact) wallSteps++;
+        maxLateral = Math.max(maxLateral, Math.abs(kart.lateral));
+      }
+      expect(travelled).toBeGreaterThanOrEqual(track.length);
+      expect(wallSteps).toBe(0);
+      expect(ofType(events, 'wall')).toHaveLength(0);
+      expect(maxLateral).toBeLessThan(ROAD_HALF_WIDTH);
+      // Virage à gauche = cap qui augmente (un tour ≈ +2π), à droite = cap qui diminue.
+      expect(Math.sign(turned)).toBe(direction === 'left' ? 1 : -1);
+      expect(Math.abs(turned)).toBeGreaterThan(1.8 * Math.PI);
+      expect(kart.speed).toBeGreaterThan(0.9 * TEST_TUNING.maxSpeed);
+    });
+  },
+);

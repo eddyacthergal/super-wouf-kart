@@ -1,21 +1,24 @@
 /**
- * Catalogue des circuits, dans l'ordre de l'écran de choix. Données pures (aucune dépendance au
- * rendu) : l'interface l'importe pour afficher les cartes, le jeu pour construire la course.
+ * Catalogue des circuits, dans l'ordre de l'écran de choix. Chaque circuit est un fichier JSON de
+ * `circuits/`, contrôlé par parseCircuit au chargement (un fichier invalide fait échouer les tests).
  */
-import { GRAND_JARDIN } from './circuits/grand-jardin';
-import { PARC_ENNEIGE } from './circuits/parc-enneige';
-import { PLAGE } from './circuits/plage';
-import { POTAGER } from './circuits/potager';
+import { parseCircuit } from './circuit-loader';
+import colline from './circuits/colline.json';
+import grandJardin from './circuits/grand-jardin.json';
+import parcEnneige from './circuits/parc-enneige.json';
+import plage from './circuits/plage.json';
+import potager from './circuits/potager.json';
 import type { TrackDefinition } from './track-definition';
 
 export const TRACK_CATALOG: readonly TrackDefinition[] = [
-  GRAND_JARDIN,
-  POTAGER,
-  PARC_ENNEIGE,
-  PLAGE,
-];
+  grandJardin,
+  potager,
+  parcEnneige,
+  plage,
+  colline,
+].map(parseCircuit);
 
-export const DEFAULT_TRACK_ID = GRAND_JARDIN.id;
+export const DEFAULT_TRACK_ID = 'grand-jardin';
 
 /** Vrai si `value` est l'identifiant d'un circuit du catalogue. */
 export function isTrackId(value: unknown): value is string {
@@ -24,5 +27,8 @@ export function isTrackId(value: unknown): value is string {
 
 /** Circuit d'identifiant `id`, ou le circuit par défaut si l'identifiant est absent ou inconnu. */
 export function findTrack(id: string | null | undefined): TrackDefinition {
-  return TRACK_CATALOG.find((track) => track.id === id) ?? GRAND_JARDIN;
+  return (
+    TRACK_CATALOG.find((track) => track.id === id) ??
+    TRACK_CATALOG.find((track) => track.id === DEFAULT_TRACK_ID)!
+  );
 }
