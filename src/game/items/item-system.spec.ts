@@ -964,6 +964,53 @@ describe('écureuil', () => {
     );
     expect(solo.race.items).toHaveLength(0);
   });
+
+  it('n’attrape pas une cible à la même abscisse mais 3 m de côté', () => {
+    const { track, race } = squirrelRace(2);
+    const [leader, thrower] = race.racers;
+    thrower.items = ['squirrel'];
+    const { events, emit } = recorder();
+    useItem(race, thrower, track, false, emit);
+    const entity = race.items[0];
+    const sample = track.sampleAt(track.project(leader.kart.position, leader.kart.trackIndex).s);
+    // Même abscisse que la cible, mais 3 m de couloir en plus (trop loin pour être attrapée).
+    entity.position = addScaled(leader.kart.position, sample.left, 3);
+    entity.trackIndex = track.project(entity.position, leader.kart.trackIndex).index;
+    stepItems(race, track, createRng(1), 0, emit);
+    expect(hits(events)).toEqual([]);
+    expect(race.items).toHaveLength(1);
+  });
+
+  it('rattrape une cible qui arrive en face avec 8 m d’écart de couloir en moins de 2 s', () => {
+    const track = createCircleTrack(2000);
+    const race = createTestRace(track, 2);
+    const [thrower, target] = race.racers;
+    placeOnTrack(thrower, track, 0, 0);
+    let targetS = 30;
+    placeOnTrack(target, track, targetS, 8);
+    thrower.items = ['squirrel'];
+    const { events, emit } = recorder();
+    useItem(race, thrower, track, false, emit);
+    // La cible roule vers l'écureuil à 30 m/s (vitesse de rapprochement ~120 m/s avec les 90 m/s
+    // de l'écureuil), tout en restant dans son couloir décalé de 8 m.
+    const closingSpeed = 30;
+    const maxSteps = Math.round(2 / FIXED_DT);
+    const steps = stepUntil(
+      race,
+      track,
+      emit,
+      maxSteps,
+      () => hits(events).length > 0,
+      () => {
+        targetS -= closingSpeed * FIXED_DT;
+        placeOnTrack(target, track, targetS, 8);
+      },
+    );
+    expect(hits(events)).toEqual([
+      { type: 'hit', racerId: target.id, by: 'squirrel', ownerId: thrower.id },
+    ]);
+    expect(steps).toBeLessThan(maxSteps);
+  });
 });
 
 describe('croquette turbo', () => {

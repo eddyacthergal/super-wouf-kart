@@ -430,8 +430,16 @@ function moveSquirrel(entity: ItemEntity, race: RaceState, track: TrackQuery, dt
   const s = here.s + direction * ITEMS.squirrelSpeed * dt;
   const near = remaining < SQUIRREL_HOMING_DISTANCE;
   const aim = near ? target.kart.lateral : 0;
-  const lateral =
-    here.lateral + (aim - here.lateral) * Math.min(1, (near ? SQUIRREL_HOMING_RATE : 1) * dt);
+  // Près du but, le latéral rejoint celui de la cible au plus tard quand l'abscisse l'atteint :
+  // sans cette accélération, une cible qui arrive de face peut être croisée avec un fort écart
+  // latéral encore présent.
+  const homingFraction = near
+    ? Math.min(
+        1,
+        Math.max(SQUIRREL_HOMING_RATE * dt, (ITEMS.squirrelSpeed * dt) / Math.max(remaining, 1e-6)),
+      )
+    : Math.min(1, dt);
+  const lateral = here.lateral + (aim - here.lateral) * homingFraction;
   const sample = track.sampleAt(s);
   entity.position = addScaled(sample.position, sample.left, lateral);
   entity.heading = headingOf(sample.tangent) + (direction < 0 ? Math.PI : 0);
@@ -439,7 +447,10 @@ function moveSquirrel(entity: ItemEntity, race: RaceState, track: TrackQuery, dt
   entity.height = track.surfaceAt(s, lateral).height;
 }
 
-/** L'écureuil attrape sa cible quand leurs abscisses se rejoignent (le super-collier protège). */
+/**
+ * L'écureuil attrape sa cible quand leurs abscisses et leurs couloirs se rejoignent (le
+ * super-collier protège) ; sinon il continue (il fera demi-tour de lui-même au besoin).
+ */
 function collideSquirrels(race: RaceState, track: TrackQuery, emit: EmitEvent): void {
   for (const entity of race.items) {
     if (entity.kind !== 'squirrel' || entity.life <= 0 || entity.targetId === null) continue;
@@ -448,6 +459,7 @@ function collideSquirrels(race: RaceState, track: TrackQuery, emit: EmitEvent): 
     const here = track.project(entity.position, entity.trackIndex);
     const gap = aheadGap(track, here.s, target.kart.trackIndex);
     if (gap > ITEMS.squirrelCatch && gap < track.length - ITEMS.squirrelCatch) continue;
+    if (Math.abs(here.lateral - target.kart.lateral) > ITEMS.squirrelCatchLateral) continue;
     entity.life = 0;
     if (target.kart.collarTime > 0) continue;
     applySpinOut(target.kart);

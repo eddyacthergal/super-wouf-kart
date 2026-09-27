@@ -150,6 +150,8 @@ export const ITEMS = {
   squirrelSpin: 1.5,
   /** Écart d'abscisse (m) auquel l'écureuil attrape sa cible. */
   squirrelCatch: 1.5,
+  /** Écureuil : écart latéral max pour attraper la cible (m). */
+  squirrelCatchLateral: 2,
 } as const;
 
 /** Aspiration : rouler dans le sillage d'un kart remplit une jauge, puis donne un turbo. */
