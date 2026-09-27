@@ -36,6 +36,8 @@ function playLap(definition: TrackDefinition, style: Style): Lap {
   const sim = new RaceSimulation(track, createRoster('chihuahua', EMPTY_SKINS, rng), {
     laps: 1,
     rng,
+    // Ce test mesure le seul dérapage : l'aspiration dépend du trafic et brouillerait la comparaison.
+    slipstream: false,
   });
   const target = new EventTarget();
   const keyboard = new KeyboardInput({ target });

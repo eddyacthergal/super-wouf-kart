@@ -32,6 +32,11 @@ import { stepSlipstream } from './slipstream';
 export interface RaceSimulationOptions {
   laps?: number;
   rng: Rng;
+  /**
+   * Aspiration active (vrai par défaut) ; un test peut la couper pour mesurer un autre mécanisme
+   * sans l'effet du trafic.
+   */
+  slipstream?: boolean;
 }
 
 /** Rubber band : écart de progression (m) qui donne la pleine correction de vitesse… */
@@ -48,6 +53,7 @@ export class RaceSimulation {
   readonly track: TrackQuery;
 
   private readonly rng: Rng;
+  private readonly slipstreamEnabled: boolean;
   /** Pilotes IA internes (joueur arrivé, pilote sans contrôleur), créés à la demande. */
   private readonly fallbackControllers = new Map<number, AiController>();
   /** Réglages effectifs de chaque pilote (rubber band), réutilisés d'un pas à l'autre. */
@@ -66,6 +72,7 @@ export class RaceSimulation {
   constructor(track: TrackQuery, entries: readonly RacerEntry[], options: RaceSimulationOptions) {
     this.track = track;
     this.rng = options.rng;
+    this.slipstreamEnabled = options.slipstream ?? true;
     this.state = createRaceState(track, entries, { laps: options.laps });
     this.effectiveTunings = this.state.racers.map((racer) => ({ ...racer.tuning }));
     this.kartEmitters = this.state.racers.map(
@@ -149,7 +156,7 @@ export class RaceSimulation {
       if (input.useItem) useItem(state, racer, track, input.brake, this.emit);
     }
 
-    stepSlipstream(racers, dt, this.emit);
+    if (this.slipstreamEnabled) stepSlipstream(racers, dt, this.emit);
     resolveKartCollisions(racers, this.emit);
     stepItems(state, track, this.rng, dt, this.emit);
     for (const racer of racers) updateProgress(racer, state, track, this.emit);
