@@ -94,7 +94,7 @@ describe('RacePage', () => {
       fakeHud({
         rank: 3,
         lap: 2,
-        item: 'bone',
+        items: ['bone'],
         drifting: true,
         driftTier: 2,
         boosting: true,
@@ -126,9 +126,16 @@ describe('RacePage', () => {
     expect(minimap?.querySelectorAll('circle')).toHaveLength(3);
   });
 
+  it('annonce l’aspiration', async () => {
+    game.last.callbacks.onReady(FAKE_INFO);
+    game.last.callbacks.onHud(fakeHud({ slipstreaming: true }));
+    await settle(fixture);
+    expect(text()).toContain('Aspiration !');
+  });
+
   it('affiche la roulette d’objet avec un libellé accessible', async () => {
     game.last.callbacks.onReady(FAKE_INFO);
-    game.last.callbacks.onHud(fakeHud({ itemRolling: true }));
+    game.last.callbacks.onHud(fakeHud({ items: ['bone'], rollingSlot: 0 }));
     await settle(fixture);
     expect(element.querySelector('[aria-label="Objet : tirage en cours"]')).not.toBeNull();
     expect(text()).toContain('?');
@@ -136,12 +143,29 @@ describe('RacePage', () => {
 
   it('montre une empreinte décorative dans la case d’objet vide', async () => {
     game.last.callbacks.onReady(FAKE_INFO);
-    game.last.callbacks.onHud(fakeHud({ item: null, itemRolling: false }));
+    game.last.callbacks.onHud(fakeHud({ items: [], rollingSlot: null }));
     await settle(fixture);
     const slot = element.querySelector('[aria-label="Objet : aucun"]');
     expect(slot).not.toBeNull();
     expect(slot?.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
     expect(slot?.textContent?.trim()).toBe('');
+  });
+
+  it('affiche l’objet suivant en grand et la réserve en petit', async () => {
+    game.last.callbacks.onReady(FAKE_INFO);
+    game.last.callbacks.onHud(fakeHud({ items: ['bone', 'tennis-ball'], rollingSlot: null }));
+    await settle(fixture);
+    expect(element.querySelector('[aria-label="Objet : Os"]')).not.toBeNull();
+    expect(element.querySelector('[aria-label="Réserve : Balle de tennis"]')).not.toBeNull();
+    expect(text()).toContain('Lancé devant (derrière en freinant)');
+  });
+
+  it('fait tourner la roulette dans la réserve sans cacher l’objet suivant', async () => {
+    game.last.callbacks.onReady(FAKE_INFO);
+    game.last.callbacks.onHud(fakeHud({ items: ['mud', 'bone'], rollingSlot: 1 }));
+    await settle(fixture);
+    expect(element.querySelector('[aria-label="Objet : Flaque de boue"]')).not.toBeNull();
+    expect(element.querySelector('[aria-label="Réserve : tirage en cours"]')).not.toBeNull();
   });
 
   it('affiche le compte à rebours puis « Partez ! »', async () => {

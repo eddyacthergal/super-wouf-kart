@@ -109,6 +109,8 @@ export const DRIFT = {
 export const ITEMS = {
   boxPickupRadius: 1.8,
   boxRespawn: 3,
+  /** Objets tenus au plus (file d'attente). */
+  maxHeld: 2,
   rouletteDuration: 1.2,
   boneSpeed: 45,
   boneLife: 5,
@@ -126,4 +128,44 @@ export const ITEMS = {
   turboStrength: 1.35,
   /** Délai (s) avant qu'un objet lancé puisse toucher son propre lanceur. */
   armTime: 0.35,
+  /** Os en or : durée pendant laquelle il reste actif dans la case (s). */
+  goldenBoneDuration: 7,
+  /** Os en or : durée du turbo donné à chaque appui (s). */
+  goldenBoneTurboDuration: 1.0,
+  /** Os en or : multiplicateur de vitesse max du turbo donné à chaque appui. */
+  goldenBoneTurboStrength: 1.3,
+  /** Sifflet : durée de l'arrêt net infligé aux pilotes mieux classés (s). */
+  whistleStun: 1,
+  /** Sifflet : décélération pendant l'arrêt net (m/s²). */
+  stunDeceleration: 30,
+  /** Super-collier : durée de l'invincibilité et de la vitesse max majorée (s). */
+  collarDuration: 6,
+  /** Super-collier : multiplicateur de vitesse max pendant sa durée. */
+  collarSpeedFactor: 1.15,
+  /** Écureuil : vitesse le long du circuit (m/s). */
+  squirrelSpeed: 90,
+  /** Écureuil : durée de vie (s). */
+  squirrelLife: 20,
+  /** Écureuil : durée du tête-à-queue infligé à sa cible (s). */
+  squirrelSpin: 1.5,
+  /** Écart d'abscisse (m) auquel l'écureuil attrape sa cible. */
+  squirrelCatch: 1.5,
+  /** Écureuil : écart latéral max pour attraper la cible (m). */
+  squirrelCatchLateral: 2,
+} as const;
+
+/** Aspiration : rouler dans le sillage d'un kart remplit une jauge, puis donne un turbo. */
+export const SLIPSTREAM = {
+  minDistance: 3,
+  maxDistance: 14,
+  /** Demi-angle du cône devant le kart (rad). */
+  halfAngle: (12 * Math.PI) / 180,
+  /** Fraction de la vitesse max en dessous de laquelle l'aspiration ne joue pas. */
+  minSpeedRatio: 0.6,
+  /** Temps (s) pour remplir la jauge. */
+  chargeTime: 1.2,
+  /** Hors du sillage, la jauge se vide ce nombre de fois plus vite. */
+  decayFactor: 2,
+  boostDuration: 1.0,
+  boostStrength: 1.2,
 } as const;

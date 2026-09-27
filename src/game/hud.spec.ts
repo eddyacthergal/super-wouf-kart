@@ -95,8 +95,9 @@ describe('buildHudSnapshot', () => {
     const player = race.racers[1];
     player.lap = 2;
     player.rank = 2;
-    player.item = 'bone';
+    player.items = ['bone'];
     player.itemRoulette = 0.4;
+    player.goldenBoneTime = 4;
     player.kart.speed = -10;
     player.kart.boostTime = 0.3;
     player.kart.drift = { active: true, direction: 1, charge: 1.7, tier: 2 };
@@ -110,11 +111,13 @@ describe('buildHudSnapshot', () => {
       rank: 2,
       racerCount: 3,
       raceTime: 42.5,
-      item: 'bone',
-      itemRolling: true,
+      items: ['bone'],
+      rollingSlot: 0,
+      goldenBoneTime: 4,
       drifting: true,
       driftTier: 2,
       boosting: true,
+      slipstreaming: false,
       wrongWay: true,
       speedKmh: 36,
       dots: race.racers.map((racer) => ({
@@ -133,10 +136,31 @@ describe('buildHudSnapshot', () => {
     const hud = buildHudSnapshot(race, false);
     expect(hud.drifting).toBe(false);
     expect(hud.driftTier).toBe(0);
-    expect(hud.itemRolling).toBe(false);
+    expect(hud.rollingSlot).toBeNull();
     expect(hud.boosting).toBe(false);
     expect(hud.wrongWay).toBe(false);
     expect(hud.speedKmh).toBe(100);
+  });
+
+  it('aspiration en cours d’après la charge du joueur', () => {
+    const race = createTestRace(track, 2);
+    const kart = race.racers[0].kart;
+    kart.slipstream = 0.4;
+    expect(buildHudSnapshot(race, false).slipstreaming).toBe(true);
+    kart.slipstream = 0;
+    expect(buildHudSnapshot(race, false).slipstreaming).toBe(false);
+  });
+
+  it('publie les deux objets et la case dont la roulette tourne', () => {
+    const race = createTestRace(track, 2);
+    const player = race.racers[0];
+    player.items = ['mud', 'bone'];
+    player.itemRoulette = 0.4;
+    const hud = buildHudSnapshot(race, false);
+    expect(hud.items).toEqual(['mud', 'bone']);
+    expect(hud.rollingSlot).toBe(1);
+    player.itemRoulette = 0;
+    expect(buildHudSnapshot(race, false).rollingSlot).toBeNull();
   });
 
   it.each([

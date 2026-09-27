@@ -196,6 +196,18 @@ describe('Effects', () => {
     expect(offroad.effects.soft.activeCount).toBeGreaterThan(5);
   });
 
+  it('trace des filets de vent autour du kart pendant la charge de l’aspiration', () => {
+    const charging = setup();
+    charging.race.racers[1].kart.slipstream = 0.5;
+    step(charging, 12); // 12 images à DT (1/60 s) = 0,2 s.
+
+    const idle = setup();
+    idle.race.racers[1].kart.slipstream = 0;
+    step(idle, 12);
+
+    expect(charging.effects.soft.activeCount).toBeGreaterThan(idle.effects.soft.activeCount);
+  });
+
   it('bouffée à l’usage d’un objet, éclat à l’impact, gerbe de la couleur du mini-turbo', () => {
     const puff = setup();
     step(puff, 1, [{ type: 'item-use', racerId: 1, item: 'bone' }]);

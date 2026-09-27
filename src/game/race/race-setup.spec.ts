@@ -66,7 +66,7 @@ describe('createRaceState', () => {
       expect(racer.lap).toBe(1);
       expect(racer.finished).toBe(false);
       expect(racer.finishTime).toBeNull();
-      expect(racer.item).toBeNull();
+      expect(racer.items).toEqual([]);
     });
     for (let i = 0; i < race.racers.length; i++) {
       for (let j = i + 1; j < race.racers.length; j++) {
@@ -100,6 +100,12 @@ describe('createRaceState', () => {
     expect(track.itemBoxRows).toHaveLength(3);
     expect(race.itemBoxes).toHaveLength(12);
     expect(race.itemBoxes.every((box) => box.respawn === 0)).toBe(true);
+  });
+
+  it('items: false ne pose aucune boîte ; par défaut, ou explicitement à vrai, elles restent posées', () => {
+    expect(createRaceState(track, roster, { items: false }).itemBoxes).toEqual([]);
+    expect(createRaceState(track, roster, { items: true }).itemBoxes).toHaveLength(12);
+    expect(createRaceState(track, roster).itemBoxes).toHaveLength(12);
   });
 
   it('pose les karts sur la route, même quand le départ est en altitude', () => {

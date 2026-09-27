@@ -3,7 +3,7 @@
  * mini-turbo, bas-côté, haies et tête-à-queue. Un appel = un pas de simulation.
  * Conventions : avant = (sin θ, cos θ) ; steer = +1 (droite) fait diminuer θ.
  */
-import { DRIFT, KART_RADIUS, PHYSICS } from '../core/constants';
+import { DRIFT, ITEMS, KART_RADIUS, PHYSICS } from '../core/constants';
 import { applyBoost } from '../core/kart-state';
 import type {
   DriftState,
@@ -150,6 +150,8 @@ export function stepKart(
   const spinning = kart.spinTime > 0;
   if (spinning) {
     stepSpin(kart, dt);
+  } else if (kart.stunTime > 0) {
+    stepStun(kart, dt);
   } else {
     // Une consigne invalide (NaN, infinie) vaut « tout droit » plutôt que d'empoisonner l'état.
     const steer = Number.isFinite(input.steer) ? clamp(input.steer, -1, 1) : 0;
@@ -247,7 +249,10 @@ export function driftAssistFactor(kart: KartState, track: TrackQuery, tuning: Ka
 function tickTimers(kart: KartState, dt: number): void {
   kart.hopTime = Math.max(0, kart.hopTime - dt);
   kart.spinTime = Math.max(0, kart.spinTime - dt);
-  if (kart.boostTime > 0) {
+  kart.stunTime = Math.max(0, kart.stunTime - dt);
+  kart.collarTime = Math.max(0, kart.collarTime - dt);
+  // Le turbo ne se consomme pas pendant l'arrêt net (sifflet) : il reprend à la fin de l'arrêt.
+  if (kart.boostTime > 0 && kart.stunTime <= 0) {
     kart.boostTime = Math.max(0, kart.boostTime - dt);
     if (kart.boostTime === 0) kart.boostStrength = 1;
   }
@@ -260,6 +265,13 @@ function stepSpin(kart: KartState, dt: number): void {
   kart.speed = approach(kart.speed, 0, SPIN_DECELERATION * dt);
   // Au retour du contrôle, la pose visuelle revient vers 0 par le plus court chemin.
   kart.visualYaw = wrapAngle(kart.visualYaw + SPIN_YAW_RATE * dt);
+}
+
+/** Arrêt net (sifflet) : ni gaz ni braquage, forte décélération ; le dérapage s'annule, le turbo reste. */
+function stepStun(kart: KartState, dt: number): void {
+  kart.steer = 0;
+  resetDrift(kart.drift);
+  kart.speed = approach(kart.speed, 0, ITEMS.stunDeceleration * dt);
 }
 
 function resetDrift(drift: DriftState): void {
@@ -351,10 +363,12 @@ function stepSpeed(kart: KartState, input: DriverInput, tuning: KartTuning, dt: 
     SLOPE_FACTOR_MIN,
     SLOPE_FACTOR_MAX,
   );
+  const collar = kart.collarTime > 0;
   const maxSpeed =
     tuning.maxSpeed *
     (boosting ? kart.boostStrength : 1) *
-    (kart.offroad && !boosting ? tuning.offroadFactor : 1) *
+    (collar ? ITEMS.collarSpeedFactor : 1) *
+    (kart.offroad && !boosting && !collar ? tuning.offroadFactor : 1) *
     slopeFactor;
 
   if (input.brake) {

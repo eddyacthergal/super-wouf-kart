@@ -35,6 +35,8 @@ const WHEEL_GLOW_FRAMES = 2.6;
 const SMOKE_RATE = 12;
 const DUST_RATE = 12;
 const FLAME_GLOW_RATE = 30;
+/** Filets de vent par seconde autour du kart pendant la charge de l'aspiration. */
+const WIND_RATE = 40;
 const MIN_SPARK_SPEED = 4;
 const MIN_DUST_SPEED = 3;
 /** Traces de pneus : nombre de tronçons, pas minimal entre deux points, saut au-delà duquel on recommence. */
@@ -55,6 +57,7 @@ interface Emitter {
   dust: number;
   flame: number;
   smoke: number;
+  wind: number;
   /** Dernier point au sol (x, z, y) de chaque roue arrière, NaN hors dérapage. */
   skid: Float64Array;
 }
@@ -64,11 +67,13 @@ const color = (hex: string): THREE.Color => new THREE.Color(hex);
 const TIER_COLORS = DRIFT_TIER_COLORS.map(color);
 const DUST = color('#b98f5f');
 const FLAME = color('#ff8a1f');
+const WIND = color('#dff3ff');
 const FLAME_CORE = color('#ffd35a');
 const PUFF = color('#f4f1ea');
 const SMOKE = color('#ece8e0');
 const HIT = color('#ffe066');
 const LEAF = color('#4caf3c');
+const NOTE_COLOR = '#2b2d42';
 
 /**
  * Étincelle : cœur opaque (mélange normal) qui garde la couleur du palier même sur le gravier
@@ -83,6 +88,7 @@ const WHEEL_GLOW_HALO: ParticleOptions = { opacity: 0.75 };
 const SMOKE_OPTIONS: ParticleOptions = { gravity: 0.8, growth: 0.9, drag: 2.5, opacity: 0.32 };
 const DUST_OPTIONS: ParticleOptions = { gravity: -0.6, growth: 1.4, drag: 2, opacity: 0.5 };
 const FLAME_OPTIONS: ParticleOptions = { gravity: 0, growth: -0.6, drag: 3, opacity: 0.9 };
+const WIND_OPTIONS: ParticleOptions = { gravity: 0, drag: 0, opacity: 0.55 };
 
 /** Étoile à cinq branches, en léger relief, tournée vers +Z. */
 function starGeometry(): THREE.BufferGeometry {
@@ -116,6 +122,11 @@ export class Effects {
   readonly soft: ParticlePool;
   readonly skids: SkidMarks;
   private readonly stars: THREE.InstancedMesh;
+  /** Notes de musique au-dessus des karts arrêtés par un sifflet. */
+  private readonly noteHeads: THREE.InstancedMesh;
+  private readonly noteStems: THREE.InstancedMesh;
+  /** Halo doré autour de chaque kart porteur du super-collier. */
+  private readonly collarHalos: THREE.InstancedMesh;
   /** Flammes de chaque pilote : un groupe par pot d'échappement. */
   private readonly flames = new Map<number, THREE.Group[]>();
   private readonly emitters = new Map<number, Emitter>();
@@ -165,6 +176,49 @@ export class Effects {
     this.stars.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.group.add(this.stars);
 
+    const noteCapacity = Math.max(1, racers.list.length);
+    const noteMaterial = bag.add(new THREE.MeshBasicMaterial({ color: NOTE_COLOR }));
+    this.noteHeads = new THREE.InstancedMesh(
+      bag.add(new THREE.SphereGeometry(0.12, 10, 8).scale(1.3, 1, 0.5)),
+      noteMaterial,
+      noteCapacity,
+    );
+    this.noteHeads.name = 'note-heads';
+    this.noteHeads.count = 0;
+    this.noteHeads.frustumCulled = false;
+    this.noteHeads.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    this.group.add(this.noteHeads);
+
+    this.noteStems = new THREE.InstancedMesh(
+      bag.add(new THREE.BoxGeometry(0.035, 0.42, 0.035).translate(0.13, 0.21, 0)),
+      noteMaterial,
+      noteCapacity,
+    );
+    this.noteStems.name = 'note-stems';
+    this.noteStems.count = 0;
+    this.noteStems.frustumCulled = false;
+    this.noteStems.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    this.group.add(this.noteStems);
+
+    this.collarHalos = new THREE.InstancedMesh(
+      bag.add(new THREE.TorusGeometry(1.35, 0.07, 8, 32).rotateX(Math.PI / 2)),
+      bag.add(
+        new THREE.MeshBasicMaterial({
+          color: '#ffd23f',
+          transparent: true,
+          opacity: 0.85,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+        }),
+      ),
+      Math.max(1, racers.list.length),
+    );
+    this.collarHalos.name = 'collar-halos';
+    this.collarHalos.count = 0;
+    this.collarHalos.frustumCulled = false;
+    this.collarHalos.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    this.group.add(this.collarHalos);
+
     const outer = bag.add(flameGeometry(0.14, 0.75));
     const inner = bag.add(flameGeometry(0.08, 0.5));
     const flameMaterial = (hex: string, opacity: number): THREE.MeshBasicMaterial =>
@@ -195,6 +249,7 @@ export class Effects {
         dust: 0,
         flame: 0,
         smoke: 0,
+        wind: 0,
         skid: new Float64Array(6).fill(Number.NaN),
       });
     }
@@ -223,7 +278,12 @@ export class Effects {
           }
           break;
         case 'boost': {
-          const tint = event.source === 'drift' ? TIER_COLORS[event.tier] : FLAME;
+          const tint =
+            event.source === 'drift'
+              ? TIER_COLORS[event.tier]
+              : event.source === 'slipstream'
+                ? WIND
+                : FLAME;
           for (const exhaust of visual.model.exhausts) {
             exhaust.getWorldPosition(this.point);
             this.burst(
@@ -283,6 +343,8 @@ export class Effects {
 
   update(state: RaceState, racers: RacerVisuals, dt: number, time: number): void {
     let stars = 0;
+    let notes = 0;
+    let halos = 0;
     for (const racer of state.racers) {
       const visual = racers.get(racer.id);
       const emitter = this.emitters.get(racer.id);
@@ -324,7 +386,7 @@ export class Effects {
       }
 
       // Flammes de boost.
-      const boosting = kart.boostTime > 0;
+      const boosting = kart.boostTime > 0 && kart.stunTime <= 0;
       const flames = this.flames.get(racer.id);
       if (flames) {
         const strength = 0.85 + (kart.boostStrength - 1) * 1.2;
@@ -348,6 +410,17 @@ export class Effects {
         emitter.flame = 0;
       }
 
+      // Aspiration : traînées de vent autour du kart pendant la charge.
+      if (kart.slipstream > 0) {
+        emitter.wind += WIND_RATE * (0.4 + kart.slipstream) * dt;
+        while (emitter.wind >= 1) {
+          emitter.wind -= 1;
+          this.emitWind(visual);
+        }
+      } else {
+        emitter.wind = 0;
+      }
+
       // Étoiles qui tournent au-dessus d'un kart en tête-à-queue.
       if (kart.spinTime > 0 && stars + STARS_PER_KART <= this.stars.instanceMatrix.count) {
         for (let k = 0; k < STARS_PER_KART; k++) {
@@ -365,9 +438,43 @@ export class Effects {
           );
         }
       }
+
+      // Note de musique au-dessus d'un kart arrêté net par un sifflet.
+      if (kart.stunTime > 0 && notes < this.noteHeads.instanceMatrix.count) {
+        this.point.set(
+          visual.position.x,
+          visual.position.y + 2.1 + Math.sin(time * 8 + racer.id) * 0.1,
+          visual.position.z,
+        );
+        this.quaternion.setFromEuler(this.euler.set(0, time * 3, 0));
+        this.scale.setScalar(1);
+        this.matrix.compose(this.point, this.quaternion, this.scale);
+        this.noteHeads.setMatrixAt(notes, this.matrix);
+        this.noteStems.setMatrixAt(notes, this.matrix);
+        notes++;
+      }
+
+      // Halo doré autour d'un kart porteur du super-collier.
+      if (kart.collarTime > 0 && halos < this.collarHalos.instanceMatrix.count) {
+        this.point.set(visual.position.x, visual.position.y + 0.55, visual.position.z);
+        this.quaternion.setFromEuler(this.euler.set(0, time * 4, 0));
+        this.scale.setScalar(1 + Math.sin(time * 10) * 0.05);
+        this.collarHalos.setMatrixAt(
+          halos++,
+          this.matrix.compose(this.point, this.quaternion, this.scale),
+        );
+      }
     }
     this.stars.count = stars;
     if (stars > 0) this.stars.instanceMatrix.needsUpdate = true;
+    this.noteHeads.count = notes;
+    this.noteStems.count = notes;
+    if (notes > 0) {
+      this.noteHeads.instanceMatrix.needsUpdate = true;
+      this.noteStems.instanceMatrix.needsUpdate = true;
+    }
+    this.collarHalos.count = halos;
+    if (halos > 0) this.collarHalos.instanceMatrix.needsUpdate = true;
 
     this.glow.update(dt);
     this.soft.update(dt);
@@ -542,6 +649,30 @@ export class Effects {
         FLAME_OPTIONS,
       );
     }
+  }
+
+  /** Filet d'air qui file vers l'arrière autour du kart (aspiration). */
+  private emitWind(visual: RacerVisual): void {
+    const rng = this.rng;
+    const forwardX = Math.sin(visual.heading);
+    const forwardZ = Math.cos(visual.heading);
+    const angle = rng.range(0, Math.PI * 2);
+    const radius = rng.range(1.1, 1.6);
+    const x = visual.position.x + Math.cos(angle) * radius + forwardX * 1.5;
+    const z = visual.position.z - Math.sin(angle) * radius + forwardZ * 1.5;
+    const speed = rng.range(14, 20);
+    this.soft.emit(
+      x,
+      visual.position.y + rng.range(0.4, 1.4),
+      z,
+      -forwardX * speed,
+      0,
+      -forwardZ * speed,
+      WIND,
+      rng.range(0.07, 0.11),
+      rng.range(0.16, 0.26),
+      WIND_OPTIONS,
+    );
   }
 
   /** Gerbe radiale de `count` particules. */

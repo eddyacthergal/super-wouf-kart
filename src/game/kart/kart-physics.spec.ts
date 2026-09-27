@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DRIFT, FIXED_DT, KART_RADIUS, PHYSICS, ROAD_HALF_WIDTH } from '../core/constants';
+import { DRIFT, FIXED_DT, ITEMS, KART_RADIUS, PHYSICS, ROAD_HALF_WIDTH } from '../core/constants';
 import { applyBoost, applySpinOut, createKartState } from '../core/kart-state';
 import {
   NEUTRAL_INPUT,
@@ -844,6 +844,46 @@ describe('stepKart — tête-à-queue', () => {
     run(kart, 1, { throttle: true, steer: 1 });
     expect(kart.speed).toBeGreaterThan(5);
     expect(wrapAngle(kart.heading - heading0)).toBeLessThan(0);
+  });
+});
+
+describe('stepKart — sifflet', () => {
+  it('arrêté par un sifflet : ralentit fort, ignore gaz et braquage, garde son turbo', () => {
+    const kart = kartOn(STRAIGHT, 0, 0, 25);
+    kart.stunTime = 1;
+    kart.boostTime = 2;
+    const heading = kart.heading;
+    run(kart, 0.5, { throttle: true, steer: 1 });
+    expect(kart.speed).toBeLessThan(25 - 30 * 0.5 + 1);
+    expect(Math.abs(wrapAngle(kart.heading - heading))).toBeLessThan(0.02);
+    // Le turbo est figé pendant l'arrêt : il n'est pas brûlé sur un kart immobile.
+    expect(kart.boostTime).toBe(2);
+    run(kart, 0.6, { throttle: true });
+    expect(kart.stunTime).toBe(0);
+    // Il reprend à décroître une fois l'arrêt terminé.
+    expect(kart.boostTime).toBeLessThan(2);
+    expect(kart.boostTime).toBeGreaterThan(1.8);
+  });
+});
+
+describe('stepKart — super-collier', () => {
+  it('relève la vitesse de croisière au-delà de 1,1 × maxSpeed', () => {
+    const kart = kartOn(STRAIGHT, 0);
+    run(kart, 8, (k) => {
+      k.collarTime = ITEMS.collarDuration;
+      return { throttle: true, steer: followLine(k, STRAIGHT) };
+    });
+    expect(kart.speed).toBeGreaterThan(1.1 * TEST_TUNING.maxSpeed);
+  });
+
+  it('annule le malus du bas-côté : la vitesse reste au-dessus de 0,95 × maxSpeed', () => {
+    const kart = kartOn(STRAIGHT, 0, 8.5);
+    run(kart, 8, (k) => {
+      k.collarTime = ITEMS.collarDuration;
+      return { throttle: true, steer: followLine(k, STRAIGHT, 8.5) };
+    });
+    expect(kart.offroad).toBe(true);
+    expect(kart.speed).toBeGreaterThan(0.95 * TEST_TUNING.maxSpeed);
   });
 });
 

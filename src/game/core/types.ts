@@ -116,10 +116,16 @@ export interface KartState {
   boostTime: number;
   /** Multiplicateur de vitesse max pendant le boost en cours. */
   boostStrength: number;
+  /** Jauge d'aspiration (0 à 1) ; pleine, elle donne un turbo. */
+  slipstream: number;
   /** Temps restant du petit saut de début de dérapage (visuel). */
   hopTime: number;
   /** Temps restant de tête-à-queue après un impact (aucun contrôle). */
   spinTime: number;
+  /** Temps restant d'arrêt net (sifflet) : ni gaz ni braquage. */
+  stunTime: number;
+  /** Temps restant du super-collier (s) : invincibilité et vitesse max majorée. */
+  collarTime: number;
   /** Vrai si le kart roule sur le bas-côté. */
   offroad: boolean;
   /** Vrai si le kart a touché une haie pendant le dernier pas. */
@@ -226,10 +232,26 @@ export interface TrackQuery {
 // Objets
 // ---------------------------------------------------------------------------
 
-/** Os (projectile droit), balle de tennis (autoguidée), flaque de boue (piège), croquette turbo (boost). */
-export type ItemKind = 'bone' | 'tennis-ball' | 'mud' | 'kibble-turbo';
+/**
+ * Os (projectile droit), balle de tennis (autoguidée), flaque de boue (piège), croquette turbo
+ * (boost), os en or (turbo à chaque appui pendant sa durée, reste dans la case), sifflet (arrête
+ * net les pilotes mieux classés), super-collier (invincibilité temporaire et choc en tête-à-queue),
+ * écureuil (fonce sur le premier par le plus court chemin du circuit et le fait tourner).
+ */
+export type ItemKind =
+  | 'bone'
+  | 'tennis-ball'
+  | 'mud'
+  | 'kibble-turbo'
+  | 'golden-bone'
+  | 'whistle'
+  | 'super-collar'
+  | 'squirrel';
 
-export type ItemEntityKind = Exclude<ItemKind, 'kibble-turbo'>;
+export type ItemEntityKind = Exclude<
+  ItemKind,
+  'kibble-turbo' | 'golden-bone' | 'whistle' | 'super-collar'
+>;
 
 export interface ItemEntity {
   id: number;
@@ -290,11 +312,14 @@ export interface RacerState {
   finishTime: number | null;
   /** Classement actuel, 1-based. */
   rank: number;
-  item: ItemKind | null;
-  /** Temps restant de la roulette ; l'objet n'est utilisable que lorsqu'il vaut 0. */
+  /** Objets tenus, dans l'ordre d'utilisation (au plus ITEMS.maxHeld). */
+  items: ItemKind[];
+  /** Temps restant de la roulette du dernier objet de `items` (0 : aucune roulette en cours). */
   itemRoulette: number;
   /** Temps d'invulnérabilité restant après un impact. */
   hitImmunity: number;
+  /** Temps restant de l'os en or actif (s) ; 0 : inactif. */
+  goldenBoneTime: number;
 }
 
 export interface RaceState {
@@ -324,13 +349,15 @@ export type GameEvent =
   | { type: 'go' }
   | { type: 'drift-start'; racerId: number }
   | { type: 'drift-tier'; racerId: number; tier: DriftTier }
-  | { type: 'boost'; racerId: number; source: 'drift' | 'item'; tier: DriftTier }
+  | { type: 'boost'; racerId: number; source: 'drift'; tier: DriftTier }
+  | { type: 'boost'; racerId: number; source: 'item' | 'slipstream' }
   | { type: 'wall'; racerId: number; intensity: number }
   | { type: 'bump'; racerId: number; otherId: number; intensity: number }
   | { type: 'item-box'; racerId: number }
   | { type: 'item-ready'; racerId: number; item: ItemKind }
   | { type: 'item-use'; racerId: number; item: ItemKind }
-  | { type: 'hit'; racerId: number; by: ItemEntityKind; ownerId: number }
+  | { type: 'hit'; racerId: number; by: ItemEntityKind | 'super-collar'; ownerId: number }
+  | { type: 'stun'; racerId: number; ownerId: number }
   | { type: 'lap'; racerId: number; lap: number }
   | { type: 'final-lap'; racerId: number }
   | { type: 'finish'; racerId: number; rank: number };

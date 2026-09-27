@@ -116,11 +116,13 @@ export function fakeHud(overrides: Partial<HudSnapshot> = {}): HudSnapshot {
     rank: 3,
     racerCount: 8,
     raceTime: 65.32,
-    item: null,
-    itemRolling: false,
+    items: [],
+    rollingSlot: null,
+    goldenBoneTime: 0,
     drifting: false,
     driftTier: 0,
     boosting: false,
+    slipstreaming: false,
     wrongWay: false,
     speedKmh: 87.4,
     dots: [
@@ -133,7 +135,31 @@ export function fakeHud(overrides: Partial<HudSnapshot> = {}): HudSnapshot {
 }
 
 export const FAKE_RESULTS: RaceResultEntry[] = [
-  { rank: 1, racerId: 1, name: 'Biscotte', breed: 'carlin', isPlayer: false, time: 120.5, estimated: false },
-  { rank: 2, racerId: 0, name: 'Toi', breed: 'chihuahua', isPlayer: true, time: 125.25, estimated: false },
-  { rank: 3, racerId: 2, name: 'Saucisse', breed: 'teckel', isPlayer: false, time: 131.07, estimated: true },
+  {
+    rank: 1,
+    racerId: 1,
+    name: 'Biscotte',
+    breed: 'carlin',
+    isPlayer: false,
+    time: 120.5,
+    estimated: false,
+  },
+  {
+    rank: 2,
+    racerId: 0,
+    name: 'Toi',
+    breed: 'chihuahua',
+    isPlayer: true,
+    time: 125.25,
+    estimated: false,
+  },
+  {
+    rank: 3,
+    racerId: 2,
+    name: 'Saucisse',
+    breed: 'teckel',
+    isPlayer: false,
+    time: 131.07,
+    estimated: true,
+  },
 ];

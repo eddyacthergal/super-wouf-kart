@@ -110,7 +110,11 @@ export class AudioEngine {
     const graph = this.graph;
     if (!graph) return;
     try {
-      graph.master.gain.setTargetAtTime(muted ? 0 : MASTER_VOLUME, graph.ctx.currentTime, MUTE_SMOOTHING);
+      graph.master.gain.setTargetAtTime(
+        muted ? 0 : MASTER_VOLUME,
+        graph.ctx.currentTime,
+        MUTE_SMOOTHING,
+      );
     } catch {
       // Paramètre inutilisable (contexte fermé) : rien à faire.
     }
@@ -125,7 +129,8 @@ export class AudioEngine {
       // Un tour qui s'achève sur le dernier tour ou l'arrivée : seul le son le plus marquant est joué.
       let lapSuperseded = false;
       for (const event of events) {
-        if ((event.type === 'final-lap' || event.type === 'finish') && event.racerId === playerId) lapSuperseded = true;
+        if ((event.type === 'final-lap' || event.type === 'finish') && event.racerId === playerId)
+          lapSuperseded = true;
       }
       for (const event of events) this.playEvent(graph, event, playerId, lapSuperseded);
     } catch {
@@ -171,7 +176,12 @@ export class AudioEngine {
     return this.started && !this.isMuted && graph.ctx.state === 'running';
   }
 
-  private playEvent(graph: AudioGraph, event: GameEvent, playerId: number, lapSuperseded: boolean): void {
+  private playEvent(
+    graph: AudioGraph,
+    event: GameEvent,
+    playerId: number,
+    lapSuperseded: boolean,
+  ): void {
     // Événements globaux, ou qui concernent le joueur autrement que par racerId.
     switch (event.type) {
       case 'countdown':
@@ -184,8 +194,14 @@ export class AudioEngine {
         if (event.racerId === playerId) sfx.hurtYelp(this.startVoice(graph));
         else if (event.ownerId === playerId) sfx.happyBarks(this.startVoice(graph));
         return;
+      case 'stun':
+        if (event.racerId === playerId) sfx.whistle(this.startVoice(graph));
+        return;
       case 'bump':
-        if ((event.racerId === playerId || event.otherId === playerId) && this.impactReady(graph, 'bump', event.intensity)) {
+        if (
+          (event.racerId === playerId || event.otherId === playerId) &&
+          this.impactReady(graph, 'bump', event.intensity)
+        ) {
           sfx.bumpThud(this.startVoice(graph), event.intensity);
         }
         return;
@@ -200,10 +216,15 @@ export class AudioEngine {
         if (event.tier > 0) sfx.driftTing(this.startVoice(graph), event.tier);
         return;
       case 'boost':
-        sfx.boostRush(this.startVoice(graph), event.source, event.tier);
+        sfx.boostRush(
+          this.startVoice(graph),
+          event.source,
+          event.source === 'drift' ? event.tier : 0,
+        );
         return;
       case 'wall':
-        if (this.impactReady(graph, 'wall', event.intensity)) sfx.wallThud(this.startVoice(graph), event.intensity);
+        if (this.impactReady(graph, 'wall', event.intensity))
+          sfx.wallThud(this.startVoice(graph), event.intensity);
         return;
       case 'item-box':
         sfx.itemBoxArpeggio(this.startVoice(graph));
@@ -212,7 +233,9 @@ export class AudioEngine {
         sfx.itemPop(this.startVoice(graph));
         return;
       case 'item-use':
-        sfx.itemWhoosh(this.startVoice(graph));
+        if (event.item === 'whistle') sfx.whistle(this.startVoice(graph));
+        else if (event.item === 'super-collar') sfx.collarChime(this.startVoice(graph));
+        else sfx.itemWhoosh(this.startVoice(graph));
         return;
       case 'lap':
         if (!lapSuperseded) sfx.lapChime(this.startVoice(graph));
@@ -244,7 +267,8 @@ export class AudioEngine {
   /** Vrai si un choc assez fort peut être joué ; un frôlement inaudible ne relance pas le délai minimal. */
   private impactReady(graph: AudioGraph, kind: ImpactKind, intensity: number): boolean {
     const now = graph.ctx.currentTime;
-    if (sfx.impactLevel(intensity) < MIN_IMPACT_LEVEL || now < this.impactReadyAt[kind]) return false;
+    if (sfx.impactLevel(intensity) < MIN_IMPACT_LEVEL || now < this.impactReadyAt[kind])
+      return false;
     this.impactReadyAt[kind] = now + IMPACT_COOLDOWN[kind];
     return true;
   }

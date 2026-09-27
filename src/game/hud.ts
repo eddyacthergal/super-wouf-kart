@@ -57,11 +57,16 @@ export function buildHudSnapshot(state: RaceState, wrongWay: boolean): HudSnapsh
     rank: player?.rank ?? 1,
     racerCount: state.racers.length,
     raceTime: state.time,
-    item: player?.item ?? null,
-    itemRolling: (player?.itemRoulette ?? 0) > 0,
+    items: [...(player?.items ?? [])],
+    rollingSlot:
+      player && player.itemRoulette > 0 && player.items.length > 0
+        ? ((player.items.length - 1) as 0 | 1)
+        : null,
+    goldenBoneTime: player?.goldenBoneTime ?? 0,
     drifting: kart?.drift.active ?? false,
     driftTier: kart?.drift.active ? kart.drift.tier : 0,
     boosting: (kart?.boostTime ?? 0) > 0,
+    slipstreaming: (kart?.slipstream ?? 0) > 0,
     wrongWay,
     speedKmh: kart ? Math.round(Math.abs(kart.speed) * MS_TO_KMH) : 0,
     dots: state.racers.map((racer) => ({

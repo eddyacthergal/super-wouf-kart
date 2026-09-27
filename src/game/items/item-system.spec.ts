@@ -15,7 +15,13 @@ import {
 } from '../core/vec2';
 import { createCircleTrack } from '../testing/fake-track';
 import { createTestRace } from '../testing/fixtures';
-import { BOX_LATERAL_OFFSETS, createItemBoxes, stepItems, useItem } from './item-system';
+import {
+  BOX_LATERAL_OFFSETS,
+  createItemBoxes,
+  stepItems,
+  usableItem,
+  useItem,
+} from './item-system';
 
 /** Circuit quasi rectiligne pour les lancers en ligne droite. */
 const STRAIGHT_RADIUS = 2000;
@@ -114,7 +120,7 @@ describe('boîtes et roulette', () => {
     const { events, emit } = recorder();
 
     stepItems(race, track, createRng(5), FIXED_DT, emit);
-    expect(racer.item).not.toBeNull();
+    expect(racer.items).not.toEqual([]);
     expect(racer.itemRoulette).toBe(ITEMS.rouletteDuration);
     expect(box.respawn).toBe(ITEMS.boxRespawn);
     expect(events).toEqual([{ type: 'item-box', racerId: 0 }]);
@@ -126,22 +132,22 @@ describe('boîtes et roulette', () => {
     stepUntil(race, track, emit, 5, () => false);
     expect(racer.itemRoulette).toBe(0);
     expect(events.filter((event) => event.type === 'item-ready')).toEqual([
-      { type: 'item-ready', racerId: 0, item: racer.item },
+      { type: 'item-ready', racerId: 0, item: racer.items[0] },
     ]);
   });
 
-  it('une boîte cassée ne redonne pas d’objet à qui en a déjà un et réapparaît après 3 s', () => {
+  it('une boîte cassée ne redonne pas d’objet à qui en a déjà deux et réapparaît après 3 s', () => {
     const track = createCircleTrack(60);
     const race = createTestRace(track, 2);
     race.itemBoxes = createItemBoxes(track);
     const [holder, other] = race.racers;
     const box = race.itemBoxes[0];
-    holder.item = 'bone';
+    holder.items = ['bone', 'mud'];
     holder.kart.position = clone(box.position);
     const { events, emit } = recorder();
 
     stepItems(race, track, createRng(5), FIXED_DT, emit);
-    expect(holder.item).toBe('bone');
+    expect(holder.items).toEqual(['bone', 'mud']);
     expect(holder.itemRoulette).toBe(0);
     expect(box.respawn).toBe(ITEMS.boxRespawn);
     expect(events).toEqual([]);
@@ -151,11 +157,11 @@ describe('boîtes et roulette', () => {
     other.kart.position = clone(box.position);
     stepUntil(race, track, emit, Math.round(2.9 / FIXED_DT), () => false);
     expect(box.respawn).toBeGreaterThan(0);
-    expect(other.item).toBeNull();
+    expect(other.items).toEqual([]);
 
     // La boîte réapparaît ; le pilote toujours présent la ramasse aussitôt.
-    stepUntil(race, track, emit, Math.round(0.2 / FIXED_DT), () => other.item !== null);
-    expect(other.item).not.toBeNull();
+    stepUntil(race, track, emit, Math.round(0.2 / FIXED_DT), () => other.items.length > 0);
+    expect(other.items).not.toEqual([]);
     expect(events).toEqual([{ type: 'item-box', racerId: 1 }]);
   });
 
@@ -168,10 +174,12 @@ describe('boîtes et roulette', () => {
     leader.kart.position = clone(race.itemBoxes[0].position);
     last.kart.position = clone(race.itemBoxes[4].position);
 
-    // Tirage à mi-hauteur : flaque pour le premier (45 | 45 | 5 | 5), balle pour le dernier (15 | 5 | 40 | 40).
+    // Tirage à mi-hauteur : flaque pour le premier (poids 40|40|5|10|0|0|0|0, seuil à 47,5 dans la
+    // flaque), croquette turbo pour le dernier (poids 10|5|20|15|15|8|12|10, seuil à 47,5 dans la
+    // croquette, cumul 35 à 50).
     stepItems(race, track, fixedRng(0.5), FIXED_DT, () => undefined);
-    expect(leader.item).toBe('mud');
-    expect(last.item).toBe('tennis-ball');
+    expect(leader.items).toEqual(['mud']);
+    expect(last.items).toEqual(['kibble-turbo']);
   });
 
   it.each([
@@ -190,25 +198,25 @@ describe('boîtes et roulette', () => {
     );
 
     stepItems(race, track, createRng(1), FIXED_DT, () => undefined);
-    expect(racer.item !== null).toBe(picked);
+    expect(racer.items.length > 0).toBe(picked);
     expect(box.respawn).toBe(picked ? ITEMS.boxRespawn : 0);
   });
 
-  it('deux pilotes sur la même boîte : celui qui n’a pas d’objet le reçoit', () => {
+  it('deux pilotes sur la même boîte : celui qui a de la place le reçoit', () => {
     const track = createCircleTrack(60);
     const race = createTestRace(track, 2);
     race.itemBoxes = createItemBoxes(track);
     const [holder, other] = race.racers;
     const box = race.itemBoxes[0];
     const tangent = track.sampleAt(track.itemBoxRows[0]).tangent;
-    holder.item = 'bone';
+    holder.items = ['bone', 'mud'];
     holder.kart.position = addScaled(box.position, tangent, 1);
     other.kart.position = addScaled(box.position, tangent, -1);
     const { events, emit } = recorder();
 
     stepItems(race, track, createRng(5), FIXED_DT, emit);
-    expect(holder.item).toBe('bone');
-    expect(other.item).not.toBeNull();
+    expect(holder.items).toEqual(['bone', 'mud']);
+    expect(other.items).not.toEqual([]);
     expect(box.respawn).toBe(ITEMS.boxRespawn);
     expect(events).toEqual([{ type: 'item-box', racerId: 1 }]);
   });
@@ -217,19 +225,69 @@ describe('boîtes et roulette', () => {
     const track = createCircleTrack(60);
     const race = createTestRace(track, 2);
     const racer = race.racers[0];
-    racer.item = 'bone';
+    racer.items = ['bone'];
     racer.itemRoulette = 0.5;
     const { events, emit } = recorder();
 
     useItem(race, racer, track, false, emit);
-    expect(racer.item).toBe('bone');
+    expect(racer.items).toEqual(['bone']);
     expect(race.items).toEqual([]);
     expect(events).toEqual([]);
 
-    racer.item = null;
+    racer.items = [];
     racer.itemRoulette = 0;
     useItem(race, racer, track, false, emit);
     expect(events).toEqual([]);
+  });
+
+  it('ramasse un second objet, jamais un troisième, dans l’ordre', () => {
+    const track = createCircleTrack(STRAIGHT_RADIUS);
+    const race = createTestRace(track, 1);
+    const [racer] = race.racers;
+    race.itemBoxes = [{ id: 0, position: clone(racer.kart.position), respawn: 0, height: 0 }];
+    racer.items = ['mud'];
+    const { events, emit } = recorder();
+    stepItems(race, track, fixedRng(0), FIXED_DT, emit);
+    expect(racer.items).toEqual(['mud', 'bone']);
+    expect(racer.itemRoulette).toBe(ITEMS.rouletteDuration);
+    expect(events).toContainEqual({ type: 'item-box', racerId: racer.id });
+
+    race.itemBoxes[0].respawn = 0;
+    racer.itemRoulette = 0;
+    stepItems(race, track, fixedRng(0), FIXED_DT, emit);
+    expect(racer.items).toEqual(['mud', 'bone']);
+    expect(race.itemBoxes[0].respawn).toBe(ITEMS.boxRespawn);
+  });
+
+  it('utilise le premier objet pendant la roulette du second, puis le second avance', () => {
+    const track = createCircleTrack(STRAIGHT_RADIUS);
+    const race = createTestRace(track, 1);
+    const [racer] = race.racers;
+    placeOnTrack(racer, track, 100);
+    racer.items = ['kibble-turbo', 'bone'];
+    racer.itemRoulette = 0.5;
+    const { events, emit } = recorder();
+    useItem(race, racer, track, false, emit);
+    expect(events).toContainEqual({ type: 'item-use', racerId: racer.id, item: 'kibble-turbo' });
+    expect(racer.items).toEqual(['bone']);
+    // Seul et encore en roulette : inutilisable.
+    useItem(race, racer, track, false, emit);
+    expect(racer.items).toEqual(['bone']);
+    racer.itemRoulette = 0;
+    useItem(race, racer, track, false, emit);
+    expect(racer.items).toEqual([]);
+  });
+
+  it('usableItem : le premier objet, sauf s’il est seul et en roulette', () => {
+    const racer = createTestRace(createCircleTrack(STRAIGHT_RADIUS), 1).racers[0];
+    expect(usableItem(racer)).toBeNull();
+    racer.items = ['mud'];
+    racer.itemRoulette = 0.3;
+    expect(usableItem(racer)).toBeNull();
+    racer.items = ['mud', 'bone'];
+    expect(usableItem(racer)).toBe('mud');
+    racer.itemRoulette = 0;
+    expect(usableItem(racer)).toBe('mud');
   });
 });
 
@@ -240,13 +298,13 @@ describe('os', () => {
     const [thrower, victim] = race.racers;
     placeOnTrack(thrower, track, 100);
     placeOnTrack(victim, track, 130);
-    thrower.item = 'bone';
+    thrower.items = ['bone'];
     thrower.kart.speed = 20;
     victim.kart.speed = 25;
     const { events, emit } = recorder();
 
     useItem(race, thrower, track, false, emit);
-    expect(thrower.item).toBeNull();
+    expect(thrower.items).toEqual([]);
     expect(events).toEqual([{ type: 'item-use', racerId: 0, item: 'bone' }]);
     const bone = race.items[0];
     expect(bone).toMatchObject({
@@ -283,7 +341,7 @@ describe('os', () => {
     const [thrower, victim] = race.racers;
     placeOnTrack(thrower, track, 130);
     placeOnTrack(victim, track, 100);
-    thrower.item = 'bone';
+    thrower.items = ['bone'];
     thrower.kart.speed = 20;
     const { events, emit } = recorder();
 
@@ -305,7 +363,7 @@ describe('os', () => {
     const thrower = race.racers[0];
     placeOnTrack(thrower, track, 100);
     thrower.kart.speed = -6;
-    thrower.item = 'bone';
+    thrower.items = ['bone'];
 
     useItem(race, thrower, track, false, () => undefined);
     expect(race.items[0].speed).toBe(ITEMS.boneSpeed);
@@ -317,7 +375,7 @@ describe('os', () => {
     const thrower = race.racers[0];
     placeOnTrack(thrower, track, 100, track.wallHalfWidth - KART_RADIUS);
     thrower.kart.heading += Math.PI / 2; // face à la haie de gauche
-    thrower.item = 'bone';
+    thrower.items = ['bone'];
 
     useItem(race, thrower, track, false, () => undefined);
     const bone = race.items[0];
@@ -331,7 +389,7 @@ describe('os', () => {
     const thrower = race.racers[0];
     placeOnTrack(thrower, track, 100);
     thrower.kart.heading += 1; // vers la haie de gauche
-    thrower.item = 'bone';
+    thrower.items = ['bone'];
     const { emit } = recorder();
     useItem(race, thrower, track, false, emit);
     const bone = race.items[0];
@@ -372,7 +430,7 @@ describe('os', () => {
     const race = createTestRace(track, 1);
     const thrower = race.racers[0];
     placeOnTrack(thrower, track, 100);
-    thrower.item = 'mud';
+    thrower.items = ['mud'];
     const { events, emit } = recorder();
     useItem(race, thrower, track, false, emit);
     thrower.kart.position = clone(race.items[0].position);
@@ -390,13 +448,13 @@ describe('balle de tennis', () => {
     const { emit } = recorder();
     const [first, second, third] = race.racers;
 
-    third.item = 'tennis-ball';
+    third.items = ['tennis-ball'];
     useItem(race, third, track, false, emit);
     expect(race.items[0].targetId).toBe(second.id);
     expect(race.items[0].life).toBe(ITEMS.ballLife);
     expect(race.items[0].speed).toBe(ITEMS.ballSpeed);
 
-    first.item = 'tennis-ball';
+    first.items = ['tennis-ball'];
     useItem(race, first, track, false, emit);
     expect(race.items[1].targetId).toBeNull();
   });
@@ -410,13 +468,13 @@ describe('balle de tennis', () => {
     // Le 3ᵉ (juste devant) et le 2ᵉ sont arrivés : la balle vise le 1ᵉʳ, toujours en course.
     third.finished = true;
     second.finished = true;
-    fourth.item = 'tennis-ball';
+    fourth.items = ['tennis-ball'];
     useItem(race, fourth, track, false, emit);
     expect(race.items[0].targetId).toBe(first.id);
 
     // Tous les pilotes devant sont arrivés : aucune cible.
     first.finished = true;
-    fourth.item = 'tennis-ball';
+    fourth.items = ['tennis-ball'];
     useItem(race, fourth, track, false, emit);
     expect(race.items[1].targetId).toBeNull();
   });
@@ -428,7 +486,7 @@ describe('balle de tennis', () => {
     placeOnTrack(thrower, track, 0, -2);
     let targetS = 45;
     placeOnTrack(target, track, targetS, 3);
-    thrower.item = 'tennis-ball';
+    thrower.items = ['tennis-ball'];
     const { events, emit } = recorder();
     useItem(race, thrower, track, false, emit);
     const ball = race.items[0];
@@ -464,7 +522,7 @@ describe('balle de tennis', () => {
     const [target, thrower] = race.racers;
     placeOnTrack(thrower, track, 100);
     placeOnTrack(target, track, 90, 3); // derrière la balle, à gauche, à moins de 25 m
-    thrower.item = 'tennis-ball';
+    thrower.items = ['tennis-ball'];
     const { events, emit } = recorder();
     useItem(race, thrower, track, false, emit);
     thrower.kart.position = clone(FAR_AWAY);
@@ -485,7 +543,7 @@ describe('balle de tennis', () => {
     const [target, thrower] = race.racers;
     placeOnTrack(thrower, track, 100);
     placeOnTrack(target, track, 400, 6);
-    thrower.item = 'tennis-ball';
+    thrower.items = ['tennis-ball'];
     const { events, emit } = recorder();
     useItem(race, thrower, track, false, emit);
     thrower.kart.position = clone(FAR_AWAY);
@@ -503,7 +561,7 @@ describe('balle de tennis', () => {
     const thrower = race.racers[0];
     placeOnTrack(thrower, track, 100, 7);
     thrower.kart.heading += 1.2; // vers la haie de gauche
-    thrower.item = 'tennis-ball';
+    thrower.items = ['tennis-ball'];
     const { emit } = recorder();
     useItem(race, thrower, track, false, emit);
     thrower.kart.position = clone(FAR_AWAY);
@@ -527,7 +585,7 @@ describe('balle de tennis', () => {
     const race = createTestRace(track, 2);
     const [target, thrower] = race.racers;
     placeOnTrack(thrower, track, 100);
-    thrower.item = 'tennis-ball';
+    thrower.items = ['tennis-ball'];
     const { events, emit } = recorder();
     useItem(race, thrower, track, false, emit);
     thrower.kart.position = clone(FAR_AWAY);
@@ -554,7 +612,7 @@ describe('balle de tennis', () => {
       const race = createTestRace(track, 1);
       const thrower = race.racers[0];
       placeOnTrack(thrower, track, 0, 5);
-      thrower.item = 'tennis-ball';
+      thrower.items = ['tennis-ball'];
       const { events, emit } = recorder();
       useItem(race, thrower, track, false, emit);
       const ball = race.items[0];
@@ -598,7 +656,7 @@ describe('flaque de boue', () => {
     placeOnTrack(dropper, track, 100);
     let followerS = 80;
     placeOnTrack(follower, track, followerS);
-    dropper.item = 'mud';
+    dropper.items = ['mud'];
     dropper.kart.speed = 20;
     const { events, emit } = recorder();
 
@@ -631,13 +689,13 @@ describe('flaque de boue', () => {
     const race = createTestRace(track, 2);
     const [thrower, dropper] = race.racers;
     placeOnTrack(dropper, track, 120 + KART_RADIUS + 1.8);
-    dropper.item = 'mud';
+    dropper.items = ['mud'];
     const { events, emit } = recorder();
     useItem(race, dropper, track, false, emit);
     placeOnTrack(dropper, track, 400);
 
     placeOnTrack(thrower, track, 100);
-    thrower.item = 'bone';
+    thrower.items = ['bone'];
     useItem(race, thrower, track, false, emit);
     expect(race.items).toHaveLength(2);
 
@@ -651,11 +709,11 @@ describe('flaque de boue', () => {
     const race = createTestRace(track, 1);
     const thrower = race.racers[0];
     placeOnTrack(thrower, track, 120 + KART_RADIUS + 1.8);
-    thrower.item = 'mud';
+    thrower.items = ['mud'];
     const { events, emit } = recorder();
     useItem(race, thrower, track, false, emit);
     placeOnTrack(thrower, track, 100);
-    thrower.item = 'tennis-ball';
+    thrower.items = ['tennis-ball'];
     useItem(race, thrower, track, false, emit);
 
     const steps = stepUntil(race, track, emit, 60, () => race.items.length === 0);
@@ -679,7 +737,7 @@ describe('rayons de contact', () => {
     const race = createTestRace(track, 2);
     const [owner, other] = race.racers;
     placeOnTrack(owner, track, 100);
-    owner.item = item;
+    owner.items = [item];
     useItem(race, owner, track, false, () => undefined);
     owner.kart.position = clone(FAR_AWAY);
     return { race, entity: race.items[0], other };
@@ -722,7 +780,7 @@ describe('rayons de contact', () => {
     'un os et une flaque s’annulent à moins de projectileRadius + mudRadius ($offset m : $cancelled)',
     ({ offset, cancelled }) => {
       const { race, entity: bone, other } = launch('bone');
-      other.item = 'mud';
+      other.items = ['mud'];
       useItem(race, other, track, false, () => undefined);
       other.kart.position = clone(FAR_AWAY);
       const mud = race.items[1];
@@ -741,12 +799,243 @@ describe('rayons de contact', () => {
   );
 });
 
+describe('os en or', () => {
+  it('chaque appui donne un turbo pendant 7 s, puis l’os disparaît et la réserve avance', () => {
+    const track = createCircleTrack(STRAIGHT_RADIUS);
+    const race = createTestRace(track, 1);
+    const [racer] = race.racers;
+    placeOnTrack(racer, track, 100);
+    racer.items = ['golden-bone', 'mud'];
+    const { events, emit } = recorder();
+    useItem(race, racer, track, false, emit);
+    expect(racer.goldenBoneTime).toBe(ITEMS.goldenBoneDuration);
+    expect(racer.kart.boostTime).toBe(ITEMS.goldenBoneTurboDuration);
+    expect(racer.items).toEqual(['golden-bone', 'mud']);
+    racer.kart.boostTime = 0;
+    stepUntil(race, track, emit, 60, () => false);
+    useItem(race, racer, track, false, emit);
+    expect(racer.kart.boostTime).toBe(ITEMS.goldenBoneTurboDuration);
+    expect(events.filter((e) => e.type === 'boost')).toHaveLength(2);
+    stepUntil(
+      race,
+      track,
+      emit,
+      Math.round(ITEMS.goldenBoneDuration / FIXED_DT),
+      () => racer.goldenBoneTime === 0,
+    );
+    expect(racer.items).toEqual(['mud']);
+  });
+
+  it('os en or actif et un objet en réserve : pas de troisième objet', () => {
+    const track = createCircleTrack(STRAIGHT_RADIUS);
+    const race = createTestRace(track, 1);
+    const [racer] = race.racers;
+    racer.items = ['golden-bone', 'mud'];
+    racer.goldenBoneTime = 5;
+    race.itemBoxes = [{ id: 0, position: clone(racer.kart.position), respawn: 0, height: 0 }];
+    stepItems(race, track, fixedRng(0), FIXED_DT, () => undefined);
+    expect(racer.items).toEqual(['golden-bone', 'mud']);
+  });
+});
+
+describe('sifflet', () => {
+  it('arrête 1 s les pilotes mieux classés, pas les autres', () => {
+    const track = createCircleTrack(STRAIGHT_RADIUS);
+    const race = createTestRace(track, 4);
+    const [first, second, thrower, last] = race.racers;
+    [first.rank, second.rank, thrower.rank, last.rank] = [1, 2, 3, 4];
+    thrower.items = ['whistle'];
+    const { events, emit } = recorder();
+    useItem(race, thrower, track, false, emit);
+    expect(first.kart.stunTime).toBe(ITEMS.whistleStun);
+    expect(second.kart.stunTime).toBe(ITEMS.whistleStun);
+    expect(last.kart.stunTime).toBe(0);
+    expect(thrower.kart.stunTime).toBe(0);
+    const stuns = events.filter(
+      (e): e is Extract<GameEvent, { type: 'stun' }> => e.type === 'stun',
+    );
+    expect(stuns.map((e) => e.racerId).sort()).toEqual([first.id, second.id].sort());
+  });
+
+  it('n’arrête pas un pilote mieux classé mais déjà arrivé', () => {
+    const track = createCircleTrack(STRAIGHT_RADIUS);
+    const race = createTestRace(track, 4);
+    const [first, second, thrower, last] = race.racers;
+    [first.rank, second.rank, thrower.rank, last.rank] = [1, 2, 3, 4];
+    first.finished = true;
+    thrower.items = ['whistle'];
+    const { events, emit } = recorder();
+    useItem(race, thrower, track, false, emit);
+    expect(first.kart.stunTime).toBe(0);
+    expect(second.kart.stunTime).toBe(ITEMS.whistleStun);
+    const stuns = events.filter(
+      (e): e is Extract<GameEvent, { type: 'stun' }> => e.type === 'stun',
+    );
+    expect(stuns.map((e) => e.racerId)).toEqual([second.id]);
+  });
+
+  it('utilisé par le premier : personne n’est arrêté, l’objet est consommé', () => {
+    const track = createCircleTrack(STRAIGHT_RADIUS);
+    const race = createTestRace(track, 3);
+    const [leader, ...others] = race.racers;
+    leader.rank = 1;
+    leader.items = ['whistle'];
+    useItem(race, leader, track, false, () => undefined);
+    expect(leader.items).toEqual([]);
+    for (const other of others) expect(other.kart.stunTime).toBe(0);
+  });
+});
+
+describe('super-collier', () => {
+  it('rend insensible aux os et au sifflet pendant 6 s', () => {
+    const track = createCircleTrack(STRAIGHT_RADIUS);
+    const race = createTestRace(track, 2);
+    const [thrower, victim] = race.racers;
+    placeOnTrack(thrower, track, 100);
+    placeOnTrack(victim, track, 130);
+    victim.items = ['super-collar'];
+    useItem(race, victim, track, false, () => undefined);
+    expect(victim.kart.collarTime).toBe(ITEMS.collarDuration);
+    thrower.items = ['bone'];
+    const { events, emit } = recorder();
+    useItem(race, thrower, track, false, emit);
+    stepUntil(race, track, emit, 90, () => false);
+    expect(hits(events)).toEqual([]);
+    [victim.rank, thrower.rank] = [1, 2];
+    thrower.items = ['whistle'];
+    useItem(race, thrower, track, false, emit);
+    expect(victim.kart.stunTime).toBe(0);
+  });
+});
+
+describe('écureuil', () => {
+  function squirrelRace(count: number) {
+    const track = createCircleTrack(300);
+    const race = createTestRace(track, count);
+    race.racers.forEach((racer, i) => {
+      placeOnTrack(racer, track, 400 - i * 60, i % 2 === 0 ? 4 : -4);
+      racer.rank = i + 1;
+    });
+    return { track, race };
+  }
+
+  it('fonce sur le premier, quel que soit son couloir, et le fait tourner 1,5 s', () => {
+    const { track, race } = squirrelRace(4);
+    const [leader, second, , thrower] = race.racers;
+    thrower.items = ['squirrel'];
+    const { events, emit } = recorder();
+    useItem(race, thrower, track, false, emit);
+    stepUntil(race, track, emit, 600, () => hits(events).length > 0);
+    expect(hits(events)).toEqual([
+      { type: 'hit', racerId: leader.id, by: 'squirrel', ownerId: thrower.id },
+    ]);
+    expect(leader.kart.spinTime).toBeCloseTo(ITEMS.squirrelSpin, 1);
+    expect(second.kart.spinTime).toBe(0);
+    expect(race.items).toHaveLength(0);
+  });
+
+  it('lancé par le premier, vise le deuxième', () => {
+    const { track, race } = squirrelRace(3);
+    const [leader, second] = race.racers;
+    leader.items = ['squirrel'];
+    const { events, emit } = recorder();
+    useItem(race, leader, track, false, emit);
+    stepUntil(race, track, emit, 900, () => hits(events).length > 0);
+    // Le deuxième est 60 m derrière : l'écureuil fait demi-tour au lieu de refaire un tour.
+    expect(hits(events)[0].racerId).toBe(second.id);
+  });
+
+  it('le super-collier protège : l’écureuil disparaît sans effet', () => {
+    const { track, race } = squirrelRace(3);
+    const [leader, , thrower] = race.racers;
+    leader.kart.collarTime = 100;
+    thrower.items = ['squirrel'];
+    const { events, emit } = recorder();
+    useItem(race, thrower, track, false, emit);
+    stepUntil(race, track, emit, 600, () => race.items.length === 0);
+    expect(hits(events)).toEqual([]);
+    expect(leader.kart.spinTime).toBe(0);
+  });
+
+  it('change de cible si le premier franchit l’arrivée, disparaît s’il n’y a plus personne', () => {
+    const { track, race } = squirrelRace(3);
+    const [leader, second, thrower] = race.racers;
+    thrower.items = ['squirrel'];
+    const { events, emit } = recorder();
+    useItem(race, thrower, track, false, emit);
+    leader.finished = true;
+    stepUntil(race, track, emit, 900, () => hits(events).length > 0);
+    expect(hits(events)[0].racerId).toBe(second.id);
+
+    const solo = squirrelRace(2);
+    const [finished, owner] = solo.race.racers;
+    finished.finished = true;
+    owner.items = ['squirrel'];
+    useItem(solo.race, owner, solo.track, false, () => undefined);
+    stepUntil(
+      solo.race,
+      solo.track,
+      () => undefined,
+      30,
+      () => false,
+    );
+    expect(solo.race.items).toHaveLength(0);
+  });
+
+  it('n’attrape pas une cible à la même abscisse mais 3 m de côté', () => {
+    const { track, race } = squirrelRace(2);
+    const [leader, thrower] = race.racers;
+    thrower.items = ['squirrel'];
+    const { events, emit } = recorder();
+    useItem(race, thrower, track, false, emit);
+    const entity = race.items[0];
+    const sample = track.sampleAt(track.project(leader.kart.position, leader.kart.trackIndex).s);
+    // Même abscisse que la cible, mais 3 m de couloir en plus (trop loin pour être attrapée).
+    entity.position = addScaled(leader.kart.position, sample.left, 3);
+    entity.trackIndex = track.project(entity.position, leader.kart.trackIndex).index;
+    stepItems(race, track, createRng(1), 0, emit);
+    expect(hits(events)).toEqual([]);
+    expect(race.items).toHaveLength(1);
+  });
+
+  it('rattrape une cible qui arrive en face avec 8 m d’écart de couloir en moins de 2 s', () => {
+    const track = createCircleTrack(2000);
+    const race = createTestRace(track, 2);
+    const [thrower, target] = race.racers;
+    placeOnTrack(thrower, track, 0, 0);
+    let targetS = 30;
+    placeOnTrack(target, track, targetS, 8);
+    thrower.items = ['squirrel'];
+    const { events, emit } = recorder();
+    useItem(race, thrower, track, false, emit);
+    // La cible roule vers l'écureuil à 30 m/s (vitesse de rapprochement ~120 m/s avec les 90 m/s
+    // de l'écureuil), tout en restant dans son couloir décalé de 8 m.
+    const closingSpeed = 30;
+    const maxSteps = Math.round(2 / FIXED_DT);
+    const steps = stepUntil(
+      race,
+      track,
+      emit,
+      maxSteps,
+      () => hits(events).length > 0,
+      () => {
+        targetS -= closingSpeed * FIXED_DT;
+        placeOnTrack(target, track, targetS, 8);
+      },
+    );
+    expect(hits(events)).toEqual([
+      { type: 'hit', racerId: target.id, by: 'squirrel', ownerId: thrower.id },
+    ]);
+    expect(steps).toBeLessThan(maxSteps);
+  });
+});
+
 describe('croquette turbo', () => {
   it('déclenche un boost immédiat sans créer d’entité', () => {
     const track = createCircleTrack(60);
     const race = createTestRace(track, 2);
     const racer = race.racers[1];
-    racer.item = 'kibble-turbo';
+    racer.items = ['kibble-turbo'];
     const { events, emit } = recorder();
 
     useItem(race, racer, track, false, emit);
@@ -755,7 +1044,7 @@ describe('croquette turbo', () => {
     expect(race.items).toEqual([]);
     expect(events).toEqual([
       { type: 'item-use', racerId: 1, item: 'kibble-turbo' },
-      { type: 'boost', racerId: 1, source: 'item', tier: 0 },
+      { type: 'boost', racerId: 1, source: 'item' },
     ]);
   });
 });
@@ -768,7 +1057,7 @@ describe('invulnérabilité', () => {
     placeOnTrack(thrower, track, 100);
     placeOnTrack(victim, track, 110);
     victim.hitImmunity = 1.5;
-    thrower.item = 'bone';
+    thrower.items = ['bone'];
     const { events, emit } = recorder();
     useItem(race, thrower, track, false, emit);
     const bone = race.items[0];
@@ -785,7 +1074,7 @@ describe('invulnérabilité', () => {
     const race = createTestRace(track, 2);
     const [dropper, victim] = race.racers;
     placeOnTrack(dropper, track, 100);
-    dropper.item = 'mud';
+    dropper.items = ['mud'];
     const { events, emit } = recorder();
     useItem(race, dropper, track, false, emit);
     placeOnTrack(dropper, track, 300);
@@ -809,7 +1098,7 @@ describe('durée de vie', () => {
     const race = createTestRace(track, 1);
     const racer = race.racers[0];
     placeOnTrack(racer, track, 100);
-    racer.item = 'mud';
+    racer.items = ['mud'];
     const { emit } = recorder();
     useItem(race, racer, track, false, emit);
 
@@ -835,7 +1124,7 @@ describe('objets — relief', () => {
     const race = createTestRace(track, 1);
     const [thrower] = race.racers;
     placeOnTrack(thrower, track, 100);
-    thrower.item = 'bone';
+    thrower.items = ['bone'];
     thrower.kart.speed = 20;
     const { emit } = recorder();
     useItem(race, thrower, track, false, emit);

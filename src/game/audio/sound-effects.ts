@@ -26,11 +26,24 @@ const DRIFT_TING = [NOTE.C6, NOTE.E6, NOTE.G6, NOTE.C7] as const;
 const DRIFT_BOOST_STRENGTH = [0.6, 0.7, 0.85, 1] as const;
 
 export function countdownBeep(voice: Voice): void {
-  voice.tone({ type: 'square', freq: NOTE.A4, duration: 0.14, peak: 0.2, filter: { type: 'lowpass', freq: 2500 } });
+  voice.tone({
+    type: 'square',
+    freq: NOTE.A4,
+    duration: 0.14,
+    peak: 0.2,
+    filter: { type: 'lowpass', freq: 2500 },
+  });
 }
 
 export function goBeep(voice: Voice): void {
-  voice.tone({ type: 'square', freq: NOTE.A5, duration: 0.55, peak: 0.22, attack: 0.01, filter: { type: 'lowpass', freq: 3500 } });
+  voice.tone({
+    type: 'square',
+    freq: NOTE.A5,
+    duration: 0.55,
+    peak: 0.22,
+    attack: 0.01,
+    filter: { type: 'lowpass', freq: 3500 },
+  });
   voice.tone({ type: 'sine', freq: NOTE.A5 * 2, duration: 0.4, peak: 0.05 });
 }
 
@@ -42,8 +55,13 @@ export function driftTing(voice: Voice, tier: DriftTier): void {
 }
 
 /** Souffle qui monte + oscillateur qui glisse vers l'aigu. */
-export function boostRush(voice: Voice, source: 'drift' | 'item', tier: DriftTier): void {
-  const strength = source === 'item' ? 1 : DRIFT_BOOST_STRENGTH[tier];
+export function boostRush(
+  voice: Voice,
+  source: 'drift' | 'item' | 'slipstream',
+  tier: DriftTier = 0,
+): void {
+  const strength =
+    source === 'drift' ? DRIFT_BOOST_STRENGTH[tier] : source === 'slipstream' ? 0.7 : 1;
   voice.noise({
     duration: 0.5,
     peak: 0.2 * strength,
@@ -65,19 +83,71 @@ export function boostRush(voice: Voice, source: 'drift' | 'item', tier: DriftTie
 export function itemBoxArpeggio(voice: Voice): void {
   const notes = [NOTE.C6, NOTE.E6, NOTE.G6, NOTE.C7];
   for (let i = 0; i < notes.length; i++) {
-    voice.tone({ type: 'triangle', freq: notes[i], delay: i * 0.055, duration: 0.12, peak: 0.14, attack: 0.003 });
+    voice.tone({
+      type: 'triangle',
+      freq: notes[i],
+      delay: i * 0.055,
+      duration: 0.12,
+      peak: 0.14,
+      attack: 0.003,
+    });
   }
 }
 
 /** « Pop » : fin de la roulette, l'objet est prêt. */
 export function itemPop(voice: Voice): void {
   voice.tone({ type: 'sine', freq: 350, freqEnd: 1000, duration: 0.09, peak: 0.25, attack: 0.002 });
-  voice.noise({ duration: 0.03, peak: 0.05, attack: 0.001, filter: { type: 'highpass', freq: 3000 } });
+  voice.noise({
+    duration: 0.03,
+    peak: 0.05,
+    attack: 0.001,
+    filter: { type: 'highpass', freq: 3000 },
+  });
+}
+
+/** Coup de sifflet : deux notes aiguës. */
+export function whistle(voice: Voice): void {
+  voice.tone({
+    type: 'sine',
+    freq: 2100,
+    freqEnd: 2500,
+    duration: 0.14,
+    peak: 0.18,
+    attack: 0.005,
+  });
+  voice.tone({
+    type: 'sine',
+    freq: 2450,
+    freqEnd: 2300,
+    duration: 0.32,
+    peak: 0.16,
+    attack: 0.01,
+    delay: 0.16,
+  });
+}
+
+/** Super-collier : arpège montant et brillant. */
+export function collarChime(voice: Voice): void {
+  [660, 880, 1100, 1320].forEach((freq, i) =>
+    voice.tone({
+      type: 'triangle',
+      freq,
+      duration: 0.14,
+      peak: 0.14,
+      attack: 0.005,
+      delay: i * 0.06,
+    }),
+  );
 }
 
 /** « Whoosh » : objet lancé ou utilisé. */
 export function itemWhoosh(voice: Voice): void {
-  voice.noise({ duration: 0.32, peak: 0.22, attack: 0.06, filter: { type: 'bandpass', freq: 3000, freqEnd: 500, q: 1.8 } });
+  voice.noise({
+    duration: 0.32,
+    peak: 0.22,
+    attack: 0.06,
+    filter: { type: 'bandpass', freq: 3000, freqEnd: 500, q: 1.8 },
+  });
 }
 
 /** Le joueur est touché : glissando descendant + jappement plaintif. */
@@ -108,15 +178,39 @@ export function impactLevel(intensity: number): number {
 /** Choc sourd contre une haie ; volume proportionnel à l'intensité (attendue dans [0, 1]). */
 export function wallThud(voice: Voice, intensity: number): void {
   const k = impactLevel(intensity);
-  voice.noise({ duration: 0.2, peak: 0.6 * k, attack: 0.002, filter: { type: 'lowpass', freq: 220, freqEnd: 90, q: 0.8 } });
-  voice.tone({ type: 'sine', freq: 110, freqEnd: 45, duration: 0.18, peak: 0.4 * k, attack: 0.002 });
+  voice.noise({
+    duration: 0.2,
+    peak: 0.6 * k,
+    attack: 0.002,
+    filter: { type: 'lowpass', freq: 220, freqEnd: 90, q: 0.8 },
+  });
+  voice.tone({
+    type: 'sine',
+    freq: 110,
+    freqEnd: 45,
+    duration: 0.18,
+    peak: 0.4 * k,
+    attack: 0.002,
+  });
 }
 
 /** Choc plus léger entre deux karts ; volume proportionnel à l'intensité. */
 export function bumpThud(voice: Voice, intensity: number): void {
   const k = impactLevel(intensity);
-  voice.noise({ duration: 0.1, peak: 0.3 * k, attack: 0.002, filter: { type: 'lowpass', freq: 500, freqEnd: 200 } });
-  voice.tone({ type: 'sine', freq: 180, freqEnd: 90, duration: 0.08, peak: 0.15 * k, attack: 0.002 });
+  voice.noise({
+    duration: 0.1,
+    peak: 0.3 * k,
+    attack: 0.002,
+    filter: { type: 'lowpass', freq: 500, freqEnd: 200 },
+  });
+  voice.tone({
+    type: 'sine',
+    freq: 180,
+    freqEnd: 90,
+    duration: 0.08,
+    peak: 0.15 * k,
+    attack: 0.002,
+  });
 }
 
 /** Carillon deux notes : nouveau tour. */
@@ -149,8 +243,23 @@ export function finishFanfare(voice: Voice): void {
     const last = i === notes.length - 1;
     const delay = i * 0.12;
     const duration = last ? 0.8 : 0.16;
-    voice.tone({ type: 'square', freq: notes[i], delay, duration, peak: 0.1, attack: 0.008, filter: { type: 'lowpass', freq: 3000 } });
-    voice.tone({ type: 'triangle', freq: notes[i] * 2, delay, duration, peak: 0.06, attack: 0.008 });
+    voice.tone({
+      type: 'square',
+      freq: notes[i],
+      delay,
+      duration,
+      peak: 0.1,
+      attack: 0.008,
+      filter: { type: 'lowpass', freq: 3000 },
+    });
+    voice.tone({
+      type: 'triangle',
+      freq: notes[i] * 2,
+      delay,
+      duration,
+      peak: 0.06,
+      attack: 0.008,
+    });
   }
   happyBarks(voice, 1.0);
 }
@@ -159,7 +268,14 @@ export function finishFanfare(voice: Voice): void {
  * Jappement synthétique : oscillateur en glissando descendant passé dans un formant,
  * plus une bouffée de bruit passe-bande pour l'attaque. Enveloppe très courte.
  */
-function bark(voice: Voice, delay: number, from: number, to: number, duration: number, peak: number): void {
+function bark(
+  voice: Voice,
+  delay: number,
+  from: number,
+  to: number,
+  duration: number,
+  peak: number,
+): void {
   voice.tone({
     type: 'sawtooth',
     freq: from,
@@ -182,5 +298,12 @@ function bark(voice: Voice, delay: number, from: number, to: number, duration: n
 /** Cloche simple : fondamentale + partiel à l'octave. */
 function bell(voice: Voice, freq: number, delay: number, duration: number, peak: number): void {
   voice.tone({ type: 'sine', freq, delay, duration, peak, attack: 0.004 });
-  voice.tone({ type: 'sine', freq: freq * 2, delay, duration: duration * 0.5, peak: peak * 0.3, attack: 0.004 });
+  voice.tone({
+    type: 'sine',
+    freq: freq * 2,
+    delay,
+    duration: duration * 0.5,
+    peak: peak * 0.3,
+    attack: 0.004,
+  });
 }

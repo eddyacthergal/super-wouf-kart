@@ -28,8 +28,20 @@ import type { ItemKind } from '../../../../game/core/types';
         }
         @case ('tennis-ball') {
           <circle cx="24" cy="24" r="18" fill="#d4e83a" stroke="#6f7f10" stroke-width="2" />
-          <path d="M10 13 Q21 24 10 35" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" />
-          <path d="M38 13 Q27 24 38 35" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" />
+          <path
+            d="M10 13 Q21 24 10 35"
+            fill="none"
+            stroke="#fff"
+            stroke-width="3"
+            stroke-linecap="round"
+          />
+          <path
+            d="M38 13 Q27 24 38 35"
+            fill="none"
+            stroke="#fff"
+            stroke-width="3"
+            stroke-linecap="round"
+          />
         }
         @case ('mud') {
           <path
@@ -40,8 +52,36 @@ import type { ItemKind } from '../../../../game/core/types';
           <ellipse cx="31" cy="31" rx="4" ry="2" fill="#8f6136" />
           <circle cx="27" cy="22" r="1.8" fill="#a8774a" />
         }
+        @case ('golden-bone') {
+          <g transform="rotate(-30 24 24)">
+            <g fill="#8a6a12">
+              <rect x="11" y="19" width="26" height="10" rx="4" />
+              <circle cx="11" cy="18.5" r="6.5" />
+              <circle cx="11" cy="29.5" r="6.5" />
+              <circle cx="37" cy="18.5" r="6.5" />
+              <circle cx="37" cy="29.5" r="6.5" />
+            </g>
+            <g fill="#f5c542">
+              <rect x="11" y="20.5" width="26" height="7" rx="3" />
+              <circle cx="11" cy="18.5" r="5" />
+              <circle cx="11" cy="29.5" r="5" />
+              <circle cx="37" cy="18.5" r="5" />
+              <circle cx="37" cy="29.5" r="5" />
+            </g>
+          </g>
+          <path d="M38 8 l2 4 4 2 -4 2 -2 4 -2 -4 -4 -2 4 -2z" fill="#fff6c2" />
+          <path
+            d="M8 34 l1.4 2.8 2.8 1.4 -2.8 1.4 -1.4 2.8 -1.4 -2.8 -2.8 -1.4 2.8 -1.4z"
+            fill="#fff6c2"
+          />
+        }
         @case ('kibble-turbo') {
-          <path d="M11 18 Q24 7 37 18 Q43 30 31 38 Q18 43 11 32 Q7 24 11 18 Z" fill="#a0612b" stroke="#5c3310" stroke-width="2" />
+          <path
+            d="M11 18 Q24 7 37 18 Q43 30 31 38 Q18 43 11 32 Q7 24 11 18 Z"
+            fill="#a0612b"
+            stroke="#5c3310"
+            stroke-width="2"
+          />
           <path
             d="M27 10 L16 27 L23 27 L20 39 L33 21 L26 21 L29 10 Z"
             fill="#ffcf3f"
@@ -49,6 +89,49 @@ import type { ItemKind } from '../../../../game/core/types';
             stroke-width="1.5"
             stroke-linejoin="round"
           />
+        }
+        @case ('whistle') {
+          <rect
+            x="8"
+            y="20"
+            width="22"
+            height="14"
+            rx="7"
+            fill="#c9d3dc"
+            stroke="#44515c"
+            stroke-width="2"
+          />
+          <rect
+            x="28"
+            y="22"
+            width="12"
+            height="6"
+            rx="2"
+            fill="#c9d3dc"
+            stroke="#44515c"
+            stroke-width="2"
+          />
+          <circle cx="15" cy="27" r="3" fill="#44515c" />
+        }
+        @case ('super-collar') {
+          <circle cx="24" cy="22" r="13" fill="none" stroke="#f5c542" stroke-width="5" />
+          <path
+            d="M24 33 l3 6 6 1 -4.5 4 1 6 -5.5 -3 -5.5 3 1 -6 -4.5 -4 6 -1z"
+            fill="#ffe27a"
+            stroke="#8a6a12"
+            stroke-width="1.2"
+          />
+        }
+        @case ('squirrel') {
+          <ellipse cx="20" cy="30" rx="9" ry="8" fill="#9a5b2e" />
+          <circle cx="27" cy="21" r="5.5" fill="#9a5b2e" />
+          <path
+            d="M13 32 Q3 20 12 9 Q20 5 19 16 Q16 22 17 28 Z"
+            fill="#c07a3e"
+            stroke="#5c3310"
+            stroke-width="1.5"
+          />
+          <circle cx="29" cy="20" r="1.2" fill="#1b1b1b" />
         }
       }
     </svg>

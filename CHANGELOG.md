@@ -2,6 +2,12 @@
 
 Versionnage sémantique. Dates de fusion dans `main`.
 
+## [0.7.0] – 27/09/2026
+
+- Ajout : aspiration, un turbo en roulant dans le sillage d'un concurrent.
+- Ajout : deux objets en réserve.
+- Ajout : cadeaux Écureuil, Os en or, Sifflet et Super-collier.
+
 ## [0.6.0] – 27/09/2026
 
 - Modification : relief (côtes, descentes, virages relevés) sur Grand Jardin, Potager, Parc enneigé et Plage.

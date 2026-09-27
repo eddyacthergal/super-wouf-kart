@@ -61,13 +61,18 @@ export interface HudSnapshot {
   racerCount: number;
   /** Temps de course (s). */
   raceTime: number;
-  item: ItemKind | null;
-  /** Vrai pendant la roulette de l'objet. */
-  itemRolling: boolean;
+  /** Objets tenus (au plus 2) ; le premier est le prochain utilisé. */
+  items: ItemKind[];
+  /** Case dont la roulette tourne (0 = objet suivant, 1 = réserve), ou null. */
+  rollingSlot: 0 | 1 | null;
+  /** Temps restant de l'os en or actif du joueur (s) ; 0 : inactif. */
+  goldenBoneTime: number;
   /** Vrai dès que le joueur dérape, avant même le premier palier. */
   drifting: boolean;
   driftTier: DriftTier;
   boosting: boolean;
+  /** Vrai pendant la charge de l'aspiration du joueur. */
+  slipstreaming: boolean;
   /** Vrai si le joueur roule dans le mauvais sens depuis un moment. */
   wrongWay: boolean;
   /** Vitesse du joueur (km/h, pour l'affichage). */
@@ -115,4 +120,8 @@ export interface GameHandle {
 /** Boutons tactiles (la direction passe par le joystick, l'accélération est automatique). */
 export type TouchAction = 'brake' | 'drift' | 'item';
 
-export type CreateGame = (canvas: HTMLCanvasElement, setup: RaceSetup, callbacks: GameCallbacks) => GameHandle;
+export type CreateGame = (
+  canvas: HTMLCanvasElement,
+  setup: RaceSetup,
+  callbacks: GameCallbacks,
+) => GameHandle;

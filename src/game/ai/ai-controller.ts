@@ -21,6 +21,7 @@ import {
 } from '../core/types';
 import { approach, clamp, wrapAngle, type Vec2 } from '../core/vec2';
 import { assistedWheelFor, driftAssistFactor } from '../kart/kart-physics';
+import { usableItem } from '../items/item-system';
 import type { AiPersonality } from './personality';
 
 // Point visé : s + TARGET_BASE_DISTANCE + vitesse × TARGET_SPEED_FACTOR.
@@ -177,7 +178,13 @@ export class AiController implements DriverController {
       this.resetManeuvers();
       input = { ...NEUTRAL_INPUT };
     } else if (this.updateStuck(speed, headingError, dt)) {
-      input = { throttle: false, brake: true, steer: this.reverseSteer, drift: false, useItem: false };
+      input = {
+        throttle: false,
+        brake: true,
+        steer: this.reverseSteer,
+        drift: false,
+        useItem: false,
+      };
     } else if (this.updateWrongWay(kart, projection, headingError)) {
       input = {
         throttle: speed < U_TURN_MIN_SPEED,
@@ -188,11 +195,22 @@ export class AiController implements DriverController {
       };
     } else {
       busy = false;
-      const cornerSpeed = Math.sqrt(CORNER_GRIP / Math.max(cornerCurvature, CURVATURE_EPSILON)) * this.personality.skill;
-      let steer = Math.abs(headingError) > Math.PI / 2 ? -Math.sign(headingError) : clamp(pursuit, -1, 1);
+      const cornerSpeed =
+        Math.sqrt(CORNER_GRIP / Math.max(cornerCurvature, CURVATURE_EPSILON)) *
+        this.personality.skill;
+      let steer =
+        Math.abs(headingError) > Math.PI / 2 ? -Math.sign(headingError) : clamp(pursuit, -1, 1);
       // En marche arrière, le braquage agit à l'envers sur le cap.
       if (speed < 0) steer = -steer;
-      const drift = this.updateDrift(racer, track, projection, cornerCurvature, headingError, pursuit, dt);
+      const drift = this.updateDrift(
+        racer,
+        track,
+        projection,
+        cornerCurvature,
+        headingError,
+        pursuit,
+        dt,
+      );
       input = {
         throttle: speed <= cornerSpeed,
         brake: speed > cornerSpeed + BRAKE_MARGIN,
@@ -203,7 +221,7 @@ export class AiController implements DriverController {
     }
     input.useItem = this.updateItems(racer, race, cornerCurvature, busy, dt);
     // Frein maintenu = os lancé vers l'arrière (spec §4) : on relâche le frein le temps du lancer.
-    if (input.useItem && racer.item === 'bone') input.brake = false;
+    if (input.useItem && usableItem(racer) === 'bone') input.brake = false;
     return input;
   }
 
@@ -223,10 +241,12 @@ export class AiController implements DriverController {
   ): { headingError: number; pursuit: number } {
     const kart = racer.kart;
     const insideBias = meanCurvature(track, projection.index, INSIDE_WINDOW) * INSIDE_GAIN;
-    const insideMax = this.driftWanted || this.driftPhase !== 'idle' ? DRIFT_INSIDE_MAX : INSIDE_MAX;
+    const insideMax =
+      this.driftWanted || this.driftPhase !== 'idle' ? DRIFT_INSIDE_MAX : INSIDE_MAX;
     let lane = this.personality.laneOffset + clamp(insideBias, -insideMax, insideMax);
     const blocker = nearestRacerAhead(race, racer, AVOID_DISTANCE, AVOID_HALF_ANGLE);
-    if (blocker !== null) lane += bearingTo(kart, blocker.kart.position) > 0 ? -AVOID_SHIFT : AVOID_SHIFT;
+    if (blocker !== null)
+      lane += bearingTo(kart, blocker.kart.position) > 0 ? -AVOID_SHIFT : AVOID_SHIFT;
 
     const target = track.sampleAt(projection.s + lookAhead(kart.speed));
     const edge = Math.max(0, target.halfWidth - LANE_EDGE_MARGIN);
@@ -239,7 +259,9 @@ export class AiController implements DriverController {
     const dz = target.position.z + target.left.z * this.lane - kart.position.z;
     const headingError = wrapAngle(Math.atan2(dx, dz) - kart.heading);
     const turnSpeed = Math.max(Math.abs(kart.speed), PHYSICS.minTurnSpeed);
-    const pursuit = (-2 * Math.sin(headingError) * turnSpeed) / (Math.max(1, Math.hypot(dx, dz)) * racer.tuning.turnRate);
+    const pursuit =
+      (-2 * Math.sin(headingError) * turnSpeed) /
+      (Math.max(1, Math.hypot(dx, dz)) * racer.tuning.turnRate);
     return { headingError, pursuit };
   }
 
@@ -261,7 +283,11 @@ export class AiController implements DriverController {
   }
 
   /** Contre-sens : braquage fort verrouillé jusqu'à ce que le kart soit revenu dans le bon sens. */
-  private updateWrongWay(kart: KartState, projection: TrackProjection, headingError: number): boolean {
+  private updateWrongWay(
+    kart: KartState,
+    projection: TrackProjection,
+    headingError: number,
+  ): boolean {
     const tangent = projection.sample.tangent;
     const alignment = Math.sin(kart.heading) * tangent.x + Math.cos(kart.heading) * tangent.z;
     if (this.uTurnSteer === 0) {
@@ -310,7 +336,8 @@ export class AiController implements DriverController {
     if (this.driftPhase === 'idle') {
       const side = curvature > 0 ? -1 : 1;
       const requiredCurve =
-        kart.speed * (DRIFT.tierThresholds[0] + DRIFT.hopDuration) + DRIFT_EXIT_LOOKAHEAD_SHARE * lookAhead(kart.speed);
+        kart.speed * (DRIFT.tierThresholds[0] + DRIFT.hopDuration) +
+        DRIFT_EXIT_LOOKAHEAD_SHARE * lookAhead(kart.speed);
       const start =
         this.driftWanted &&
         Math.abs(curvature) > DRIFT_ENTER_CURVATURE &&
@@ -321,7 +348,13 @@ export class AiController implements DriverController {
         kart.steer * side > DRIFT_START_STEER &&
         laneError < DRIFT_START_LANE_ERROR &&
         Math.abs(projection.lateral) < edgeLimit &&
-        curveLengthAhead(track, projection.index, -side, DRIFT_EXIT_CURVATURE, DRIFT_MAX_CURVE_SCAN) >= requiredCurve;
+        curveLengthAhead(
+          track,
+          projection.index,
+          -side,
+          DRIFT_EXIT_CURVATURE,
+          DRIFT_MAX_CURVE_SCAN,
+        ) >= requiredCurve;
       if (!start) return false;
       this.driftPhase = 'starting';
       this.driftSide = side;
@@ -369,15 +402,22 @@ export class AiController implements DriverController {
    */
   private driftSteer(racer: RacerState, track: TrackQuery, pursuit: number, steer: number): number {
     const kart = racer.kart;
-    if (!kart.drift.active) return this.driftSide * Math.max(this.driftSide * steer, DRIFT_START_STEER * 2);
+    if (!kart.drift.active)
+      return this.driftSide * Math.max(this.driftSide * steer, DRIFT_START_STEER * 2);
     const side = kart.drift.direction !== 0 ? kart.drift.direction : this.driftSide;
     return assistedWheelFor(pursuit * side, driftAssistFactor(kart, track, racer.tuning)) * side;
   }
 
   /** Décide de l'usage de l'objet ; vrai sur un seul pas (front montant). */
-  private updateItems(racer: RacerState, race: RaceState, cornerCurvature: number, busy: boolean, dt: number): boolean {
+  private updateItems(
+    racer: RacerState,
+    race: RaceState,
+    cornerCurvature: number,
+    busy: boolean,
+    dt: number,
+  ): boolean {
     this.itemRetry = Math.max(0, this.itemRetry - dt);
-    const item = racer.itemRoulette > 0 ? null : racer.item;
+    const item = usableItem(racer);
     if (item !== this.trackedItem) {
       this.trackedItem = item;
       this.itemTime = 0;
@@ -385,15 +425,29 @@ export class AiController implements DriverController {
     }
     if (item === null) return false;
     this.itemTime += dt;
-    if (busy || racer.finished || this.itemRetry > 0 || !this.wantsToUse(item, racer, race, cornerCurvature)) return false;
-    this.itemRetry = ITEM_RETRY_DELAY;
+    if (
+      busy ||
+      racer.finished ||
+      this.itemRetry > 0 ||
+      !this.wantsToUse(item, racer, race, cornerCurvature)
+    )
+      return false;
+    // L'os en or reste dans la case pendant sa durée : on réessaie plus tôt pour enchaîner les turbos.
+    this.itemRetry = item === 'golden-bone' ? this.rng.range(0.5, 0.8) : ITEM_RETRY_DELAY;
     return true;
   }
 
-  private wantsToUse(item: ItemKind, racer: RacerState, race: RaceState, cornerCurvature: number): boolean {
+  private wantsToUse(
+    item: ItemKind,
+    racer: RacerState,
+    race: RaceState,
+    cornerCurvature: number,
+  ): boolean {
     const waited = this.itemTime >= this.itemDelay;
     switch (item) {
       case 'kibble-turbo':
+        return cornerCurvature < TURBO_MAX_CURVATURE;
+      case 'golden-bone':
         return cornerCurvature < TURBO_MAX_CURVATURE;
       case 'bone':
         return waited || nearestRacerAhead(race, racer, BONE_RANGE, BONE_HALF_ANGLE) !== null;
@@ -401,6 +455,12 @@ export class AiController implements DriverController {
         return waited && racer.rank > 1;
       case 'mud':
         return waited || hasRacerBehind(race, racer, MUD_RANGE);
+      case 'whistle':
+        return waited && racer.rank > 1;
+      case 'super-collar':
+        return waited;
+      case 'squirrel':
+        return waited && racer.rank > 1;
     }
   }
 
@@ -416,6 +476,14 @@ export class AiController implements DriverController {
         return this.rng.range(ITEM_DELAY.mud.min, ITEM_DELAY.mud.max);
       case 'kibble-turbo':
         return 0;
+      case 'golden-bone':
+        return 0;
+      case 'whistle':
+        return this.rng.range(0.3, 1);
+      case 'super-collar':
+        return this.rng.range(0.5, 1.5);
+      case 'squirrel':
+        return this.rng.range(0.5, 2);
     }
   }
 
@@ -457,7 +525,8 @@ function maxAbsCurvature(track: TrackQuery, index: number, distance: number): nu
   const samples = track.samples;
   const span = sampleSpan(track, distance);
   let max = 0;
-  for (let k = 0; k < span; k++) max = Math.max(max, Math.abs(samples[(index + k) % samples.length].curvature));
+  for (let k = 0; k < span; k++)
+    max = Math.max(max, Math.abs(samples[(index + k) % samples.length].curvature));
   return max;
 }
 
@@ -465,7 +534,13 @@ function maxAbsCurvature(track: TrackQuery, index: number, distance: number): nu
  * Longueur (m) du virage qui se poursuit dans le sens `sign` (+1 gauche, -1 droite) à partir de
  * l'échantillon `index` : échantillons consécutifs de courbure signée > `minCurvature`, au plus `maxDistance`.
  */
-function curveLengthAhead(track: TrackQuery, index: number, sign: number, minCurvature: number, maxDistance: number): number {
+function curveLengthAhead(
+  track: TrackQuery,
+  index: number,
+  sign: number,
+  minCurvature: number,
+  maxDistance: number,
+): number {
   const samples = track.samples;
   const span = sampleSpan(track, maxDistance);
   let k = 0;
@@ -479,7 +554,12 @@ function bearingTo(kart: KartState, point: Vec2): number {
 }
 
 /** Kart le plus proche devant, à moins de `range` m et dans un cône de ±`halfAngle` autour du cap. */
-function nearestRacerAhead(race: RaceState, self: RacerState, range: number, halfAngle: number): RacerState | null {
+function nearestRacerAhead(
+  race: RaceState,
+  self: RacerState,
+  range: number,
+  halfAngle: number,
+): RacerState | null {
   const origin = self.kart.position;
   let nearest: RacerState | null = null;
   let nearestSq = range * range;
@@ -488,7 +568,8 @@ function nearestRacerAhead(race: RaceState, self: RacerState, range: number, hal
     const dx = other.kart.position.x - origin.x;
     const dz = other.kart.position.z - origin.z;
     const distSq = dx * dx + dz * dz;
-    if (distSq >= nearestSq || Math.abs(bearingTo(self.kart, other.kart.position)) > halfAngle) continue;
+    if (distSq >= nearestSq || Math.abs(bearingTo(self.kart, other.kart.position)) > halfAngle)
+      continue;
     nearest = other;
     nearestSq = distSq;
   }

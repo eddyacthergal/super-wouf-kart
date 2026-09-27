@@ -23,6 +23,10 @@ const BALL_RADIUS = 0.45;
 const MUD_Y = 0.045;
 /** Durée (s) pendant laquelle une flaque s'étale après avoir été posée. */
 const MUD_SPREAD = 0.3;
+/** Hauteur de base de l'écureuil (m) et amplitude/vitesse de son bond en course. */
+const SQUIRREL_HEIGHT = 0.3;
+const SQUIRREL_BOB = 0.12;
+const SQUIRREL_BOB_SPEED = 18;
 
 interface BoxVisual {
   id: number;
@@ -134,6 +138,20 @@ function mudGeometry(): THREE.BufferGeometry {
   ]);
 }
 
+/** Écureuil cartoon (~0,6 m) : corps ovale, tête et queue en panache. */
+function squirrelGeometry(): THREE.BufferGeometry {
+  const color = '#9a5b2e';
+  return paintedGeometry([
+    { geometry: new THREE.SphereGeometry(0.28, 10, 8).scale(1, 0.85, 1.4), color },
+    { geometry: new THREE.SphereGeometry(0.18, 10, 8), color, matrix: transform(0, 0.2, 0.32) },
+    {
+      geometry: new THREE.SphereGeometry(0.26, 10, 8).scale(0.8, 1.6, 0.8),
+      color,
+      matrix: transform(0, 0.38, -0.3),
+    },
+  ]);
+}
+
 export class ItemVisuals {
   readonly group = new THREE.Group();
   private readonly boxes = new Map<number, BoxVisual>();
@@ -185,8 +203,9 @@ export class ItemVisuals {
       bone: bag.add(boneGeometry()),
       'tennis-ball': bag.add(tennisBallGeometry()),
       mud: bag.add(mudGeometry()),
+      squirrel: bag.add(squirrelGeometry()),
     };
-    this.materials = { bone: painted, 'tennis-ball': painted, mud };
+    this.materials = { bone: painted, 'tennis-ball': painted, mud, squirrel: painted };
   }
 
   update(state: RaceState, alpha: number, dt: number, time: number): void {
@@ -242,6 +261,13 @@ export class ItemVisuals {
           object.scale.setScalar(
             ITEMS.mudRadius * Math.min(1, 0.3 + (0.7 * visual.age) / MUD_SPREAD),
           );
+          break;
+        case 'squirrel':
+          object.position.y =
+            entity.height +
+            SQUIRREL_HEIGHT +
+            Math.abs(Math.sin(visual.age * SQUIRREL_BOB_SPEED)) * SQUIRREL_BOB;
+          object.rotation.y = entity.heading;
           break;
       }
     }

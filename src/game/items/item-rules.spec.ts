@@ -23,7 +23,16 @@ function drawProportions(
   seed: number,
 ): Record<ItemKind, number> {
   const rng = createRng(seed);
-  const counts: Record<ItemKind, number> = { bone: 0, mud: 0, 'tennis-ball': 0, 'kibble-turbo': 0 };
+  const counts: Record<ItemKind, number> = {
+    bone: 0,
+    mud: 0,
+    'tennis-ball': 0,
+    'kibble-turbo': 0,
+    'golden-bone': 0,
+    whistle: 0,
+    'super-collar': 0,
+    squirrel: 0,
+  };
   for (let i = 0; i < draws; i++) counts[rollItem(rank, racerCount, rng)]++;
   for (const kind of ITEM_KINDS) counts[kind] /= draws;
   return counts;
@@ -31,28 +40,65 @@ function drawProportions(
 
 describe('itemWeights', () => {
   it('reprend les poids de référence au premier, au milieu et au dernier rang', () => {
-    expect(itemWeights(1, 8)).toEqual({ bone: 45, mud: 45, 'tennis-ball': 5, 'kibble-turbo': 5 });
-    expect(itemWeights(3, 5)).toEqual({ bone: 30, mud: 20, 'tennis-ball': 25, 'kibble-turbo': 25 });
-    expect(itemWeights(8, 8)).toEqual({ bone: 15, mud: 5, 'tennis-ball': 40, 'kibble-turbo': 40 });
+    expect(itemWeights(1, 8)).toEqual({
+      bone: 40,
+      mud: 40,
+      'tennis-ball': 5,
+      'kibble-turbo': 10,
+      'golden-bone': 0,
+      whistle: 0,
+      'super-collar': 0,
+      squirrel: 0,
+    });
+    // Rang 3 (≤ 3) : l'écureuil est exclu malgré la valeur interpolée (2) de la table.
+    expect(itemWeights(3, 5)).toEqual({
+      bone: 25,
+      mud: 15,
+      'tennis-ball': 20,
+      'kibble-turbo': 20,
+      'golden-bone': 10,
+      whistle: 3,
+      'super-collar': 5,
+      squirrel: 0,
+    });
+    expect(itemWeights(8, 8)).toEqual({
+      bone: 10,
+      mud: 5,
+      'tennis-ball': 20,
+      'kibble-turbo': 15,
+      'golden-bone': 15,
+      whistle: 8,
+      'super-collar': 12,
+      squirrel: 10,
+    });
+  });
+
+  it('exclut l’écureuil des rangs 1 à 3, quel que soit le nombre de pilotes', () => {
+    for (const rank of [1, 2, 3]) expect(itemWeights(rank, 8).squirrel).toBe(0);
+    expect(itemWeights(8, 8).squirrel).toBe(10);
   });
 
   it('interpole linéairement entre les points de référence', () => {
     // Rang 2 sur 5 : f = 0,25, à mi-chemin entre le premier et le milieu.
     const weights = itemWeights(2, 5);
-    expect(weights.bone).toBeCloseTo(37.5);
-    expect(weights.mud).toBeCloseTo(32.5);
-    expect(weights['tennis-ball']).toBeCloseTo(15);
+    expect(weights.bone).toBeCloseTo(32.5);
+    expect(weights.mud).toBeCloseTo(27.5);
+    expect(weights['tennis-ball']).toBeCloseTo(12.5);
     expect(weights['kibble-turbo']).toBeCloseTo(15);
+    expect(weights['golden-bone']).toBeCloseTo(5);
+    expect(weights.whistle).toBeCloseTo(1.5);
+    expect(weights['super-collar']).toBeCloseTo(2.5);
   });
 
-  it('garde une somme constante et favorise balles et turbos vers la fin du peloton', () => {
+  it('favorise balle, croquette et os en or vers la fin du peloton', () => {
     let previousBall = -Infinity;
     for (let rank = 1; rank <= 8; rank++) {
       const weights = itemWeights(rank, 8);
-      expect(sumOf(weights)).toBeCloseTo(100, 9);
-      expect(weights['tennis-ball']).toBeGreaterThan(previousBall);
+      expect(sumOf(weights)).toBeGreaterThan(0);
+      expect(weights['tennis-ball']).toBeGreaterThanOrEqual(previousBall);
       previousBall = weights['tennis-ball'];
     }
+    expect(itemWeights(8, 8)['golden-bone']).toBeGreaterThan(itemWeights(1, 8)['golden-bone']);
   });
 
   it('traite un pilote seul comme premier et borne les rangs hors limites', () => {
@@ -65,7 +111,7 @@ describe('itemWeights', () => {
   it('retombe sur les poids du premier si le rang ou le nombre de pilotes est invalide', () => {
     expect(rankFraction(Number.NaN, 8)).toBe(0);
     expect(rankFraction(3, Number.NaN)).toBe(0);
-    expect(sumOf(itemWeights(Number.NaN, 8))).toBeCloseTo(100, 9);
+    expect(itemWeights(Number.NaN, 8)).toEqual(itemWeights(1, 8));
   });
 });
 
@@ -73,15 +119,17 @@ describe('rollItem', () => {
   it('suit les poids du premier sur 5000 tirages', () => {
     const proportions = drawProportions(1, 8, 5000, 7);
     const weights = itemWeights(1, 8);
+    const total = sumOf(weights);
     for (const kind of ITEM_KINDS)
-      expect(Math.abs(proportions[kind] - weights[kind] / 100)).toBeLessThan(0.025);
+      expect(Math.abs(proportions[kind] - weights[kind] / total)).toBeLessThan(0.025);
   });
 
   it('suit les poids du dernier sur 5000 tirages', () => {
     const proportions = drawProportions(8, 8, 5000, 11);
     const weights = itemWeights(8, 8);
+    const total = sumOf(weights);
     for (const kind of ITEM_KINDS)
-      expect(Math.abs(proportions[kind] - weights[kind] / 100)).toBeLessThan(0.025);
+      expect(Math.abs(proportions[kind] - weights[kind] / total)).toBeLessThan(0.025);
   });
 
   it('est déterministe pour une même graine', () => {
@@ -93,21 +141,34 @@ describe('rollItem', () => {
   });
 
   it('découpe [0, 1[ en tranches cumulées dans l’ordre de ITEM_KINDS', () => {
-    // Premier : os [0 ; 0,45[, flaque [0,45 ; 0,90[, balle [0,90 ; 0,95[, turbo [0,95 ; 1[.
+    // Dernier (poids 10 | 5 | 20 | 15 | 15 | 8 | 12 | 10, somme 95) : os [0 ; 10/95[, flaque
+    // [10/95 ; 15/95[, balle [15/95 ; 35/95[, croquette [35/95 ; 50/95[, os en or [50/95 ; 65/95[,
+    // sifflet [65/95 ; 73/95[, super-collier [73/95 ; 85/95[, écureuil [85/95 ; 1[.
     const cases: [number, ItemKind][] = [
       [0, 'bone'],
-      [0.449, 'bone'],
-      [0.451, 'mud'],
-      [0.899, 'mud'],
-      [0.901, 'tennis-ball'],
-      [0.949, 'tennis-ball'],
-      [0.951, 'kibble-turbo'],
+      [0.1, 'bone'],
+      [0.11, 'mud'],
+      [0.15, 'mud'],
+      [0.16, 'tennis-ball'],
+      [0.36, 'tennis-ball'],
+      [0.37, 'kibble-turbo'],
+      [0.52, 'kibble-turbo'],
+      [0.53, 'golden-bone'],
+      [0.68, 'golden-bone'],
+      [0.685, 'whistle'],
+      [0.76, 'whistle'],
+      [0.77, 'super-collar'],
+      [0.89, 'super-collar'],
+      [0.895, 'squirrel'],
+      [0.999, 'squirrel'],
     ];
-    for (const [value, kind] of cases) expect(rollItem(1, 8, fixedRng(value))).toBe(kind);
+    for (const [value, kind] of cases) expect(rollItem(8, 8, fixedRng(value))).toBe(kind);
   });
 
   it('renvoie un objet valide même si le tirage atteint 1 (filet contre les arrondis)', () => {
-    expect(rollItem(1, 8, fixedRng(1))).toBe('kibble-turbo');
-    expect(rollItem(8, 8, fixedRng(1))).toBe('kibble-turbo');
+    // Le filet renvoie toujours le dernier de ITEM_KINDS (l'écureuil désormais), quel que soit
+    // son poids réel au rang tiré : ce cas ne survient jamais avec un Rng réel (next() < 1).
+    expect(rollItem(1, 8, fixedRng(1))).toBe('squirrel');
+    expect(rollItem(8, 8, fixedRng(1))).toBe('squirrel');
   });
 });

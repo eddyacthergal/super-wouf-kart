@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { AiController } from '../ai/ai-controller';
 import { createAiPersonality } from '../ai/personality';
-import { COUNTDOWN_SECONDS, FIXED_DT, RACE_LAPS, RACER_COUNT } from '../core/constants';
+import { COUNTDOWN_SECONDS, FIXED_DT, RACE_LAPS, RACER_COUNT, SLIPSTREAM } from '../core/constants';
 import { createRng } from '../core/rng';
 import {
   EMPTY_SKINS,
@@ -11,9 +11,10 @@ import {
   type DriverInput,
   type GameEvent,
   type RacerEntry,
+  type RacerState,
   type TrackQuery,
 } from '../core/types';
-import { dot, forwardOf, sub, wrapAngle } from '../core/vec2';
+import { clone, dot, forwardOf, headingOf, sub, wrapAngle } from '../core/vec2';
 import { BREEDS } from '../dogs/breeds';
 import type { RaceResultEntry } from '../game-api';
 import { tuningFromStats } from '../kart/tuning';
@@ -245,12 +246,12 @@ describe('RaceSimulation', () => {
         ]);
         skipCountdown(sim, controllers);
         const racer = sim.state.racers[1];
-        racer.item = 'bone';
+        racer.items = ['bone'];
         racer.itemRoulette = 0;
         const events = sim.step(FIXED_DT, controllers);
 
         expect(events).toContainEqual({ type: 'item-use', racerId: 1, item: 'bone' });
-        expect(racer.item).toBeNull();
+        expect(racer.items).toEqual([]);
         expect(sim.state.items).toHaveLength(1);
         const [bone] = sim.state.items;
         expect(bone.ownerId).toBe(1);
@@ -393,6 +394,54 @@ describe('RaceSimulation', () => {
         expect(ai.kart.speed).toBeCloseTo(base * 0.95 * factor, 2);
       },
     );
+  });
+
+  describe('option slipstream', () => {
+    const straight = createCircleTrack(3000);
+
+    /** Place deux karts en ligne, dans le sillage l'un de l'autre (8 m d'écart), assez vite. */
+    function placeInSlipstream(racers: readonly RacerState[]): void {
+      for (const [racer, s] of [
+        [racers[0], 100],
+        [racers[1], 108],
+      ] as const) {
+        const sample = straight.sampleAt(s);
+        const kart = racer.kart;
+        kart.position = clone(sample.position);
+        kart.prevPosition = clone(kart.position);
+        kart.heading = headingOf(sample.tangent);
+        kart.prevHeading = kart.heading;
+        const projection = straight.project(kart.position);
+        kart.trackIndex = projection.index;
+        kart.lateral = projection.lateral;
+        kart.speed = 0.8 * racer.tuning.maxSpeed;
+      }
+    }
+
+    it('active par défaut : boost d’aspiration ; `slipstream: false` : aucun', () => {
+      for (const slipstream of [undefined, true, false] as const) {
+        const sim = new RaceSimulation(straight, [entry(), entry()], {
+          rng: createRng(2),
+          ...(slipstream === undefined ? {} : { slipstream }),
+        });
+        const controllers = new Map<number, DriverController>([
+          [0, new ScriptedController(0, FULL_THROTTLE)],
+          [1, new ScriptedController(1, FULL_THROTTLE)],
+        ]);
+        skipCountdown(sim, controllers);
+        placeInSlipstream(sim.state.racers);
+
+        const events: GameEvent[] = [];
+        const steps = Math.round(SLIPSTREAM.chargeTime / FIXED_DT) + 2;
+        for (let i = 0; i < steps; i++) events.push(...sim.step(FIXED_DT, controllers));
+
+        const boosts = events.filter(
+          (event) => event.type === 'boost' && event.source === 'slipstream',
+        );
+        if (slipstream === false) expect(boosts).toHaveLength(0);
+        else expect(boosts.length).toBeGreaterThan(0);
+      }
+    });
   });
 });
 

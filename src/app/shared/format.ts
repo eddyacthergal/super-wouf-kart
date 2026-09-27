@@ -52,6 +52,10 @@ const ITEM_NAMES: Readonly<Record<ItemKind, string>> = {
   'tennis-ball': 'Balle de tennis',
   mud: 'Flaque de boue',
   'kibble-turbo': 'Croquette turbo',
+  'golden-bone': 'Os en or',
+  whistle: 'Sifflet',
+  'super-collar': 'Super-collier',
+  squirrel: 'Écureuil',
 };
 
 export function itemName(kind: ItemKind): string {
@@ -64,6 +68,10 @@ const ITEM_HINTS: Readonly<Record<ItemKind, string>> = {
   'tennis-ball': 'Poursuit le kart devant toi',
   mud: 'Déposée derrière toi',
   'kibble-turbo': 'Coup de turbo',
+  'golden-bone': 'Turbo à chaque appui, 7 s',
+  whistle: 'Arrête net les chiens devant',
+  'super-collar': 'Invincible 6 s',
+  squirrel: 'Fonce sur le premier',
 };
 
 export function itemHint(kind: ItemKind): string {
