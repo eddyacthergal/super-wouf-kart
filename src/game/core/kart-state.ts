@@ -21,6 +21,12 @@ export function createKartState(position: Vec2, heading: number, trackIndex = 0)
     prevHeading: heading,
     trackIndex,
     lateral: 0,
+    height: 0,
+    pitch: 0,
+    roll: 0,
+    prevHeight: 0,
+    prevPitch: 0,
+    prevRoll: 0,
   };
 }
 

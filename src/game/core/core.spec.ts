@@ -27,7 +27,7 @@ describe('conventions de repère', () => {
 
   it('wrapAngle ramène dans ]-π, π]', () => {
     expect(wrapAngle(3 * Math.PI)).toBeCloseTo(Math.PI);
-    expect(wrapAngle(-3 * Math.PI / 2)).toBeCloseTo(Math.PI / 2);
+    expect(wrapAngle((-3 * Math.PI) / 2)).toBeCloseTo(Math.PI / 2);
   });
 });
 

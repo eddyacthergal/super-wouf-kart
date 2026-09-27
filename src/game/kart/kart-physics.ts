@@ -5,7 +5,15 @@
  */
 import { DRIFT, KART_RADIUS, PHYSICS } from '../core/constants';
 import { applyBoost } from '../core/kart-state';
-import type { DriftState, DriftTier, DriverInput, KartEvent, KartState, KartTuning, TrackQuery } from '../core/types';
+import type {
+  DriftState,
+  DriftTier,
+  DriverInput,
+  KartEvent,
+  KartState,
+  KartTuning,
+  TrackQuery,
+} from '../core/types';
 import { approach, clamp, clone, headingOf, lerpAngle, wrapAngle } from '../core/vec2';
 
 /** Freinage naturel pendant un tête-à-queue (m/s²). */
@@ -47,6 +55,33 @@ const WALL_FULL_IMPACT_SPEED = 30;
 /** Pendant un contact prolongé, seul un nouveau choc plus fort que ce seuil est signalé. */
 const WALL_REPEAT_INTENSITY = 0.3;
 
+/** Bornes du facteur de vitesse max dû à la pente. */
+const SLOPE_FACTOR_MIN = 0.55;
+const SLOPE_FACTOR_MAX = 1.45;
+/** Masse d'une race moyenne (3 points de poids). */
+const REFERENCE_MASS = PHYSICS.massBase + PHYSICS.massPerPoint * 3;
+
+/** Effet de la pente selon le poids : > 1 pour un chien plus lourd qu'une race moyenne. */
+export function slopeWeightFactor(tuning: KartTuning): number {
+  return 1 + (PHYSICS.slopeWeightInfluence * (tuning.mass - REFERENCE_MASS)) / REFERENCE_MASS;
+}
+
+/** Hauteur, tangage et roulis du kart d'après le sol de la piste en (s, lateral). */
+export function placeOnGround(
+  kart: KartState,
+  track: TrackQuery,
+  s: number,
+  lateral: number,
+): void {
+  const { height, gradient } = track.surfaceAt(s, lateral);
+  const sin = Math.sin(kart.heading);
+  const cos = Math.cos(kart.heading);
+  kart.height = height;
+  // Avant = (sin θ, cos θ) ; gauche = (cos θ, −sin θ).
+  kart.pitch = Math.atan(gradient.x * sin + gradient.z * cos);
+  kart.roll = Math.atan(-(gradient.x * cos - gradient.z * sin));
+}
+
 /** État interne par kart, hors contrat (KartState est figé). */
 interface KartMemory {
   /** État du bouton de dérapage au pas précédent (détection du front montant). */
@@ -76,7 +111,15 @@ const memories = new WeakMap<KartState, KartMemory>();
 function memoryOf(kart: KartState): KartMemory {
   let memory = memories.get(kart);
   if (!memory) {
-    memory = { driftHeld: false, wallContact: kart.wallContact, wallIntensity: 0, driftWheel: 0, driftWindow: 0, driftNeutral: DRIFT.turnNeutral, driftAssisted: true };
+    memory = {
+      driftHeld: false,
+      wallContact: kart.wallContact,
+      wallIntensity: 0,
+      driftWheel: 0,
+      driftWindow: 0,
+      driftNeutral: DRIFT.turnNeutral,
+      driftAssisted: true,
+    };
     memories.set(kart, memory);
   }
   return memory;
@@ -97,6 +140,9 @@ export function stepKart(
 
   kart.prevPosition = clone(kart.position);
   kart.prevHeading = kart.heading;
+  kart.prevHeight = kart.height;
+  kart.prevPitch = kart.pitch;
+  kart.prevRoll = kart.roll;
   kart.wallContact = false;
 
   tickTimers(kart, dt);
@@ -112,10 +158,13 @@ export function stepKart(
     stepSpeed(kart, input, tuning, dt);
     if (kart.drift.active) {
       memory.driftAssisted = input.driftAssist !== false;
-      memory.driftNeutral = memory.driftAssisted ? driftAssistFactor(kart, track, tuning) : DRIFT.turnNeutral;
+      memory.driftNeutral = memory.driftAssisted
+        ? driftAssistFactor(kart, track, tuning)
+        : DRIFT.turnNeutral;
     }
     kart.heading = wrapAngle(
-      kart.heading + turnDelta(kart, memory.driftWheel, memory.driftNeutral, memory.driftAssisted, tuning, dt),
+      kart.heading +
+        turnDelta(kart, memory.driftWheel, memory.driftNeutral, memory.driftAssisted, tuning, dt),
     );
   }
 
@@ -145,7 +194,9 @@ function driftVisualYaw(direction: number, wheel: number): number {
  */
 export function driftTurnFactor(wheel: number, neutral: number = DRIFT.turnNeutral): number {
   const w = clamp(wheel, -1, 1);
-  return w >= 0 ? neutral + w * (DRIFT.turnTight - neutral) : neutral + w * (neutral - DRIFT.turnWide);
+  return w >= 0
+    ? neutral + w * (DRIFT.turnTight - neutral)
+    : neutral + w * (neutral - DRIFT.turnWide);
 }
 
 /** Position du volant de dérapage qui donne le taux de virage `factor` (inverse de driftTurnFactor). */
@@ -178,7 +229,9 @@ export function assistedWheelFor(factor: number, assist: number): number {
 export function driftAssistFactor(kart: KartState, track: TrackQuery, tuning: KartTuning): number {
   const projection = track.project(kart.position, kart.trackIndex);
   const speed = Math.max(Math.abs(kart.speed), 1);
-  const ahead = track.sampleAt(projection.s + Math.max(DRIFT.assistMinLookahead, speed * DRIFT.assistLookahead));
+  const ahead = track.sampleAt(
+    projection.s + Math.max(DRIFT.assistMinLookahead, speed * DRIFT.assistLookahead),
+  );
   const margin = Math.max(0, ahead.halfWidth - DRIFT.assistEdgeMargin);
   const lateral = clamp(projection.lateral, -margin, margin);
   const dx = ahead.position.x + ahead.left.x * lateral - kart.position.x;
@@ -245,7 +298,11 @@ function stepDrift(
     } else if (kart.speed < DRIFT_CANCEL_RATIO * DRIFT.minSpeed) {
       resetDrift(drift);
     } else {
-      memory.driftWheel = approach(memory.driftWheel, steer * drift.direction, DRIFT.steerResponse * dt);
+      memory.driftWheel = approach(
+        memory.driftWheel,
+        steer * drift.direction,
+        DRIFT.steerResponse * dt,
+      );
       drift.charge += dt * (1 + DRIFT_CHARGE_STEER_BONUS * Math.max(0, steer * drift.direction));
       // Un événement par palier franchi, même si un grand pas en franchit plusieurs.
       const tier = tierFor(drift.charge);
@@ -285,19 +342,36 @@ function stepDrift(
 
 function stepSpeed(kart: KartState, input: DriverInput, tuning: KartTuning, dt: number): void {
   const boosting = kart.boostTime > 0;
+  // Pente du pas précédent (tangage), amplifiée par le poids : réduit la vitesse max en montée,
+  // l'augmente en descente ; s'annule à plat (tangage nul → facteur 1).
+  const slope = Math.tan(kart.pitch);
+  const weight = slopeWeightFactor(tuning);
+  const slopeFactor = clamp(
+    1 - PHYSICS.slopeSpeedFactor * slope * weight,
+    SLOPE_FACTOR_MIN,
+    SLOPE_FACTOR_MAX,
+  );
   const maxSpeed =
-    tuning.maxSpeed * (boosting ? kart.boostStrength : 1) * (kart.offroad && !boosting ? tuning.offroadFactor : 1);
+    tuning.maxSpeed *
+    (boosting ? kart.boostStrength : 1) *
+    (kart.offroad && !boosting ? tuning.offroadFactor : 1) *
+    slopeFactor;
 
   if (input.brake) {
     kart.speed =
       kart.speed > 0
         ? Math.max(0, kart.speed - PHYSICS.brakeDeceleration * dt)
-        : approach(kart.speed, -PHYSICS.reverseMaxSpeed, REVERSE_ACCELERATION_FACTOR * tuning.acceleration * dt);
+        : approach(
+            kart.speed,
+            -PHYSICS.reverseMaxSpeed,
+            REVERSE_ACCELERATION_FACTOR * tuning.acceleration * dt,
+          );
   } else if (input.throttle || boosting) {
     if (kart.speed < maxSpeed) {
       const ratio = kart.speed / maxSpeed;
       const boostFactor = boosting ? BOOST_ACCELERATION_FACTOR : 1;
-      const acceleration = tuning.acceleration * boostFactor * (1 - ACCELERATION_FALLOFF * ratio * ratio);
+      const acceleration =
+        tuning.acceleration * boostFactor * (1 - ACCELERATION_FALLOFF * ratio * ratio);
       kart.speed = Math.min(maxSpeed, kart.speed + acceleration * dt);
     } else {
       kart.speed = approach(kart.speed, maxSpeed, OVERSPEED_DECELERATION * dt);
@@ -307,8 +381,13 @@ function stepSpeed(kart: KartState, input: DriverInput, tuning: KartTuning, dt: 
     // ralentir moins vite que les garder : on redescend au moins comme avec les gaz.
     const coasting = approach(kart.speed, 0, PHYSICS.coastDeceleration * dt);
     kart.speed =
-      kart.speed > maxSpeed ? Math.min(coasting, approach(kart.speed, maxSpeed, OVERSPEED_DECELERATION * dt)) : coasting;
+      kart.speed > maxSpeed
+        ? Math.min(coasting, approach(kart.speed, maxSpeed, OVERSPEED_DECELERATION * dt))
+        : coasting;
   }
+
+  // La pente freine en montée et pousse en descente, gaz ou pas.
+  kart.speed -= PHYSICS.slopeGravity * slope * weight * dt;
 }
 
 /** Variation de cap du pas (rad). */
@@ -326,10 +405,18 @@ function turnDelta(
     const factor = driftAssisted
       ? assistedTurnFactor(driftWheel, driftNeutral)
       : driftTurnFactor(driftWheel, driftNeutral);
-    return -drift.direction * tuning.turnRate * factor * dt;
+    const delta = -drift.direction * tuning.turnRate * factor * dt;
+    return delta * bankGripFactor(kart, Math.sign(delta));
   }
   const grip = Math.min(1, Math.abs(kart.speed) / PHYSICS.minTurnSpeed);
-  return -kart.steer * tuning.turnRate * grip * Math.sign(kart.speed) * dt;
+  const delta = -kart.steer * tuning.turnRate * grip * Math.sign(kart.speed) * dt;
+  return delta * bankGripFactor(kart, Math.sign(delta));
+}
+
+/** Virage relevé : braquage majoré en tournant vers le côté bas (intérieur du virage). */
+function bankGripFactor(kart: KartState, turnSign: number): number {
+  // turnSign > 0 = virage à gauche (cap croissant) ; roll > 0 = côté gauche plus bas.
+  return 1 + PHYSICS.bankGrip * Math.max(0, turnSign * kart.roll);
 }
 
 /** Projection sur le circuit, bas-côté et haies. */
@@ -346,18 +433,23 @@ function collideWithTrack(
   kart.lateral = projection.lateral;
   kart.offroad = Math.abs(projection.lateral) > sample.halfWidth;
 
+  const limit = track.wallHalfWidth - KART_RADIUS;
+  placeOnGround(kart, track, projection.s, clamp(projection.lateral, -limit, limit));
+
   const wasInContact = memory.wallContact;
   const previousIntensity = memory.wallIntensity;
   memory.wallContact = false;
   memory.wallIntensity = 0;
 
-  const limit = track.wallHalfWidth - KART_RADIUS;
   if (Math.abs(kart.lateral) <= limit) return;
 
   // Replacement à la limite le long de la normale : l'abscisse du kart ne change pas.
   const side = kart.lateral > 0 ? 1 : -1;
   const excess = kart.lateral - side * limit;
-  kart.position = { x: kart.position.x - sample.left.x * excess, z: kart.position.z - sample.left.z * excess };
+  kart.position = {
+    x: kart.position.x - sample.left.x * excess,
+    z: kart.position.z - sample.left.z * excess,
+  };
   kart.lateral = side * limit;
   kart.wallContact = true;
   memory.wallContact = true;
@@ -366,16 +458,21 @@ function collideWithTrack(
   const forwardX = Math.sin(kart.heading);
   const forwardZ = Math.cos(kart.heading);
   const motionSign = kart.speed < 0 ? -1 : 1;
-  const normal = Math.max(0, (forwardX * sample.left.x + forwardZ * sample.left.z) * side * motionSign);
+  const normal = Math.max(
+    0,
+    (forwardX * sample.left.x + forwardZ * sample.left.z) * side * motionSign,
+  );
   if (normal === 0) return;
 
   // Un choc (premier contact, ou choc plus fort pendant un contact) coûte une part de la vitesse
   // selon l'incidence ; ensuite, le kart qui frotte la haie freine simplement.
   const intensity = clamp((normal * Math.abs(kart.speed)) / WALL_FULL_IMPACT_SPEED, 0, 1);
   memory.wallIntensity = intensity;
-  const impact = !wasInContact || (intensity > WALL_REPEAT_INTENSITY && intensity > previousIntensity);
+  const impact =
+    !wasInContact || (intensity > WALL_REPEAT_INTENSITY && intensity > previousIntensity);
   if (impact) {
-    kart.speed *= 1 - (1 - PHYSICS.wallSpeedRetention) * Math.min(1, normal * 2 + WALL_IMPACT_FLOOR);
+    kart.speed *=
+      1 - (1 - PHYSICS.wallSpeedRetention) * Math.min(1, normal * 2 + WALL_IMPACT_FLOOR);
     if (intensity > 0) emit({ type: 'wall', intensity });
     // Un vrai choc casse la glisse, sans turbo ; un simple frôlement la laisse continuer.
     if (kart.drift.active && intensity > DRIFT.wallCancelIntensity) resetDrift(kart.drift);
@@ -386,6 +483,10 @@ function collideWithTrack(
   // Cap ramené le long de la haie, dans le sens de la course sauf si le kart pointe nettement à contre-sens.
   const tangentHeading = headingOf(sample.tangent);
   const along = forwardX * sample.tangent.x + forwardZ * sample.tangent.z;
-  const target = along >= WALL_BACKWARD_ALIGN ? tangentHeading : wrapAngle(tangentHeading + Math.PI);
-  kart.heading = normal > WALL_ALIGN_THRESHOLD ? wrapAngle(lerpAngle(kart.heading, target, WALL_HEADING_BLEND)) : target;
+  const target =
+    along >= WALL_BACKWARD_ALIGN ? tangentHeading : wrapAngle(tangentHeading + Math.PI);
+  kart.heading =
+    normal > WALL_ALIGN_THRESHOLD
+      ? wrapAngle(lerpAngle(kart.heading, target, WALL_HEADING_BLEND))
+      : target;
 }

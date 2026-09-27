@@ -43,6 +43,14 @@ export const PHYSICS = {
   minTurnSpeed: 6,
   /** Fraction de vitesse conservée lors d'un choc contre une haie. */
   wallSpeedRetention: 0.6,
+  /** Pente : part de la vitesse max perdue en montée, gagnée en descente, par unité de pente (0,1 = 10 %). */
+  slopeSpeedFactor: 1.5,
+  /** Pente : accélération (m/s²) par unité de pente, comme la gravité, gaz ou pas. */
+  slopeGravity: 6,
+  /** Poids : effet de la pente × (1 + ce facteur × écart de masse relatif à une race moyenne). */
+  slopeWeightInfluence: 1.5,
+  /** Virage relevé : braquage × (1 + ce facteur × dévers en rad) en tournant vers le côté bas. */
+  bankGrip: 0.45,
 } as const;
 
 /** Dérapage et mini-turbo. */

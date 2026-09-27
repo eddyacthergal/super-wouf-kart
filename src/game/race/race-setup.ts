@@ -4,6 +4,7 @@ import { createKartState } from '../core/kart-state';
 import type { RaceState, RacerEntry, RacerState, TrackQuery } from '../core/types';
 import { BREEDS } from '../dogs/breeds';
 import { createItemBoxes } from '../items/item-system';
+import { placeOnGround } from '../kart/kart-physics';
 import { tuningFromStats } from '../kart/tuning';
 import { computeRanks } from './ranking';
 
@@ -41,6 +42,10 @@ function createRacer(track: TrackQuery, entry: RacerEntry, id: number): RacerSta
   const projection = track.project(slot.position);
   const kart = createKartState(slot.position, slot.heading, projection.index);
   kart.lateral = projection.lateral;
+  placeOnGround(kart, track, projection.s, projection.lateral);
+  kart.prevHeight = kart.height;
+  kart.prevPitch = kart.pitch;
+  kart.prevRoll = kart.roll;
   return {
     id,
     name: entry.name,

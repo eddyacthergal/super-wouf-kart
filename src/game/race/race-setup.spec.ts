@@ -102,6 +102,15 @@ describe('createRaceState', () => {
     expect(race.itemBoxes.every((box) => box.respawn === 0)).toBe(true);
   });
 
+  it('pose les karts sur la route, même quand le départ est en altitude', () => {
+    const track = createCircleTrack(300, 'left', { height: 5 });
+    const race = createRaceState(track, roster);
+    for (const racer of race.racers) {
+      expect(racer.kart.height).toBeCloseTo(5, 6);
+      expect(racer.kart.prevHeight).toBeCloseTo(5, 6);
+    }
+  });
+
   it('accepte un nombre de tours, et sans joueur, playerId vaut -1', () => {
     const circle = createCircleTrack(80);
     const custom = createRaceState(circle, [entry(), entry({ breed: 'chihuahua' })], { laps: 1 });

@@ -134,6 +134,16 @@ export interface KartState {
   trackIndex: number;
   /** Décalage latéral signé par rapport à la ligne médiane (+ = gauche). */
   lateral: number;
+  /** Hauteur du sol sous le kart (m). */
+  height: number;
+  /** Tangage (rad) : pente du sol dans le sens du cap, > 0 = nez en haut. */
+  pitch: number;
+  /** Roulis (rad) : > 0 = côté gauche du kart plus bas. */
+  roll: number;
+  /** Valeurs au début du dernier pas (interpolation du rendu). */
+  prevHeight: number;
+  prevPitch: number;
+  prevRoll: number;
 }
 
 /** Événements émis par stepKart (sans identifiant de pilote). */

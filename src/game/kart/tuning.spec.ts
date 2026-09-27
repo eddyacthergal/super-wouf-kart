@@ -3,7 +3,12 @@ import type { KartTuning, StatBlock } from '../core/types';
 import { TEST_TUNING } from '../testing/fixtures';
 import { tuningFromStats } from './tuning';
 
-const uniform = (points: number): StatBlock => ({ speed: points, acceleration: points, weight: points, handling: points });
+const uniform = (points: number): StatBlock => ({
+  speed: points,
+  acceleration: points,
+  weight: points,
+  handling: points,
+});
 
 function expectTuning(actual: KartTuning, expected: KartTuning): void {
   for (const key of Object.keys(expected) as (keyof KartTuning)[]) {

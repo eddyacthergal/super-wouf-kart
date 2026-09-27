@@ -2,6 +2,10 @@
 
 Versionnage sémantique. Dates de fusion dans `main`.
 
+## [0.5.0] – 27/09/2026
+
+- Ajout : physique du relief (pente, poids, dévers, hauteur du kart).
+
 ## [0.4.1] – 27/09/2026
 
 - Correction : dérapage au clavier, plus de choc ni de sortie de piste, même en gardant la flèche.
