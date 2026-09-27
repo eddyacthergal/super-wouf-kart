@@ -69,6 +69,8 @@ export interface HudSnapshot {
   drifting: boolean;
   driftTier: DriftTier;
   boosting: boolean;
+  /** Vrai pendant la charge de l'aspiration du joueur. */
+  slipstreaming: boolean;
   /** Vrai si le joueur roule dans le mauvais sens depuis un moment. */
   wrongWay: boolean;
   /** Vitesse du joueur (km/h, pour l'affichage). */
@@ -116,4 +118,8 @@ export interface GameHandle {
 /** Boutons tactiles (la direction passe par le joystick, l'accélération est automatique). */
 export type TouchAction = 'brake' | 'drift' | 'item';
 
-export type CreateGame = (canvas: HTMLCanvasElement, setup: RaceSetup, callbacks: GameCallbacks) => GameHandle;
+export type CreateGame = (
+  canvas: HTMLCanvasElement,
+  setup: RaceSetup,
+  callbacks: GameCallbacks,
+) => GameHandle;

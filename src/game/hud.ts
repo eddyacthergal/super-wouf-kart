@@ -65,6 +65,7 @@ export function buildHudSnapshot(state: RaceState, wrongWay: boolean): HudSnapsh
     drifting: kart?.drift.active ?? false,
     driftTier: kart?.drift.active ? kart.drift.tier : 0,
     boosting: (kart?.boostTime ?? 0) > 0,
+    slipstreaming: (kart?.slipstream ?? 0) > 0,
     wrongWay,
     speedKmh: kart ? Math.round(Math.abs(kart.speed) * MS_TO_KMH) : 0,
     dots: state.racers.map((racer) => ({

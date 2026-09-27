@@ -35,6 +35,8 @@ const WHEEL_GLOW_FRAMES = 2.6;
 const SMOKE_RATE = 12;
 const DUST_RATE = 12;
 const FLAME_GLOW_RATE = 30;
+/** Filets de vent par seconde autour du kart pendant la charge de l'aspiration. */
+const WIND_RATE = 40;
 const MIN_SPARK_SPEED = 4;
 const MIN_DUST_SPEED = 3;
 /** Traces de pneus : nombre de tronçons, pas minimal entre deux points, saut au-delà duquel on recommence. */
@@ -55,6 +57,7 @@ interface Emitter {
   dust: number;
   flame: number;
   smoke: number;
+  wind: number;
   /** Dernier point au sol (x, z, y) de chaque roue arrière, NaN hors dérapage. */
   skid: Float64Array;
 }
@@ -84,6 +87,7 @@ const WHEEL_GLOW_HALO: ParticleOptions = { opacity: 0.75 };
 const SMOKE_OPTIONS: ParticleOptions = { gravity: 0.8, growth: 0.9, drag: 2.5, opacity: 0.32 };
 const DUST_OPTIONS: ParticleOptions = { gravity: -0.6, growth: 1.4, drag: 2, opacity: 0.5 };
 const FLAME_OPTIONS: ParticleOptions = { gravity: 0, growth: -0.6, drag: 3, opacity: 0.9 };
+const WIND_OPTIONS: ParticleOptions = { gravity: 0, drag: 0, opacity: 0.55 };
 
 /** Étoile à cinq branches, en léger relief, tournée vers +Z. */
 function starGeometry(): THREE.BufferGeometry {
@@ -196,6 +200,7 @@ export class Effects {
         dust: 0,
         flame: 0,
         smoke: 0,
+        wind: 0,
         skid: new Float64Array(6).fill(Number.NaN),
       });
     }
@@ -352,6 +357,17 @@ export class Effects {
         }
       } else {
         emitter.flame = 0;
+      }
+
+      // Aspiration : traînées de vent autour du kart pendant la charge.
+      if (kart.slipstream > 0) {
+        emitter.wind += WIND_RATE * (0.4 + kart.slipstream) * dt;
+        while (emitter.wind >= 1) {
+          emitter.wind -= 1;
+          this.emitWind(visual);
+        }
+      } else {
+        emitter.wind = 0;
       }
 
       // Étoiles qui tournent au-dessus d'un kart en tête-à-queue.
@@ -548,6 +564,30 @@ export class Effects {
         FLAME_OPTIONS,
       );
     }
+  }
+
+  /** Filet d'air qui file vers l'arrière autour du kart (aspiration). */
+  private emitWind(visual: RacerVisual): void {
+    const rng = this.rng;
+    const forwardX = Math.sin(visual.heading);
+    const forwardZ = Math.cos(visual.heading);
+    const angle = rng.range(0, Math.PI * 2);
+    const radius = rng.range(1.1, 1.6);
+    const x = visual.position.x + Math.cos(angle) * radius + forwardX * 1.5;
+    const z = visual.position.z - Math.sin(angle) * radius + forwardZ * 1.5;
+    const speed = rng.range(14, 20);
+    this.soft.emit(
+      x,
+      visual.position.y + rng.range(0.4, 1.4),
+      z,
+      -forwardX * speed,
+      0,
+      -forwardZ * speed,
+      WIND,
+      rng.range(0.07, 0.11),
+      rng.range(0.16, 0.26),
+      WIND_OPTIONS,
+    );
   }
 
   /** Gerbe radiale de `count` particules. */

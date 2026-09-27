@@ -126,6 +126,13 @@ describe('RacePage', () => {
     expect(minimap?.querySelectorAll('circle')).toHaveLength(3);
   });
 
+  it('annonce l’aspiration', async () => {
+    game.last.callbacks.onReady(FAKE_INFO);
+    game.last.callbacks.onHud(fakeHud({ slipstreaming: true }));
+    await settle(fixture);
+    expect(text()).toContain('Aspiration !');
+  });
+
   it('affiche la roulette d’objet avec un libellé accessible', async () => {
     game.last.callbacks.onReady(FAKE_INFO);
     game.last.callbacks.onHud(fakeHud({ items: ['bone'], rollingSlot: 0 }));

@@ -4,6 +4,7 @@ import { HudDrift } from './hud-drift';
 import { HudItem } from './hud-item';
 import { HudLap } from './hud-lap';
 import { HudPosition } from './hud-position';
+import { HudSlipstream } from './hud-slipstream';
 import { HudSpeed } from './hud-speed';
 import { HudTimer } from './hud-timer';
 import { Minimap } from './minimap';
@@ -18,7 +19,17 @@ import { WrongWayBanner } from './wrong-way-banner';
  */
 @Component({
   selector: 'app-race-hud',
-  imports: [HudPosition, HudLap, HudTimer, HudSpeed, HudItem, HudDrift, Minimap, WrongWayBanner],
+  imports: [
+    HudPosition,
+    HudLap,
+    HudTimer,
+    HudSpeed,
+    HudItem,
+    HudSlipstream,
+    HudDrift,
+    Minimap,
+    WrongWayBanner,
+  ],
   host: { class: 'pointer-events-none absolute inset-0 block select-none' },
   template: `
     <div class="absolute top-3 left-3 flex flex-col items-start gap-2 sm:top-5 sm:left-5">
@@ -46,6 +57,7 @@ import { WrongWayBanner } from './wrong-way-banner';
     }
 
     <div class="absolute flex gap-2" [class]="touch() ? gaugesTouchClass : gaugesClass">
+      <app-hud-slipstream [active]="hud().slipstreaming" [compact]="touch()" />
       <app-hud-drift
         [drifting]="hud().drifting"
         [tier]="hud().driftTier"

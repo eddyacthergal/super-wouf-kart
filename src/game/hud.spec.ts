@@ -115,6 +115,7 @@ describe('buildHudSnapshot', () => {
       drifting: true,
       driftTier: 2,
       boosting: true,
+      slipstreaming: false,
       wrongWay: true,
       speedKmh: 36,
       dots: race.racers.map((racer) => ({
@@ -137,6 +138,15 @@ describe('buildHudSnapshot', () => {
     expect(hud.boosting).toBe(false);
     expect(hud.wrongWay).toBe(false);
     expect(hud.speedKmh).toBe(100);
+  });
+
+  it('aspiration en cours d’après la charge du joueur', () => {
+    const race = createTestRace(track, 2);
+    const kart = race.racers[0].kart;
+    kart.slipstream = 0.4;
+    expect(buildHudSnapshot(race, false).slipstreaming).toBe(true);
+    kart.slipstream = 0;
+    expect(buildHudSnapshot(race, false).slipstreaming).toBe(false);
   });
 
   it('publie les deux objets et la case dont la roulette tourne', () => {
