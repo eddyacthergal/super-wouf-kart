@@ -3,6 +3,7 @@
  * `circuits/`, contrôlé par parseCircuit au chargement (un fichier invalide fait échouer les tests).
  */
 import { parseCircuit } from './circuit-loader';
+import colline from './circuits/colline.json';
 import grandJardin from './circuits/grand-jardin.json';
 import parcEnneige from './circuits/parc-enneige.json';
 import plage from './circuits/plage.json';
@@ -14,6 +15,7 @@ export const TRACK_CATALOG: readonly TrackDefinition[] = [
   potager,
   parcEnneige,
   plage,
+  colline,
 ].map(parseCircuit);
 
 export const DEFAULT_TRACK_ID = 'grand-jardin';

@@ -94,4 +94,11 @@ describe('catalogue des circuits', () => {
     },
     120_000,
   );
+
+  it('La Colline a du vrai relief : au moins 10 m de dénivelé et des virages relevés', () => {
+    const track = createTrack(findTrack('colline'));
+    const heights = track.samples.map((sample) => sample.height);
+    expect(Math.max(...heights) - Math.min(...heights)).toBeGreaterThanOrEqual(10);
+    expect(track.samples.some((sample) => Math.abs(sample.bank) > 0.15)).toBe(true);
+  });
 });
