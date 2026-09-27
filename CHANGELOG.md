@@ -2,6 +2,10 @@
 
 Versionnage sémantique. Dates de fusion dans `main`.
 
+## [0.7.1] – 28/09/2026
+
+- Ajout : rapport de revue de la qualité du code et feuille de route de refactorisation.
+
 ## [0.7.0] – 27/09/2026
 
 - Ajout : aspiration, un turbo en roulant dans le sillage d'un concurrent.
