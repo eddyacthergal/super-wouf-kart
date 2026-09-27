@@ -14,6 +14,7 @@ export const ITEM_KINDS: readonly ItemKind[] = [
   'golden-bone',
   'whistle',
   'super-collar',
+  'squirrel',
 ];
 
 /** Poids aux positions relatives 0 (premier), 0,5 (milieu) et 1 (dernier). */
@@ -25,6 +26,7 @@ const WEIGHT_TABLE: Readonly<Record<ItemKind, readonly [number, number, number]>
   'golden-bone': [0, 10, 15],
   whistle: [0, 3, 8],
   'super-collar': [0, 5, 12],
+  squirrel: [0, 2, 10],
 };
 
 /** Position relative dans le classement : 0 = premier, 1 = dernier (0 si les données sont invalides). */
@@ -41,6 +43,8 @@ export function itemWeights(rank: number, racerCount: number): Record<ItemKind, 
     f <= 0.5 ? first + (middle - first) * (f / 0.5) : middle + (last - middle) * ((f - 0.5) / 0.5);
   const weights = {} as Record<ItemKind, number>;
   for (const kind of ITEM_KINDS) weights[kind] = interpolate(WEIGHT_TABLE[kind]);
+  // L'écureuil ne vise que des pilotes moins bien classés que lui : jamais pour le podium.
+  if (rank <= 3) weights.squirrel = 0;
   return weights;
 }
 

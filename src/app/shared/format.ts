@@ -55,6 +55,7 @@ const ITEM_NAMES: Readonly<Record<ItemKind, string>> = {
   'golden-bone': 'Os en or',
   whistle: 'Sifflet',
   'super-collar': 'Super-collier',
+  squirrel: 'Écureuil',
 };
 
 export function itemName(kind: ItemKind): string {
@@ -70,6 +71,7 @@ const ITEM_HINTS: Readonly<Record<ItemKind, string>> = {
   'golden-bone': 'Turbo à chaque appui, 7 s',
   whistle: 'Arrête net les chiens devant',
   'super-collar': 'Invincible 6 s',
+  squirrel: 'Fonce sur le premier',
 };
 
 export function itemHint(kind: ItemKind): string {

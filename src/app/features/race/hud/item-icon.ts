@@ -122,6 +122,17 @@ import type { ItemKind } from '../../../../game/core/types';
             stroke-width="1.2"
           />
         }
+        @case ('squirrel') {
+          <ellipse cx="20" cy="30" rx="9" ry="8" fill="#9a5b2e" />
+          <circle cx="27" cy="21" r="5.5" fill="#9a5b2e" />
+          <path
+            d="M13 32 Q3 20 12 9 Q20 5 19 16 Q16 22 17 28 Z"
+            fill="#c07a3e"
+            stroke="#5c3310"
+            stroke-width="1.5"
+          />
+          <circle cx="29" cy="20" r="1.2" fill="#1b1b1b" />
+        }
       }
     </svg>
   `,

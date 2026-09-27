@@ -459,6 +459,8 @@ export class AiController implements DriverController {
         return waited && racer.rank > 1;
       case 'super-collar':
         return waited;
+      case 'squirrel':
+        return waited && racer.rank > 1;
     }
   }
 
@@ -480,6 +482,8 @@ export class AiController implements DriverController {
         return this.rng.range(0.3, 1);
       case 'super-collar':
         return this.rng.range(0.5, 1.5);
+      case 'squirrel':
+        return this.rng.range(0.5, 2);
     }
   }
 

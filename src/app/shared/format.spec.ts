@@ -75,6 +75,8 @@ describe('noms', () => {
     expect(itemHint('whistle')).toBe('Arrête net les chiens devant');
     expect(itemName('super-collar')).toBe('Super-collier');
     expect(itemHint('super-collar')).toBe('Invincible 6 s');
+    expect(itemName('squirrel')).toBe('Écureuil');
+    expect(itemHint('squirrel')).toBe('Fonce sur le premier');
   });
 
   it('joinWithEt énumère à la française', () => {

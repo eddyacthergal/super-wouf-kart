@@ -235,10 +235,18 @@ export interface TrackQuery {
 /**
  * Os (projectile droit), balle de tennis (autoguidée), flaque de boue (piège), croquette turbo
  * (boost), os en or (turbo à chaque appui pendant sa durée, reste dans la case), sifflet (arrête
- * net les pilotes mieux classés), super-collier (invincibilité temporaire et choc en tête-à-queue).
+ * net les pilotes mieux classés), super-collier (invincibilité temporaire et choc en tête-à-queue),
+ * écureuil (fonce sur le premier par le plus court chemin du circuit et le fait tourner).
  */
 export type ItemKind =
-  'bone' | 'tennis-ball' | 'mud' | 'kibble-turbo' | 'golden-bone' | 'whistle' | 'super-collar';
+  | 'bone'
+  | 'tennis-ball'
+  | 'mud'
+  | 'kibble-turbo'
+  | 'golden-bone'
+  | 'whistle'
+  | 'super-collar'
+  | 'squirrel';
 
 export type ItemEntityKind = Exclude<
   ItemKind,

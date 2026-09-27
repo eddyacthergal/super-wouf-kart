@@ -52,11 +52,15 @@ const BALL_LOOKAHEAD = 10;
 const BALL_TURN_RATE = 5;
 /** Sans cible, la balle se recentre doucement vers la ligne médiane. */
 const BALL_CENTERING = 0.9;
+/** Rapprochement latéral de l'écureuil vers sa cible sur ses derniers mètres (1/s) et distance (m). */
+const SQUIRREL_HOMING_RATE = 6;
+const SQUIRREL_HOMING_DISTANCE = 20;
 
 const ENTITY_LIFE: Readonly<Record<ItemEntityKind, number>> = {
   bone: ITEMS.boneLife,
   'tennis-ball': ITEMS.ballLife,
   mud: ITEMS.mudLife,
+  squirrel: ITEMS.squirrelLife,
 };
 
 const entityRadius = (kind: ItemEntityKind): number =>
@@ -177,6 +181,20 @@ export function useItem(
     case 'super-collar':
       racer.kart.collarTime = ITEMS.collarDuration;
       break;
+    case 'squirrel': {
+      const target = squirrelTarget(race, racer.id);
+      spawnEntity(
+        race,
+        racer,
+        track,
+        'squirrel',
+        ahead(throwDistance),
+        kart.heading,
+        ITEMS.squirrelSpeed,
+        target?.id ?? null,
+      );
+      break;
+    }
   }
 }
 
@@ -191,6 +209,12 @@ function ballTarget(race: RaceState, racer: RacerState): RacerState | null {
     if (target === null || other.rank > target.rank) target = other;
   }
   return target;
+}
+
+/** Cible de l'écureuil : le premier encore en course, ou le deuxième si c'est le lanceur. */
+function squirrelTarget(race: RaceState, ownerId: number): RacerState | null {
+  const running = race.racers.filter((racer) => !racer.finished).sort((a, b) => a.rank - b.rank);
+  return running.find((racer) => racer.id !== ownerId) ?? null;
 }
 
 function spawnEntity(
@@ -238,6 +262,7 @@ export function stepItems(
   updateRacerTimers(race, dt, emit);
   updateBoxes(race, rng, dt, emit);
   moveEntities(race, track, dt);
+  collideSquirrels(race, track, emit);
   collideWithRacers(race, emit);
   collideProjectilesWithMud(race);
   removeDeadEntities(race);
@@ -295,6 +320,7 @@ function moveEntities(race: RaceState, track: TrackQuery, dt: number): void {
     entity.armTime = Math.max(0, entity.armTime - dt);
     if (entity.kind === 'bone') moveBone(entity, track, dt);
     else if (entity.kind === 'tennis-ball') moveBall(entity, race, track, dt);
+    else if (entity.kind === 'squirrel') moveSquirrel(entity, race, track, dt);
   }
 }
 
@@ -380,9 +406,60 @@ function resolveTarget(entity: ItemEntity, race: RaceState): RacerState | null {
   return null;
 }
 
+/** Distance (m) le long du circuit, vers l'avant, de l'abscisse s jusqu'à l'échantillon `index`. */
+function aheadGap(track: TrackQuery, s: number, index: number): number {
+  const delta = track.samples[index].s - s;
+  return ((delta % track.length) + track.length) % track.length;
+}
+
+/**
+ * L'écureuil suit la ligne médiane par son abscisse, par le plus court chemin (vers l'avant ou vers
+ * l'arrière), sans rebond ni haie, et rejoint le couloir de sa cible sur ses derniers mètres.
+ */
+function moveSquirrel(entity: ItemEntity, race: RaceState, track: TrackQuery, dt: number): void {
+  const target = squirrelTarget(race, entity.ownerId);
+  entity.targetId = target?.id ?? null;
+  if (target === null) {
+    entity.life = 0;
+    return;
+  }
+  const here = track.project(entity.position, entity.trackIndex);
+  const forward = aheadGap(track, here.s, target.kart.trackIndex);
+  const direction = forward <= track.length / 2 ? 1 : -1;
+  const remaining = Math.min(forward, track.length - forward);
+  const s = here.s + direction * ITEMS.squirrelSpeed * dt;
+  const near = remaining < SQUIRREL_HOMING_DISTANCE;
+  const aim = near ? target.kart.lateral : 0;
+  const lateral =
+    here.lateral + (aim - here.lateral) * Math.min(1, (near ? SQUIRREL_HOMING_RATE : 1) * dt);
+  const sample = track.sampleAt(s);
+  entity.position = addScaled(sample.position, sample.left, lateral);
+  entity.heading = headingOf(sample.tangent) + (direction < 0 ? Math.PI : 0);
+  entity.trackIndex = track.project(entity.position, here.index).index;
+  entity.height = track.surfaceAt(s, lateral).height;
+}
+
+/** L'écureuil attrape sa cible quand leurs abscisses se rejoignent (le super-collier protège). */
+function collideSquirrels(race: RaceState, track: TrackQuery, emit: EmitEvent): void {
+  for (const entity of race.items) {
+    if (entity.kind !== 'squirrel' || entity.life <= 0 || entity.targetId === null) continue;
+    const target = race.racers.find((racer) => racer.id === entity.targetId);
+    if (!target) continue;
+    const here = track.project(entity.position, entity.trackIndex);
+    const gap = aheadGap(track, here.s, target.kart.trackIndex);
+    if (gap > ITEMS.squirrelCatch && gap < track.length - ITEMS.squirrelCatch) continue;
+    entity.life = 0;
+    if (target.kart.collarTime > 0) continue;
+    applySpinOut(target.kart);
+    target.kart.spinTime = ITEMS.squirrelSpin;
+    target.hitImmunity = ITEMS.hitImmunity;
+    emit({ type: 'hit', racerId: target.id, by: 'squirrel', ownerId: entity.ownerId });
+  }
+}
+
 function collideWithRacers(race: RaceState, emit: EmitEvent): void {
   for (const entity of race.items) {
-    if (entity.life <= 0) continue;
+    if (entity.life <= 0 || entity.kind === 'squirrel') continue;
     const hitRadiusSq = (KART_RADIUS + entityRadius(entity.kind)) ** 2;
     for (const racer of race.racers) {
       if (racer.id === entity.ownerId && entity.armTime > 0) continue;
@@ -401,7 +478,8 @@ function collideWithRacers(race: RaceState, emit: EmitEvent): void {
 function collideProjectilesWithMud(race: RaceState): void {
   const contactSq = (ITEMS.projectileRadius + ITEMS.mudRadius) ** 2;
   for (const projectile of race.items) {
-    if (projectile.kind === 'mud' || projectile.life <= 0) continue;
+    if (projectile.kind === 'mud' || projectile.kind === 'squirrel' || projectile.life <= 0)
+      continue;
     for (const mud of race.items) {
       if (mud.kind !== 'mud' || mud.life <= 0) continue;
       if (sweptDistanceSq(mud.position, projectile) >= contactSq) continue;

@@ -142,6 +142,14 @@ export const ITEMS = {
   collarDuration: 6,
   /** Super-collier : multiplicateur de vitesse max pendant sa durée. */
   collarSpeedFactor: 1.15,
+  /** Écureuil : vitesse le long du circuit (m/s). */
+  squirrelSpeed: 90,
+  /** Écureuil : durée de vie (s). */
+  squirrelLife: 20,
+  /** Écureuil : durée du tête-à-queue infligé à sa cible (s). */
+  squirrelSpin: 1.5,
+  /** Écart d'abscisse (m) auquel l'écureuil attrape sa cible. */
+  squirrelCatch: 1.5,
 } as const;
 
 /** Aspiration : rouler dans le sillage d'un kart remplit une jauge, puis donne un turbo. */

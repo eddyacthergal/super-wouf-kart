@@ -174,8 +174,9 @@ describe('boîtes et roulette', () => {
     leader.kart.position = clone(race.itemBoxes[0].position);
     last.kart.position = clone(race.itemBoxes[4].position);
 
-    // Tirage à mi-hauteur : flaque pour le premier (poids 40|40|5|10|0|0|0, seuil à 47,5 dans la flaque),
-    // croquette turbo pour le dernier (poids 10|5|20|15|15|8|12, seuil à 42,5 dans la croquette).
+    // Tirage à mi-hauteur : flaque pour le premier (poids 40|40|5|10|0|0|0|0, seuil à 47,5 dans la
+    // flaque), croquette turbo pour le dernier (poids 10|5|20|15|15|8|12|10, seuil à 47,5 dans la
+    // croquette, cumul 35 à 50).
     stepItems(race, track, fixedRng(0.5), FIXED_DT, () => undefined);
     expect(leader.items).toEqual(['mud']);
     expect(last.items).toEqual(['kibble-turbo']);
@@ -887,6 +888,81 @@ describe('super-collier', () => {
     thrower.items = ['whistle'];
     useItem(race, thrower, track, false, emit);
     expect(victim.kart.stunTime).toBe(0);
+  });
+});
+
+describe('écureuil', () => {
+  function squirrelRace(count: number) {
+    const track = createCircleTrack(300);
+    const race = createTestRace(track, count);
+    race.racers.forEach((racer, i) => {
+      placeOnTrack(racer, track, 400 - i * 60, i % 2 === 0 ? 4 : -4);
+      racer.rank = i + 1;
+    });
+    return { track, race };
+  }
+
+  it('fonce sur le premier, quel que soit son couloir, et le fait tourner 1,5 s', () => {
+    const { track, race } = squirrelRace(4);
+    const [leader, second, , thrower] = race.racers;
+    thrower.items = ['squirrel'];
+    const { events, emit } = recorder();
+    useItem(race, thrower, track, false, emit);
+    stepUntil(race, track, emit, 600, () => hits(events).length > 0);
+    expect(hits(events)).toEqual([
+      { type: 'hit', racerId: leader.id, by: 'squirrel', ownerId: thrower.id },
+    ]);
+    expect(leader.kart.spinTime).toBeCloseTo(ITEMS.squirrelSpin, 1);
+    expect(second.kart.spinTime).toBe(0);
+    expect(race.items).toHaveLength(0);
+  });
+
+  it('lancé par le premier, vise le deuxième', () => {
+    const { track, race } = squirrelRace(3);
+    const [leader, second] = race.racers;
+    leader.items = ['squirrel'];
+    const { events, emit } = recorder();
+    useItem(race, leader, track, false, emit);
+    stepUntil(race, track, emit, 900, () => hits(events).length > 0);
+    // Le deuxième est 60 m derrière : l'écureuil fait demi-tour au lieu de refaire un tour.
+    expect(hits(events)[0].racerId).toBe(second.id);
+  });
+
+  it('le super-collier protège : l’écureuil disparaît sans effet', () => {
+    const { track, race } = squirrelRace(3);
+    const [leader, , thrower] = race.racers;
+    leader.kart.collarTime = 100;
+    thrower.items = ['squirrel'];
+    const { events, emit } = recorder();
+    useItem(race, thrower, track, false, emit);
+    stepUntil(race, track, emit, 600, () => race.items.length === 0);
+    expect(hits(events)).toEqual([]);
+    expect(leader.kart.spinTime).toBe(0);
+  });
+
+  it('change de cible si le premier franchit l’arrivée, disparaît s’il n’y a plus personne', () => {
+    const { track, race } = squirrelRace(3);
+    const [leader, second, thrower] = race.racers;
+    thrower.items = ['squirrel'];
+    const { events, emit } = recorder();
+    useItem(race, thrower, track, false, emit);
+    leader.finished = true;
+    stepUntil(race, track, emit, 900, () => hits(events).length > 0);
+    expect(hits(events)[0].racerId).toBe(second.id);
+
+    const solo = squirrelRace(2);
+    const [finished, owner] = solo.race.racers;
+    finished.finished = true;
+    owner.items = ['squirrel'];
+    useItem(solo.race, owner, solo.track, false, () => undefined);
+    stepUntil(
+      solo.race,
+      solo.track,
+      () => undefined,
+      30,
+      () => false,
+    );
+    expect(solo.race.items).toHaveLength(0);
   });
 });
 

@@ -849,6 +849,17 @@ describe('AiController', () => {
       expect(time).toBeLessThanOrEqual(1.5);
     });
 
+    it('écureuil : utilisé entre 0,5 et 2 s au rang 4', () => {
+      const time = scenario({ item: 'squirrel', overrides: { rank: 4 } }).firstUse(2.5);
+      expect(time).not.toBeNull();
+      expect(time).toBeGreaterThanOrEqual(0.5);
+      expect(time).toBeLessThanOrEqual(2);
+    });
+
+    it('écureuil : gardé au rang 1 (premier)', () => {
+      expect(scenario({ item: 'squirrel', overrides: { rank: 1 } }).firstUse(2.5)).toBeNull();
+    });
+
     it('aucun usage pendant la roulette', () => {
       expect(
         scenario({ item: 'kibble-turbo', overrides: { itemRoulette: 1 } }).firstUse(5),
