@@ -248,6 +248,8 @@ export interface ItemEntity {
   trackIndex: number;
   /** Temps restant avant de pouvoir toucher son lanceur. */
   armTime: number;
+  /** Hauteur du sol sous l'objet (m). */
+  height: number;
 }
 
 export interface ItemBoxState {
@@ -255,6 +257,8 @@ export interface ItemBoxState {
   position: Vec2;
   /** Temps avant réapparition (s) ; 0 = disponible. */
   respawn: number;
+  /** Hauteur du sol sous l'objet (m). */
+  height: number;
 }
 
 // ---------------------------------------------------------------------------

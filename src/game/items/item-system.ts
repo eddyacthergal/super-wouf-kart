@@ -74,6 +74,7 @@ export function createItemBoxes(track: TrackQuery): ItemBoxState[] {
         id: boxes.length,
         position: addScaled(sample.position, sample.left, offset),
         respawn: 0,
+        height: track.surfaceAt(s, offset).height,
       });
     }
   }
@@ -171,6 +172,7 @@ function spawnEntity(
   const projection = track.project(position, racer.kart.trackIndex);
   // Un kart collé à une haie ne doit pas poser un objet dans la haie.
   clampInsideWalls(position, projection, track.wallHalfWidth - entityRadius(kind));
+  const height = track.surfaceAt(projection.s, projection.lateral).height;
   race.items.push({
     id: race.nextEntityId++,
     kind,
@@ -184,6 +186,7 @@ function spawnEntity(
     targetId,
     trackIndex: projection.index,
     armTime: ITEMS.armTime,
+    height,
   });
 }
 
@@ -261,6 +264,7 @@ function moveBone(entity: ItemEntity, track: TrackQuery, dt: number): void {
   advance(entity, dt);
   const projection = track.project(entity.position, entity.trackIndex);
   entity.trackIndex = projection.index;
+  entity.height = track.surfaceAt(projection.s, projection.lateral).height;
   const side = clampInsideWalls(
     entity.position,
     projection,
@@ -312,6 +316,7 @@ function moveBall(entity: ItemEntity, race: RaceState, track: TrackQuery, dt: nu
   advance(entity, dt);
   const projection = track.project(entity.position, here.index);
   entity.trackIndex = projection.index;
+  entity.height = track.surfaceAt(projection.s, projection.lateral).height;
   clampInsideWalls(entity.position, projection, track.wallHalfWidth - ITEMS.projectileRadius);
 }
 

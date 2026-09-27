@@ -56,6 +56,7 @@ function entity(id: number, kind: ItemEntity['kind'], x: number, z: number): Ite
     targetId: null,
     trackIndex: 0,
     armTime: 0,
+    height: 0,
   };
 }
 
@@ -158,8 +159,8 @@ describe('RaceScene', () => {
     const { scene, race } = setup();
     const sample = track.sampleAt(track.itemBoxRows[0]);
     race.itemBoxes.push(
-      { id: 0, position: { ...sample.position }, respawn: 0 },
-      { id: 1, position: { x: sample.position.x + 3, z: sample.position.z }, respawn: 2 },
+      { id: 0, position: { ...sample.position }, respawn: 0, height: 0 },
+      { id: 1, position: { x: sample.position.x + 3, z: sample.position.z }, respawn: 2, height: 0 },
     );
     scene.update(race, 1, DT, []);
     const ready = scene.scene.getObjectByName('item-box-0')!;
@@ -357,7 +358,7 @@ describe('RaceScene', () => {
   it('libère toutes les géométries, matériaux et textures au dispose(), sans erreur', () => {
     const { scene, race } = setup();
     race.items.push(entity(3, 'bone', 0, 0));
-    race.itemBoxes.push({ id: 0, position: { x: 0, z: 0 }, respawn: 0 });
+    race.itemBoxes.push({ id: 0, position: { x: 0, z: 0 }, respawn: 0, height: 0 });
     run(scene, race, 3);
     const geometries = new Set<THREE.BufferGeometry>();
     const materials = new Set<THREE.Material>();
