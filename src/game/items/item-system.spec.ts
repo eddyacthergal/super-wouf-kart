@@ -857,6 +857,23 @@ describe('sifflet', () => {
     expect(stuns.map((e) => e.racerId).sort()).toEqual([first.id, second.id].sort());
   });
 
+  it('n’arrête pas un pilote mieux classé mais déjà arrivé', () => {
+    const track = createCircleTrack(STRAIGHT_RADIUS);
+    const race = createTestRace(track, 4);
+    const [first, second, thrower, last] = race.racers;
+    [first.rank, second.rank, thrower.rank, last.rank] = [1, 2, 3, 4];
+    first.finished = true;
+    thrower.items = ['whistle'];
+    const { events, emit } = recorder();
+    useItem(race, thrower, track, false, emit);
+    expect(first.kart.stunTime).toBe(0);
+    expect(second.kart.stunTime).toBe(ITEMS.whistleStun);
+    const stuns = events.filter(
+      (e): e is Extract<GameEvent, { type: 'stun' }> => e.type === 'stun',
+    );
+    expect(stuns.map((e) => e.racerId)).toEqual([second.id]);
+  });
+
   it('utilisé par le premier : personne n’est arrêté, l’objet est consommé', () => {
     const track = createCircleTrack(STRAIGHT_RADIUS);
     const race = createTestRace(track, 3);
