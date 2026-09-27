@@ -61,9 +61,10 @@ export interface HudSnapshot {
   racerCount: number;
   /** Temps de course (s). */
   raceTime: number;
-  item: ItemKind | null;
-  /** Vrai pendant la roulette de l'objet. */
-  itemRolling: boolean;
+  /** Objets tenus (au plus 2) ; le premier est le prochain utilisé. */
+  items: ItemKind[];
+  /** Case dont la roulette tourne (0 = objet suivant, 1 = réserve), ou null. */
+  rollingSlot: 0 | 1 | null;
   /** Vrai dès que le joueur dérape, avant même le premier palier. */
   drifting: boolean;
   driftTier: DriftTier;

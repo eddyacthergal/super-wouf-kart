@@ -110,8 +110,8 @@ describe('buildHudSnapshot', () => {
       rank: 2,
       racerCount: 3,
       raceTime: 42.5,
-      item: 'bone',
-      itemRolling: true,
+      items: ['bone'],
+      rollingSlot: 0,
       drifting: true,
       driftTier: 2,
       boosting: true,
@@ -133,10 +133,22 @@ describe('buildHudSnapshot', () => {
     const hud = buildHudSnapshot(race, false);
     expect(hud.drifting).toBe(false);
     expect(hud.driftTier).toBe(0);
-    expect(hud.itemRolling).toBe(false);
+    expect(hud.rollingSlot).toBeNull();
     expect(hud.boosting).toBe(false);
     expect(hud.wrongWay).toBe(false);
     expect(hud.speedKmh).toBe(100);
+  });
+
+  it('publie les deux objets et la case dont la roulette tourne', () => {
+    const race = createTestRace(track, 2);
+    const player = race.racers[0];
+    player.items = ['mud', 'bone'];
+    player.itemRoulette = 0.4;
+    const hud = buildHudSnapshot(race, false);
+    expect(hud.items).toEqual(['mud', 'bone']);
+    expect(hud.rollingSlot).toBe(1);
+    player.itemRoulette = 0;
+    expect(buildHudSnapshot(race, false).rollingSlot).toBeNull();
   });
 
   it.each([

@@ -28,7 +28,7 @@ import { WrongWayBanner } from './wrong-way-banner';
     </div>
 
     <div class="absolute top-20 right-3 sm:top-24 sm:right-5">
-      <app-hud-item [item]="hud().item" [rolling]="hud().itemRolling" />
+      <app-hud-item [items]="hud().items" [rollingSlot]="hud().rollingSlot" />
     </div>
 
     @if (hud().wrongWay) {
