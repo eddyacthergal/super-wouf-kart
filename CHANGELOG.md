@@ -2,6 +2,10 @@
 
 Versionnage sémantique. Dates de fusion dans `main`.
 
+## [0.6.0] – 27/09/2026
+
+- Modification : relief (côtes, descentes, virages relevés) sur Grand Jardin, Potager, Parc enneigé et Plage.
+
 ## [0.5.0] – 27/09/2026
 
 - Ajout : circuits décrits en fichiers JSON (coins, rayons, altitude, dévers).

@@ -34,6 +34,10 @@ mètres environ (murs, grille de départ, rangées de boîtes d'objets, trajecto
 aperçu de l'écran de choix et décor en dérivent). `surfaceAt(s, lateral)` (`surface.ts`) donne la
 hauteur et la pente du sol de la piste en un point quelconque, haies comprises.
 
+Les cinq circuits du catalogue (Grand Jardin, Potager, Parc enneigé, Plage au couchant, La Colline)
+ont tous du relief : altitude et virages relevés, dans l'esprit propre à chacun (vallon et épingle
+en hauteur, bosse et plongée, piste de luge, dunes en bord de mer…). Aucun n'est plat.
+
 ## Le format JSON d'un circuit
 
 ```jsonc
@@ -93,6 +97,10 @@ est ignoré par le loader.
    - les règles communes de `validateTrack` (voir tableau plus bas) ;
    - une course complète de 8 IA : tout le monde finit, entre 20 et 70 s au tour, sans traverser
      les murs ;
+   - un tour au clavier avec l'assistance au dérapage (`keyboard-drift.spec.ts`) : au moins 5
+     dérapages par tour, sans choc, sans contresens ni sortie de piste, et plus vite que sans
+     déraper — prévoir au moins 5 vrais virages ;
+   - que le circuit a du relief : au moins 5 m de dénivelé et un virage relevé ;
    - que la définition passe telle quelle en JSON.
 
 ## Messages du loader et du validateur

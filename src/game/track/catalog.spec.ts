@@ -101,4 +101,14 @@ describe('catalogue des circuits', () => {
     expect(Math.max(...heights) - Math.min(...heights)).toBeGreaterThanOrEqual(10);
     expect(track.samples.some((sample) => Math.abs(sample.bank) > 0.15)).toBe(true);
   });
+
+  it.each(TRACK_CATALOG.map((track) => [track.name, track] as const))(
+    '%s : a du relief (dénivelé ≥ 5 m et au moins un virage relevé)',
+    (_name, definition) => {
+      const track = createTrack(definition);
+      const heights = track.samples.map((sample) => sample.height);
+      expect(Math.max(...heights) - Math.min(...heights)).toBeGreaterThanOrEqual(5);
+      expect(track.samples.some((sample) => Math.abs(sample.bank) > 0.1)).toBe(true);
+    },
+  );
 });
