@@ -57,11 +57,12 @@ tous les pilotes et avant les collisions entre karts.
 
 ### Écureuil
 - Cible : le pilote en tête (rang 1) ; si c'est le lanceur, le 2ᵉ. Cible réévaluée à chaque pas.
-- Déplacement : suit la ligne médiane de la piste par son abscisse (60 m/s), sans rebond ni
-  collision avec les haies ni avec les autres karts ; latéral qui rejoint celui de la cible sur les
+- Déplacement : suit la ligne médiane de la piste par son abscisse (90 m/s), par le plus court chemin
+  vers sa cible (vers l'avant ou vers l'arrière), sans rebond ni collision avec les haies ni avec les
+  autres karts ; latéral qui rejoint celui de la cible sur les
   20 derniers mètres ; hauteur de la piste.
 - Impact : à moins de 2 m de la cible → tête-à-queue de 1,5 s (`ITEMS.squirrelSpin`), événement
-  `hit` `by: 'squirrel'` ; l'écureuil disparaît. Durée de vie maximale 12 s.
+  `hit` `by: 'squirrel'` ; l'écureuil disparaît. Durée de vie maximale 20 s ; sans cible, il disparaît.
 - Protection : super-collier seulement (l'immunité après un choc ne le bloque pas).
 - Rendu : petit écureuil (corps brun, queue en panache) qui court ; icône HUD.
 
