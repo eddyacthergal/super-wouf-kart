@@ -41,7 +41,7 @@ export function createTestRacer(
     finished: false,
     finishTime: null,
     rank: id + 1,
-    item: null,
+    items: [],
     itemRoulette: 0,
     hitImmunity: 0,
     ...overrides,

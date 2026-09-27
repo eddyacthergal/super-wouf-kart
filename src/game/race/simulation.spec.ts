@@ -245,12 +245,12 @@ describe('RaceSimulation', () => {
         ]);
         skipCountdown(sim, controllers);
         const racer = sim.state.racers[1];
-        racer.item = 'bone';
+        racer.items = ['bone'];
         racer.itemRoulette = 0;
         const events = sim.step(FIXED_DT, controllers);
 
         expect(events).toContainEqual({ type: 'item-use', racerId: 1, item: 'bone' });
-        expect(racer.item).toBeNull();
+        expect(racer.items).toEqual([]);
         expect(sim.state.items).toHaveLength(1);
         const [bone] = sim.state.items;
         expect(bone.ownerId).toBe(1);

@@ -62,7 +62,7 @@ function createRacer(track: TrackQuery, entry: RacerEntry, id: number): RacerSta
     finished: false,
     finishTime: null,
     rank: id + 1,
-    item: null,
+    items: [],
     itemRoulette: 0,
     hitImmunity: 0,
   };

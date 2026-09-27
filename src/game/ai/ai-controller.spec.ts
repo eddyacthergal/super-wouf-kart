@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { DRIFT, FIXED_DT, KART_RADIUS, PHYSICS, RACER_COUNT, ROAD_HALF_WIDTH, WALL_HALF_WIDTH } from '../core/constants';
+import {
+  DRIFT,
+  FIXED_DT,
+  KART_RADIUS,
+  PHYSICS,
+  RACER_COUNT,
+  ROAD_HALF_WIDTH,
+  WALL_HALF_WIDTH,
+} from '../core/constants';
 import { applyBoost } from '../core/kart-state';
 import { createRng } from '../core/rng';
 import {
@@ -50,7 +58,10 @@ interface Segment {
 function arcPoint(start: Vec2, heading: number, k: number, t: number): Vec2 {
   if (Math.abs(k) < 1e-9) return addScaled(start, forwardOf(heading), t);
   const end = heading + k * t;
-  return { x: start.x + (Math.cos(heading) - Math.cos(end)) / k, z: start.z + (Math.sin(end) - Math.sin(heading)) / k };
+  return {
+    x: start.x + (Math.cos(heading) - Math.cos(end)) / k,
+    z: start.z + (Math.sin(end) - Math.sin(heading)) / k,
+  };
 }
 
 /** Stade : deux lignes droites reliées par deux demi-cercles, tous tournant du même côté. */
@@ -111,14 +122,23 @@ function createSegmentTrack(segments: readonly Segment[]): TrackQuery {
     const near = samples[best];
     const s = wrapS(near.s + dot(sub(point, near.position), near.tangent));
     const sample = sampleAt(s);
-    return { s, lateral: dot(sub(point, sample.position), sample.left), index: Math.round(s / spacing) % count, sample };
+    return {
+      s,
+      lateral: dot(sub(point, sample.position), sample.left),
+      index: Math.round(s / spacing) % count,
+      sample,
+    };
   };
 
   const gridSlot = (index: number): GridSlot => {
     const progress = -(10 + Math.floor(index / 2) * 7 + (index % 2) * 3.5);
     const sample = sampleAt(progress);
     const lateral = index % 2 === 0 ? 3.5 : -3.5;
-    return { position: addScaled(sample.position, sample.left, lateral), heading: headingOf(sample.tangent), progress };
+    return {
+      position: addScaled(sample.position, sample.left, lateral),
+      heading: headingOf(sample.tangent),
+      progress,
+    };
   };
 
   return {
@@ -175,14 +195,20 @@ class TestKartPhysics {
         kart.drift = { active: false, direction: 0, charge: 0, tier: 0 };
       } else {
         kart.drift.charge += dt;
-        kart.drift.tier = DRIFT.tierThresholds.filter((threshold) => kart.drift.charge >= threshold).length as DriftTier;
+        kart.drift.tier = DRIFT.tierThresholds.filter((threshold) => kart.drift.charge >= threshold)
+          .length as DriftTier;
       }
       return;
     }
     if (pressed) kart.hopTime = DRIFT.hopDuration;
     if (kart.hopTime <= 0) return;
     kart.hopTime = Math.max(0, kart.hopTime - dt);
-    if (kart.hopTime === 0 && input.drift && Math.abs(kart.steer) > 0.2 && kart.speed >= DRIFT.minSpeed) {
+    if (
+      kart.hopTime === 0 &&
+      input.drift &&
+      Math.abs(kart.steer) > 0.2 &&
+      kart.speed >= DRIFT.minSpeed
+    ) {
       kart.drift = { active: true, direction: kart.steer < 0 ? -1 : 1, charge: 0, tier: 0 };
     }
   }
@@ -190,7 +216,10 @@ class TestKartPhysics {
   private stepSpeed(racer: RacerState, input: DriverInput, dt: number): void {
     const { kart, tuning } = racer;
     const boosting = kart.boostTime > 0;
-    const max = tuning.maxSpeed * (boosting ? kart.boostStrength : 1) * (kart.offroad && !boosting ? tuning.offroadFactor : 1);
+    const max =
+      tuning.maxSpeed *
+      (boosting ? kart.boostStrength : 1) *
+      (kart.offroad && !boosting ? tuning.offroadFactor : 1);
     if (input.brake) {
       kart.speed =
         kart.speed > 0
@@ -200,7 +229,10 @@ class TestKartPhysics {
       kart.speed =
         kart.speed > max
           ? approach(kart.speed, max, 8 * dt)
-          : Math.min(max, kart.speed + tuning.acceleration * (1 - (0.6 * Math.max(0, kart.speed)) / max) * dt);
+          : Math.min(
+              max,
+              kart.speed + tuning.acceleration * (1 - (0.6 * Math.max(0, kart.speed)) / max) * dt,
+            );
     } else {
       kart.speed = approach(kart.speed, 0, PHYSICS.coastDeceleration * dt);
     }
@@ -217,7 +249,8 @@ class TestKartPhysics {
       const side = Math.sign(lateral);
       lateral = side * limit;
       kart.position = addScaled(projection.sample.position, projection.sample.left, lateral);
-      const into = side * dot(forwardOf(kart.heading), projection.sample.left) * Math.sign(kart.speed);
+      const into =
+        side * dot(forwardOf(kart.heading), projection.sample.left) * Math.sign(kart.speed);
       if (into > 0) kart.speed *= 1 - (1 - PHYSICS.wallSpeedRetention) * into;
     }
     kart.trackIndex = projection.index;
@@ -235,8 +268,20 @@ class TestKartPhysics {
 // Outils de scénario
 // ---------------------------------------------------------------------------
 
-const STEADY: AiPersonality = { laneOffset: 0, skill: 1, aggression: 0.5, driftSkill: 0, targetTier: 1 };
-const DRIFTER: AiPersonality = { laneOffset: 0, skill: 1, aggression: 0.5, driftSkill: 1, targetTier: 2 };
+const STEADY: AiPersonality = {
+  laneOffset: 0,
+  skill: 1,
+  aggression: 0.5,
+  driftSkill: 0,
+  targetTier: 1,
+};
+const DRIFTER: AiPersonality = {
+  laneOffset: 0,
+  skill: 1,
+  aggression: 0.5,
+  driftSkill: 1,
+  targetTier: 2,
+};
 
 interface Placement {
   headingOffset?: number;
@@ -245,12 +290,22 @@ interface Placement {
 }
 
 /** Pilote placé à l'abscisse `s` et au décalage `lateral`, cap aligné sur la tangente (+ décalage). */
-function placeRacer(track: TrackQuery, id: number, s: number, lateral: number, placement: Placement = {}): RacerState {
+function placeRacer(
+  track: TrackQuery,
+  id: number,
+  s: number,
+  lateral: number,
+  placement: Placement = {},
+): RacerState {
   const sample = track.sampleAt(s);
   const position = addScaled(sample.position, sample.left, lateral);
   const projection = track.project(position);
   const heading = headingOf(sample.tangent) + (placement.headingOffset ?? 0);
-  const racer = createTestRacer(id, position, heading, { progress: s, lastS: projection.s, ...placement.overrides });
+  const racer = createTestRacer(id, position, heading, {
+    progress: s,
+    lastS: projection.s,
+    ...placement.overrides,
+  });
   racer.kart.trackIndex = projection.index;
   racer.kart.lateral = projection.lateral;
   racer.kart.speed = placement.speed ?? 0;
@@ -282,10 +337,12 @@ function simulate(
   const physics = controllers.map(() => new TestKartPhysics());
   const steps = Math.round(seconds / FIXED_DT);
   for (let step = 0; step < steps; step++) {
-    const inputs = controllers.map((controller, i) => controller.update({ racer: racers[i], race, track, dt: FIXED_DT }));
+    const inputs = controllers.map((controller, i) =>
+      controller.update({ racer: racers[i], race, track, dt: FIXED_DT }),
+    );
     inputs.forEach((input, i) => {
       physics[i].step(racers[i], input, track, FIXED_DT);
-      if (input.useItem) racers[i].item = null;
+      if (input.useItem) racers[i].items.shift();
     });
     race.time += FIXED_DT;
     if (onStep(inputs, race.time) === true) return;
@@ -294,7 +351,9 @@ function simulate(
 
 /** Écart du cap par rapport à la tangente locale (+ = tourné vers la gauche). */
 function headingVsTrack(track: TrackQuery, kart: KartState): number {
-  return wrapAngle(kart.heading - headingOf(track.project(kart.position, kart.trackIndex).sample.tangent));
+  return wrapAngle(
+    kart.heading - headingOf(track.project(kart.position, kart.trackIndex).sample.tangent),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -306,10 +365,12 @@ describe('AiController', () => {
     const track = createCircleTrack(60, 'left');
     const race = createTestRace(track, 2);
     race.phase = 'countdown';
-    race.racers[1].item = 'kibble-turbo';
+    race.racers[1].items = ['kibble-turbo'];
     const controller = new AiController(1, STEADY, createRng(1));
     for (let i = 0; i < 120; i++) {
-      expect(controller.update({ racer: race.racers[1], race, track, dt: FIXED_DT })).toEqual(NEUTRAL_INPUT);
+      expect(controller.update({ racer: race.racers[1], race, track, dt: FIXED_DT })).toEqual(
+        NEUTRAL_INPUT,
+      );
     }
   });
 
@@ -358,11 +419,13 @@ describe('AiController', () => {
     it('se décale du côté opposé à un kart juste devant', () => {
       const steerAfterAvoiding = (blockerLateral: number | null): number => {
         const racer = placeRacer(track, 1, 100, 0, { speed: 20 });
-        const others = blockerLateral === null ? [] : [placeRacer(track, 2, 106, blockerLateral, { speed: 10 })];
+        const others =
+          blockerLateral === null ? [] : [placeRacer(track, 2, 106, blockerLateral, { speed: 10 })];
         const race = raceOf(track, [racer, ...others]);
         const controller = new AiController(1, STEADY, createRng(1));
         let steer = 0;
-        for (let i = 0; i < 30; i++) steer = controller.update({ racer, race, track, dt: FIXED_DT }).steer;
+        for (let i = 0; i < 30; i++)
+          steer = controller.update({ racer, race, track, dt: FIXED_DT }).steer;
         return steer;
       };
       const free = steerAfterAvoiding(null);
@@ -373,10 +436,14 @@ describe('AiController', () => {
     it('ignore un kart hors du cône d’évitement ou à plus de 9 m', () => {
       const steerWith = (others: [number, number][]): number => {
         const racer = placeRacer(track, 1, 100, 0, { speed: 20 });
-        const race = raceOf(track, [racer, ...others.map(([s, lateral], i) => placeRacer(track, 2 + i, s, lateral))]);
+        const race = raceOf(track, [
+          racer,
+          ...others.map(([s, lateral], i) => placeRacer(track, 2 + i, s, lateral)),
+        ]);
         const controller = new AiController(1, STEADY, createRng(1));
         let steer = 0;
-        for (let i = 0; i < 30; i++) steer = controller.update({ racer, race, track, dt: FIXED_DT }).steer;
+        for (let i = 0; i < 30; i++)
+          steer = controller.update({ racer, race, track, dt: FIXED_DT }).steer;
         return steer;
       };
       const free = steerWith([]);
@@ -402,46 +469,56 @@ describe('AiController', () => {
   });
 
   describe.each(['left', 'right'] as const)('cercle de 60 m (%s)', (direction) => {
-    it.each([-3, 0, 3])('boucle deux tours sur la route sans se bloquer (couloir %d m)', (laneOffset) => {
-      const track = createCircleTrack(60, direction);
-      const race = createTestRace(track, 1);
-      const racer = race.racers[0];
-      const controller = new AiController(0, { ...DRIFTER, laneOffset }, createRng(3));
-      let maxLateral = 0;
-      let walls = 0;
-      let reversed = false;
-      let drifted = false;
-      let minCruiseSpeed = Infinity;
-      simulate(track, race, [controller], 60, ([input], time) => {
-        maxLateral = Math.max(maxLateral, Math.abs(racer.kart.lateral));
-        if (racer.kart.wallContact) walls++;
-        if (racer.kart.speed < 0) reversed = true;
-        if (input.drift) drifted = true;
-        if (time > 3) minCruiseSpeed = Math.min(minCruiseSpeed, racer.kart.speed);
-        return racer.progress >= 2 * track.length;
-      });
-      expect(racer.progress).toBeGreaterThanOrEqual(2 * track.length);
-      expect(maxLateral).toBeLessThanOrEqual(ROAD_HALF_WIDTH + 1);
-      expect(walls).toBe(0);
-      expect(reversed).toBe(false);
-      expect(minCruiseSpeed).toBeGreaterThan(20);
-      // Courbure 1/60 < 1/45 : pas assez serré pour déraper.
-      expect(drifted).toBe(false);
-    });
+    it.each([-3, 0, 3])(
+      'boucle deux tours sur la route sans se bloquer (couloir %d m)',
+      (laneOffset) => {
+        const track = createCircleTrack(60, direction);
+        const race = createTestRace(track, 1);
+        const racer = race.racers[0];
+        const controller = new AiController(0, { ...DRIFTER, laneOffset }, createRng(3));
+        let maxLateral = 0;
+        let walls = 0;
+        let reversed = false;
+        let drifted = false;
+        let minCruiseSpeed = Infinity;
+        simulate(track, race, [controller], 60, ([input], time) => {
+          maxLateral = Math.max(maxLateral, Math.abs(racer.kart.lateral));
+          if (racer.kart.wallContact) walls++;
+          if (racer.kart.speed < 0) reversed = true;
+          if (input.drift) drifted = true;
+          if (time > 3) minCruiseSpeed = Math.min(minCruiseSpeed, racer.kart.speed);
+          return racer.progress >= 2 * track.length;
+        });
+        expect(racer.progress).toBeGreaterThanOrEqual(2 * track.length);
+        expect(maxLateral).toBeLessThanOrEqual(ROAD_HALF_WIDTH + 1);
+        expect(walls).toBe(0);
+        expect(reversed).toBe(false);
+        expect(minCruiseSpeed).toBeGreaterThan(20);
+        // Courbure 1/60 < 1/45 : pas assez serré pour déraper.
+        expect(drifted).toBe(false);
+      },
+    );
 
     it('un peloton de 8 IA boucle deux tours sans sortir de la route', () => {
       const track = createCircleTrack(60, direction);
       const race = createTestRace(track, RACER_COUNT);
       const personalityRng = createRng(99);
       const controllers = race.racers.map(
-        (racer, index) => new AiController(racer.id, createAiPersonality(personalityRng, index), createRng(100 + index)),
+        (racer, index) =>
+          new AiController(
+            racer.id,
+            createAiPersonality(personalityRng, index),
+            createRng(100 + index),
+          ),
       );
       let maxLateral = 0;
       simulate(track, race, controllers, 60, () => {
-        for (const racer of race.racers) maxLateral = Math.max(maxLateral, Math.abs(racer.kart.lateral));
+        for (const racer of race.racers)
+          maxLateral = Math.max(maxLateral, Math.abs(racer.kart.lateral));
         return race.racers.every((racer) => racer.progress >= 2 * track.length);
       });
-      for (const racer of race.racers) expect(racer.progress).toBeGreaterThanOrEqual(2 * track.length);
+      for (const racer of race.racers)
+        expect(racer.progress).toBeGreaterThanOrEqual(2 * track.length);
       expect(maxLateral).toBeLessThanOrEqual(ROAD_HALF_WIDTH + 1);
     });
   });
@@ -478,47 +555,50 @@ describe('AiController', () => {
 
   describe('dérapage', () => {
     describe.each([1, -1] as const)('long virage serré (sens %d)', (turn) => {
-      it.each([1, 2] as const)('dérape, atteint le palier %d visé, relâche en sortie et reste sur la route', (targetTier) => {
-        const straight = 120;
-        const radius = 24;
-        const track = createSegmentTrack(stadium(straight, radius, turn));
-        const racer = placeRacer(track, 1, 20, 0, { speed: TEST_TUNING.maxSpeed });
-        const race = raceOf(track, [racer]);
-        const controller = new AiController(1, { ...DRIFTER, targetTier }, createRng(1));
-        const bendEnd = straight + Math.PI * radius;
-        let driftSteps = 0;
-        let direction = 0;
-        let lastTier = 0;
-        let releasedTier = -1;
-        let releasedAt = Number.NaN;
-        let boostAtRelease = 0;
-        let wasActive = false;
-        let maxLateral = 0;
-        simulate(track, race, [controller], 20, () => {
-          const drift = racer.kart.drift;
-          if (drift.active) {
-            driftSteps++;
-            direction = drift.direction;
-            lastTier = drift.tier;
-          } else if (wasActive && releasedTier < 0) {
-            releasedTier = lastTier;
-            releasedAt = racer.progress;
-            boostAtRelease = racer.kart.boostTime;
-          }
-          wasActive = drift.active;
-          maxLateral = Math.max(maxLateral, Math.abs(racer.kart.lateral));
-          return racer.progress > bendEnd + 40;
-        });
-        expect(driftSteps).toBeGreaterThan(60);
-        // Virage à gauche (turn = 1) → dérapage vers la gauche (direction -1).
-        expect(direction).toBe(-turn);
-        expect(releasedTier).toBeGreaterThanOrEqual(targetTier);
-        expect(boostAtRelease).toBeGreaterThan(0);
-        expect(releasedAt).toBeGreaterThan(straight);
-        expect(releasedAt).toBeLessThan(bendEnd + 5);
-        expect(racer.kart.drift.active).toBe(false);
-        expect(maxLateral).toBeLessThanOrEqual(ROAD_HALF_WIDTH);
-      });
+      it.each([1, 2] as const)(
+        'dérape, atteint le palier %d visé, relâche en sortie et reste sur la route',
+        (targetTier) => {
+          const straight = 120;
+          const radius = 24;
+          const track = createSegmentTrack(stadium(straight, radius, turn));
+          const racer = placeRacer(track, 1, 20, 0, { speed: TEST_TUNING.maxSpeed });
+          const race = raceOf(track, [racer]);
+          const controller = new AiController(1, { ...DRIFTER, targetTier }, createRng(1));
+          const bendEnd = straight + Math.PI * radius;
+          let driftSteps = 0;
+          let direction = 0;
+          let lastTier = 0;
+          let releasedTier = -1;
+          let releasedAt = Number.NaN;
+          let boostAtRelease = 0;
+          let wasActive = false;
+          let maxLateral = 0;
+          simulate(track, race, [controller], 20, () => {
+            const drift = racer.kart.drift;
+            if (drift.active) {
+              driftSteps++;
+              direction = drift.direction;
+              lastTier = drift.tier;
+            } else if (wasActive && releasedTier < 0) {
+              releasedTier = lastTier;
+              releasedAt = racer.progress;
+              boostAtRelease = racer.kart.boostTime;
+            }
+            wasActive = drift.active;
+            maxLateral = Math.max(maxLateral, Math.abs(racer.kart.lateral));
+            return racer.progress > bendEnd + 40;
+          });
+          expect(driftSteps).toBeGreaterThan(60);
+          // Virage à gauche (turn = 1) → dérapage vers la gauche (direction -1).
+          expect(direction).toBe(-turn);
+          expect(releasedTier).toBeGreaterThanOrEqual(targetTier);
+          expect(boostAtRelease).toBeGreaterThan(0);
+          expect(releasedAt).toBeGreaterThan(straight);
+          expect(releasedAt).toBeLessThan(bendEnd + 5);
+          expect(racer.kart.drift.active).toBe(false);
+          expect(maxLateral).toBeLessThanOrEqual(ROAD_HALF_WIDTH);
+        },
+      );
     });
 
     it('une IA qui vise le palier 2 tient son dérapage plus longtemps que celle qui vise le palier 1', () => {
@@ -530,12 +610,19 @@ describe('AiController', () => {
         const result: { tier: number; at: number }[] = [];
         let wasActive = false;
         let lastTier = 0;
-        simulate(track, race, [new AiController(1, { ...DRIFTER, targetTier }, createRng(1))], 30, () => {
-          if (wasActive && !racer.kart.drift.active) result.push({ tier: lastTier, at: racer.progress });
-          wasActive = racer.kart.drift.active;
-          lastTier = racer.kart.drift.tier;
-          return racer.progress > track.length;
-        });
+        simulate(
+          track,
+          race,
+          [new AiController(1, { ...DRIFTER, targetTier }, createRng(1))],
+          30,
+          () => {
+            if (wasActive && !racer.kart.drift.active)
+              result.push({ tier: lastTier, at: racer.progress });
+            wasActive = racer.kart.drift.active;
+            lastTier = racer.kart.drift.tier;
+            return racer.progress > track.length;
+          },
+        );
         return result;
       };
       const tierOne = releases(1);
@@ -560,36 +647,47 @@ describe('AiController', () => {
     it.each([
       [4, 24],
       [3, 20],
-    ])('pas de dérapage sans boost : virages trop courts pour charger un palier (%d coins, rayon %d m)', (corners, radius) => {
-      // Polygone aux coins arrondis : virages serrés de 90° (38 m) ou 120° (42 m) de long.
-      const corner = { length: (2 * Math.PI * radius) / corners, curvature: 1 / radius };
-      const track = createSegmentTrack(Array.from({ length: corners }, () => [{ length: 60, curvature: 0 }, corner]).flat());
-      const racer = placeRacer(track, 1, 10, 0, { speed: 20 });
-      const race = raceOf(track, [racer]);
-      const releasedTiers: number[] = [];
-      let wasActive = false;
-      let lastTier = 0;
-      let maxLateral = 0;
-      simulate(track, race, [new AiController(1, DRIFTER, createRng(1))], 60, () => {
-        if (wasActive && !racer.kart.drift.active) releasedTiers.push(lastTier);
-        wasActive = racer.kart.drift.active;
-        lastTier = racer.kart.drift.tier;
-        maxLateral = Math.max(maxLateral, Math.abs(racer.kart.lateral));
-        return racer.progress > 2 * track.length;
-      });
-      expect(racer.progress).toBeGreaterThan(2 * track.length);
-      expect(releasedTiers.filter((tier) => tier === 0)).toEqual([]);
-      expect(maxLateral).toBeLessThanOrEqual(ROAD_HALF_WIDTH + 1);
-    });
+    ])(
+      'pas de dérapage sans boost : virages trop courts pour charger un palier (%d coins, rayon %d m)',
+      (corners, radius) => {
+        // Polygone aux coins arrondis : virages serrés de 90° (38 m) ou 120° (42 m) de long.
+        const corner = { length: (2 * Math.PI * radius) / corners, curvature: 1 / radius };
+        const track = createSegmentTrack(
+          Array.from({ length: corners }, () => [{ length: 60, curvature: 0 }, corner]).flat(),
+        );
+        const racer = placeRacer(track, 1, 10, 0, { speed: 20 });
+        const race = raceOf(track, [racer]);
+        const releasedTiers: number[] = [];
+        let wasActive = false;
+        let lastTier = 0;
+        let maxLateral = 0;
+        simulate(track, race, [new AiController(1, DRIFTER, createRng(1))], 60, () => {
+          if (wasActive && !racer.kart.drift.active) releasedTiers.push(lastTier);
+          wasActive = racer.kart.drift.active;
+          lastTier = racer.kart.drift.tier;
+          maxLateral = Math.max(maxLateral, Math.abs(racer.kart.lateral));
+          return racer.progress > 2 * track.length;
+        });
+        expect(racer.progress).toBeGreaterThan(2 * track.length);
+        expect(releasedTiers.filter((tier) => tier === 0)).toEqual([]);
+        expect(maxLateral).toBeLessThanOrEqual(ROAD_HALF_WIDTH + 1);
+      },
+    );
 
     it('ne dérape pas si la personnalité ne le tente pas', () => {
       const track = createSegmentTrack(stadium(120, 24));
       const racer = placeRacer(track, 1, 20, 0, { speed: TEST_TUNING.maxSpeed });
       const race = raceOf(track, [racer]);
       let drifted = false;
-      simulate(track, race, [new AiController(1, { ...DRIFTER, driftSkill: 0 }, createRng(1))], 15, ([input]) => {
-        drifted ||= input.drift;
-      });
+      simulate(
+        track,
+        race,
+        [new AiController(1, { ...DRIFTER, driftSkill: 0 }, createRng(1))],
+        15,
+        ([input]) => {
+          drifted ||= input.drift;
+        },
+      );
       expect(drifted).toBe(false);
     });
   });
@@ -606,15 +704,27 @@ describe('AiController', () => {
       others?: [number, number][];
     }
 
-    function scenario({ item, track = straight, personality, overrides, others = [] }: ItemScenario) {
-      const racer = placeRacer(track, 1, 100, 0, { speed: 20, overrides: { item, rank: 2, ...overrides } });
-      const opponents = others.map(([s, lateral], i) => placeRacer(track, 10 + i, s, lateral, { speed: 20 }));
+    function scenario({
+      item,
+      track = straight,
+      personality,
+      overrides,
+      others = [],
+    }: ItemScenario) {
+      const racer = placeRacer(track, 1, 100, 0, {
+        speed: 20,
+        overrides: { items: [item], rank: 2, ...overrides },
+      });
+      const opponents = others.map(([s, lateral], i) =>
+        placeRacer(track, 10 + i, s, lateral, { speed: 20 }),
+      );
       const race = raceOf(track, [racer, ...opponents]);
       const controller = new AiController(1, { ...STEADY, ...personality }, createRng(4));
       const step = (): DriverInput => controller.update({ racer, race, track, dt: FIXED_DT });
       /** Instant (s) du premier usage, ou null. Le kart reste immobile : seule la décision est testée. */
       const firstUse = (seconds: number): number | null => {
-        for (let i = 1; i <= Math.round(seconds / FIXED_DT); i++) if (step().useItem) return i * FIXED_DT;
+        for (let i = 1; i <= Math.round(seconds / FIXED_DT); i++)
+          if (step().useItem) return i * FIXED_DT;
         return null;
       };
       return { racer, race, step, firstUse };
@@ -625,15 +735,23 @@ describe('AiController', () => {
     });
 
     it('croquette turbo : gardée dans un virage', () => {
-      expect(scenario({ item: 'kibble-turbo', track: createCircleTrack(40, 'right') }).firstUse(10)).toBeNull();
+      expect(
+        scenario({ item: 'kibble-turbo', track: createCircleTrack(40, 'right') }).firstUse(10),
+      ).toBeNull();
     });
 
     it('os : lancé tout de suite sur un kart devant dans l’axe', () => {
-      expect(scenario({ item: 'bone', others: [[118, 0.5]] }).firstUse(0.5)).toBeLessThanOrEqual(2 * FIXED_DT);
+      expect(scenario({ item: 'bone', others: [[118, 0.5]] }).firstUse(0.5)).toBeLessThanOrEqual(
+        2 * FIXED_DT,
+      );
     });
 
     it('os : pas de lancer immédiat sur un kart hors de l’axe, puis lancer après 4 à 8 s', () => {
-      const time = scenario({ item: 'bone', personality: { aggression: 0 }, others: [[112, 6]] }).firstUse(10);
+      const time = scenario({
+        item: 'bone',
+        personality: { aggression: 0 },
+        others: [[112, 6]],
+      }).firstUse(10);
       expect(time).not.toBeNull();
       expect(time).toBeGreaterThanOrEqual(4);
       expect(time).toBeLessThanOrEqual(8);
@@ -677,10 +795,18 @@ describe('AiController', () => {
     it('os : le frein est relâché le temps du lancer (frein maintenu = lancer en arrière)', () => {
       const hairpin = createSegmentTrack(stadium(150, 16));
       const firstInput = (item: ItemKind | null): DriverInput => {
-        const racer = placeRacer(hairpin, 1, 130, 0, { speed: TEST_TUNING.maxSpeed, overrides: { item } });
+        const racer = placeRacer(hairpin, 1, 130, 0, {
+          speed: TEST_TUNING.maxSpeed,
+          overrides: { items: item ? [item] : [] },
+        });
         const ahead = placeRacer(hairpin, 2, 145, 0, { speed: 15 });
         const controller = new AiController(1, STEADY, createRng(1));
-        return controller.update({ racer, race: raceOf(hairpin, [racer, ahead]), track: hairpin, dt: FIXED_DT });
+        return controller.update({
+          racer,
+          race: raceOf(hairpin, [racer, ahead]),
+          track: hairpin,
+          dt: FIXED_DT,
+        });
       };
       // Sans objet, l'IA freine à l'approche de l'épingle...
       expect(firstInput(null).brake).toBe(true);
@@ -691,7 +817,9 @@ describe('AiController', () => {
     });
 
     it('aucun usage pendant la roulette', () => {
-      expect(scenario({ item: 'kibble-turbo', overrides: { itemRoulette: 1 } }).firstUse(5)).toBeNull();
+      expect(
+        scenario({ item: 'kibble-turbo', overrides: { itemRoulette: 1 } }).firstUse(5),
+      ).toBeNull();
     });
 
     it('useItem est un front montant : vrai sur un seul pas', () => {
@@ -713,7 +841,7 @@ describe('AiController', () => {
       for (let i = 0; i < 180; i++) {
         if (consumed.step().useItem) {
           uses++;
-          consumed.racer.item = null;
+          consumed.racer.items = [];
         }
       }
       expect(uses).toBe(1);
@@ -773,16 +901,29 @@ describe('AiController', () => {
       const race = raceOf(track, [racer]);
       race.phase = 'countdown';
       const controller = new AiController(1, STEADY, createRng(1));
-      for (let i = 0; i < Math.round(3 / FIXED_DT); i++) controller.update({ racer, race, track, dt: FIXED_DT });
+      for (let i = 0; i < Math.round(3 / FIXED_DT); i++)
+        controller.update({ racer, race, track, dt: FIXED_DT });
       race.phase = 'racing';
-      expect(controller.update({ racer, race, track, dt: FIXED_DT })).toMatchObject({ throttle: true, brake: false });
+      expect(controller.update({ racer, race, track, dt: FIXED_DT })).toMatchObject({
+        throttle: true,
+        brake: false,
+      });
     });
 
     it('contre-sens seulement quand dot(avant, tangente) < -0.3', () => {
       const track = createCircleTrack(2000, 'left');
       const firstInput = (headingOffset: number): DriverInput => {
-        const racer = placeRacer(track, 1, 100, 0, { speed: 15, headingOffset, overrides: { item: 'kibble-turbo' } });
-        return new AiController(1, STEADY, createRng(1)).update({ racer, race: raceOf(track, [racer]), track, dt: FIXED_DT });
+        const racer = placeRacer(track, 1, 100, 0, {
+          speed: 15,
+          headingOffset,
+          overrides: { items: ['kibble-turbo'] },
+        });
+        return new AiController(1, STEADY, createRng(1)).update({
+          racer,
+          race: raceOf(track, [racer]),
+          track,
+          dt: FIXED_DT,
+        });
       };
       // cos(1.75) ≈ -0.18 : conduite normale (gaz, objet autorisé en ligne droite).
       expect(firstInput(1.75)).toMatchObject({ throttle: true, brake: false, useItem: true });
@@ -800,7 +941,8 @@ describe('AiController', () => {
       let walls = 0;
       simulate(track, race, [new AiController(1, STEADY, createRng(1))], 8, (_, time) => {
         if (racer.kart.wallContact) walls++;
-        if (Number.isNaN(turnedAt) && Math.cos(headingVsTrack(track, racer.kart)) > 0.9) turnedAt = time;
+        if (Number.isNaN(turnedAt) && Math.cos(headingVsTrack(track, racer.kart)) > 0.9)
+          turnedAt = time;
         return false;
       });
       expect(turnedAt).toBeLessThan(4);
@@ -811,10 +953,18 @@ describe('AiController', () => {
 
     it('n’agit pas pendant un tête-à-queue', () => {
       const track = createCircleTrack(60, 'left');
-      const racer = placeRacer(track, 1, 50, 0, { speed: 5, overrides: { item: 'kibble-turbo' } });
+      const racer = placeRacer(track, 1, 50, 0, {
+        speed: 5,
+        overrides: { items: ['kibble-turbo'] },
+      });
       racer.kart.spinTime = 1;
       const race = raceOf(track, [racer]);
-      const input = new AiController(1, STEADY, createRng(1)).update({ racer, race, track, dt: FIXED_DT });
+      const input = new AiController(1, STEADY, createRng(1)).update({
+        racer,
+        race,
+        track,
+        dt: FIXED_DT,
+      });
       expect(input).toEqual(NEUTRAL_INPUT);
       expect(input).not.toBe(NEUTRAL_INPUT);
     });
@@ -825,10 +975,15 @@ describe('AiController', () => {
       const track = createSegmentTrack(stadium(100, 22));
       const race = createTestRace(track, 4);
       const kinds: ItemKind[] = ['bone', 'tennis-ball', 'mud', 'kibble-turbo'];
-      race.racers.forEach((racer, i) => (racer.item = kinds[i]));
+      race.racers.forEach((racer, i) => (racer.items = [kinds[i]]));
       const personalityRng = createRng(seed);
       const controllers = race.racers.map(
-        (racer, i) => new AiController(racer.id, createAiPersonality(personalityRng, i), createRng(seed * 31 + i)),
+        (racer, i) =>
+          new AiController(
+            racer.id,
+            createAiPersonality(personalityRng, i),
+            createRng(seed * 31 + i),
+          ),
       );
       const log: DriverInput[][] = [];
       simulate(track, race, controllers, 20, (inputs) => {
@@ -843,18 +998,23 @@ describe('AiController', () => {
 
 // Garde-fou : le circuit de test respecte les conventions du contrat.
 describe('circuit de test en segments', () => {
-  it.each([1, -1] as const)('ferme la boucle et suit la convention de courbure (sens %d)', (turn) => {
-    const track = createSegmentTrack(stadium(100, 20, turn));
-    const end = track.sampleAt(track.length - 0.001);
-    expect(Math.hypot(end.position.x, end.position.z)).toBeLessThan(0.01);
-    const bend = wrapAngle(headingOf(track.sampleAt(130).tangent) - headingOf(track.sampleAt(110).tangent));
-    expect(Math.sign(bend)).toBe(turn);
-    const sample = track.sampleAt(42);
-    const projection = track.project(addScaled(sample.position, sample.left, 3));
-    expect(projection.s).toBeCloseTo(42, 3);
-    expect(projection.lateral).toBeCloseTo(3, 3);
-    const inBend = track.sampleAt(140);
-    const projected = track.project(addScaled(inBend.position, scale(inBend.left, -1), 4), 120);
-    expect(projected.lateral).toBeCloseTo(-4, 2);
-  });
+  it.each([1, -1] as const)(
+    'ferme la boucle et suit la convention de courbure (sens %d)',
+    (turn) => {
+      const track = createSegmentTrack(stadium(100, 20, turn));
+      const end = track.sampleAt(track.length - 0.001);
+      expect(Math.hypot(end.position.x, end.position.z)).toBeLessThan(0.01);
+      const bend = wrapAngle(
+        headingOf(track.sampleAt(130).tangent) - headingOf(track.sampleAt(110).tangent),
+      );
+      expect(Math.sign(bend)).toBe(turn);
+      const sample = track.sampleAt(42);
+      const projection = track.project(addScaled(sample.position, sample.left, 3));
+      expect(projection.s).toBeCloseTo(42, 3);
+      expect(projection.lateral).toBeCloseTo(3, 3);
+      const inBend = track.sampleAt(140);
+      const projected = track.project(addScaled(inBend.position, scale(inBend.left, -1), 4), 120);
+      expect(projected.lateral).toBeCloseTo(-4, 2);
+    },
+  );
 });

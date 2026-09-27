@@ -109,6 +109,8 @@ export const DRIFT = {
 export const ITEMS = {
   boxPickupRadius: 1.8,
   boxRespawn: 3,
+  /** Objets tenus au plus (file d'attente). */
+  maxHeld: 2,
   rouletteDuration: 1.2,
   boneSpeed: 45,
   boneLife: 5,

@@ -290,8 +290,9 @@ export interface RacerState {
   finishTime: number | null;
   /** Classement actuel, 1-based. */
   rank: number;
-  item: ItemKind | null;
-  /** Temps restant de la roulette ; l'objet n'est utilisable que lorsqu'il vaut 0. */
+  /** Objets tenus, dans l'ordre d'utilisation (au plus ITEMS.maxHeld). */
+  items: ItemKind[];
+  /** Temps restant de la roulette du dernier objet de `items` (0 : aucune roulette en cours). */
   itemRoulette: number;
   /** Temps d'invulnérabilité restant après un impact. */
   hitImmunity: number;

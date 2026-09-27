@@ -66,7 +66,7 @@ describe('createRaceState', () => {
       expect(racer.lap).toBe(1);
       expect(racer.finished).toBe(false);
       expect(racer.finishTime).toBeNull();
-      expect(racer.item).toBeNull();
+      expect(racer.items).toEqual([]);
     });
     for (let i = 0; i < race.racers.length; i++) {
       for (let j = i + 1; j < race.racers.length; j++) {

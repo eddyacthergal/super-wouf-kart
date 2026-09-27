@@ -9,6 +9,7 @@ import type {
   ItemBoxState,
   ItemEntity,
   ItemEntityKind,
+  ItemKind,
   RaceState,
   RacerState,
   Rng,
@@ -85,6 +86,14 @@ export function createItemBoxes(track: TrackQuery): ItemBoxState[] {
 // Utilisation d'un objet
 // ---------------------------------------------------------------------------
 
+/** Objet utilisable maintenant : le premier de la file, sauf s'il est seul et encore en roulette. */
+export function usableItem(racer: RacerState): ItemKind | null {
+  const first = racer.items[0];
+  if (first === undefined) return null;
+  if (racer.itemRoulette > 0 && racer.items.length === 1) return null;
+  return first;
+}
+
 export function useItem(
   race: RaceState,
   racer: RacerState,
@@ -92,9 +101,9 @@ export function useItem(
   backwards: boolean,
   emit: EmitEvent,
 ): void {
-  const item = racer.item;
-  if (item === null || racer.itemRoulette > 0) return;
-  racer.item = null;
+  const item = usableItem(racer);
+  if (item === null) return;
+  racer.items.shift();
   emit({ type: 'item-use', racerId: racer.id, item });
 
   const kart = racer.kart;
@@ -214,8 +223,9 @@ function updateRacerTimers(race: RaceState, dt: number, emit: EmitEvent): void {
     racer.hitImmunity = Math.max(0, racer.hitImmunity - dt);
     if (racer.itemRoulette > 0) {
       racer.itemRoulette = Math.max(0, racer.itemRoulette - dt);
-      if (racer.itemRoulette === 0 && racer.item !== null) {
-        emit({ type: 'item-ready', racerId: racer.id, item: racer.item });
+      const last = racer.items.at(-1);
+      if (racer.itemRoulette === 0 && last !== undefined) {
+        emit({ type: 'item-ready', racerId: racer.id, item: last });
       }
     }
   }
@@ -233,7 +243,7 @@ function updateBoxes(race: RaceState, rng: Rng, dt: number, emit: EmitEvent): vo
     for (const racer of race.racers) {
       if (distanceSq(box.position, racer.kart.position) >= pickupSq) continue;
       touched = true;
-      if (racer.item === null && racer.itemRoulette <= 0) {
+      if (racer.items.length < ITEMS.maxHeld && racer.itemRoulette <= 0) {
         receiver = racer;
         break;
       }
@@ -241,7 +251,7 @@ function updateBoxes(race: RaceState, rng: Rng, dt: number, emit: EmitEvent): vo
     if (!touched) continue;
     box.respawn = ITEMS.boxRespawn;
     if (receiver !== null) {
-      receiver.item = rollItem(receiver.rank, race.racers.length, rng);
+      receiver.items.push(rollItem(receiver.rank, race.racers.length, rng));
       receiver.itemRoulette = ITEMS.rouletteDuration;
       emit({ type: 'item-box', racerId: receiver.id });
     }
