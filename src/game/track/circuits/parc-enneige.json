@@ -1,0 +1,31 @@
+{
+  "$schema": "../circuit.schema.json",
+  "id": "parc-enneige",
+  "name": "Parc enneigé",
+  "description": "Sapins et bonhommes de neige : une longue diagonale et deux épingles.",
+  "theme": "snow",
+  "start": { "x": -2.5, "z": 90 },
+  "corners": [
+    { "x": -74.5, "z": 90.3, "radius": 30.5 },
+    { "x": -92.5, "z": 59.7, "radius": 29.5 },
+    { "x": -60.8, "z": 6.3, "radius": 38.5 },
+    { "x": -103.8, "z": -66.3, "radius": 27.5 },
+    { "x": -73.1, "z": -97.2, "radius": 27.5 },
+    { "x": 14.8, "z": -46.5, "radius": 46.5 },
+    { "x": 27.8, "z": -25, "radius": 42 },
+    { "x": 27.1, "z": 42.4, "radius": 25.5 },
+    { "x": 96.2, "z": 41.7, "radius": 24 },
+    { "x": 96.8, "z": 90.4, "radius": 24 }
+  ],
+  "decor": {
+    "landmarks": [
+      { "kind": "snowman", "x": -35, "z": 40, "radius": 3.4 },
+      { "kind": "snowman", "x": -20, "z": -10, "radius": 3.4 },
+      { "kind": "snowman", "x": 62, "z": 8, "radius": 3.4 },
+      { "kind": "snowman", "x": 20, "z": 122, "radius": 3.4 },
+      { "kind": "doghouse", "x": -48, "z": 70, "radius": 5.5 },
+      { "kind": "kibble-bowl", "x": 60, "z": -40, "radius": 4.4 }
+    ],
+    "path": { "from": { "x": -50, "z": -20 }, "to": { "x": -8, "z": 62 } }
+  }
+}

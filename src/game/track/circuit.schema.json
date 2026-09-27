@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Circuit Super Wouf Kart",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "name", "description", "theme", "start", "corners"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "Identifiant stable : minuscules et tirets."
+    },
+    "name": { "type": "string", "minLength": 1 },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Une phrase pour l'écran de choix."
+    },
+    "theme": { "enum": ["garden", "snow", "beach"] },
+    "laps": { "type": "integer", "minimum": 1, "maximum": 9 },
+    "start": {
+      "$ref": "#/$defs/point",
+      "description": "Sur la ligne droite qui va du dernier coin au premier."
+    },
+    "corners": {
+      "type": "array",
+      "minItems": 3,
+      "description": "Polygone fermé, dans l'ordre de course.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["x", "z"],
+        "properties": {
+          "x": { "type": "number" },
+          "z": { "type": "number" },
+          "radius": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "Rayon de l'arc (m). Sans rayon : repère d'altitude sur une droite."
+          },
+          "y": { "type": "number", "description": "Altitude (m) au sommet de l'arc ou au repère." },
+          "bank": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 45,
+            "description": "Dévers vers l'intérieur (degrés). Demande un rayon."
+          }
+        }
+      }
+    },
+    "decor": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "landmarks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "x", "z", "radius"],
+            "properties": {
+              "kind": { "type": "string" },
+              "x": { "type": "number" },
+              "z": { "type": "number" },
+              "radius": { "type": "number", "exclusiveMinimum": 0 }
+            }
+          }
+        },
+        "path": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["from", "to"],
+          "properties": { "from": { "$ref": "#/$defs/point" }, "to": { "$ref": "#/$defs/point" } }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "z"],
+      "properties": { "x": { "type": "number" }, "z": { "type": "number" } }
+    }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "$schema": "../circuit.schema.json",
+  "id": "grand-jardin",
+  "name": "Grand Jardin",
+  "description": "Le grand tour : longue ligne droite, chicane et épingle de la niche.",
+  "theme": "garden",
+  "start": { "x": -17, "z": -90 },
+  "corners": [
+    { "x": -112.7, "z": -90, "radius": 35 },
+    { "x": -111.8, "z": -4.5, "radius": 21.5 },
+    { "x": -132.3, "z": 12, "radius": 21.5 },
+    { "x": -132.3, "z": 189.9, "radius": 52 },
+    { "x": -32.5, "z": 61, "radius": 27.5 },
+    { "x": -33.2, "z": 4.5, "radius": 28 },
+    { "x": -2.3, "z": -0.7, "radius": 49 },
+    { "x": 26.2, "z": 3, "radius": 24 },
+    { "x": 25.7, "z": 84.7, "radius": 21 },
+    { "x": 68.2, "z": 85.4, "radius": 21 },
+    { "x": 67.6, "z": -1, "radius": 24 },
+    { "x": 132, "z": 1.1, "radius": 29.5 },
+    { "x": 132, "z": -90, "radius": 29.5 }
+  ],
+  "decor": {
+    "landmarks": [
+      { "kind": "doghouse", "x": -40, "z": -114, "radius": 5.5 },
+      { "kind": "kibble-bowl", "x": 47, "z": 58, "radius": 4.4 },
+      { "kind": "watering-can", "x": 72, "z": -50, "radius": 6.2 },
+      { "kind": "sprinkler", "x": -8, "z": -46, "radius": 7.6 },
+      { "kind": "giant-bone", "x": -64, "z": -46, "radius": 6.5 },
+      { "kind": "gnome", "x": -3, "z": 30, "radius": 2.8 },
+      { "kind": "gnome", "x": 112, "z": 42, "radius": 2.8 }
+    ],
+    "path": { "from": { "x": -94, "z": -30 }, "to": { "x": 114, "z": -24 } }
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "$schema": "../circuit.schema.json",
+  "id": "potager",
+  "name": "Potager",
+  "description": "Court et sinueux : un S au fond du jardin et l’épingle des salades.",
+  "theme": "garden",
+  "start": { "x": -4, "z": 82 },
+  "corners": [
+    { "x": -94, "z": 82, "radius": 35 },
+    { "x": -94, "z": -65.7, "radius": 29.5 },
+    { "x": 16, "z": -65.2, "radius": 29 },
+    { "x": 37.6, "z": -83.3, "radius": 28 },
+    { "x": 93.3, "z": -83.5, "radius": 25.5 },
+    { "x": 93.3, "z": -5.6, "radius": 22 },
+    { "x": 16.3, "z": -6.4, "radius": 19.5 },
+    { "x": 15.7, "z": 34.3, "radius": 19.5 },
+    { "x": 94.6, "z": 33.4, "radius": 24 },
+    { "x": 95.4, "z": 82, "radius": 24 }
+  ],
+  "decor": {
+    "landmarks": [
+      { "kind": "doghouse", "x": -60, "z": 35, "radius": 5.5 },
+      { "kind": "kibble-bowl", "x": 58, "z": 17, "radius": 4.4 },
+      { "kind": "watering-can", "x": 55, "z": -35, "radius": 6.2 },
+      { "kind": "sprinkler", "x": -25, "z": -30, "radius": 7.6 },
+      { "kind": "giant-bone", "x": -30, "z": -95, "radius": 6.5 },
+      { "kind": "gnome", "x": 30, "z": 108, "radius": 2.8 },
+      { "kind": "gnome", "x": -15, "z": 20, "radius": 2.8 }
+    ],
+    "path": { "from": { "x": -78, "z": -45 }, "to": { "x": -8, "z": 62 } }
+  }
+}

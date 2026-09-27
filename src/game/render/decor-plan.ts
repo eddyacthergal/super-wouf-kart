@@ -5,7 +5,7 @@
  */
 import { createRng, type Rng } from '../core/rng';
 import type { TrackQuery } from '../core/types';
-import { GRAND_JARDIN } from '../track/circuits/grand-jardin';
+import { DEFAULT_TRACK_ID, findTrack } from '../track/catalog';
 import type { TrackDecorHints } from '../track/track-definition';
 import { headingOf } from '../core/vec2';
 import { type Bounds, corridorClearance, trackBounds } from './track-geometry';
@@ -189,7 +189,7 @@ function isDecorKind(kind: string): kind is DecorKind {
  */
 export function planDecor(
   track: TrackQuery,
-  hints: TrackDecorHints = GRAND_JARDIN.decor ?? {},
+  hints: TrackDecorHints = findTrack(DEFAULT_TRACK_ID).decor ?? {},
   recipe: DecorRecipe = GARDEN_RECIPE,
   seed = DECOR_SEED,
 ): DecorPlan {

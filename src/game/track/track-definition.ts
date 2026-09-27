@@ -1,16 +1,18 @@
 /**
  * Définition d'un circuit : des données pures et sérialisables (aucune fonction, aucune dépendance
- * au rendu), qui pourraient venir telles quelles d'un fichier JSON ou d'un serveur. Le monde 3D est
- * choisi par l'identifiant de thème ; les indications de décor sont interprétées par ce thème.
+ * au rendu), qui viennent telles quelles d'un fichier JSON (`circuits/<id>.json`, contrôlé par
+ * `parseCircuit`). Le monde 3D est choisi par l'identifiant de thème ; les indications de décor sont
+ * interprétées par ce thème.
  *
- * Ajouter un circuit : écrire une définition dans `circuits/`, l'inscrire dans `catalog.ts` ; les
- * tests du catalogue vérifient alors le tracé (validateur) et qu'une course entre IA va à son terme.
+ * Ajouter un circuit : écrire `circuits/<id>.json`, l'inscrire dans `catalog.ts` ; les tests du
+ * catalogue vérifient alors le tracé (validateur) et qu'une course entre IA va à son terme.
  */
 import type { Vec2 } from '../core/vec2';
+import type { TrackCorner } from './centerline';
 
-/** Thèmes de monde disponibles : chacun a son sol, ses murs, son ciel et son décor. */
+export const TRACK_THEMES = ['garden', 'snow', 'beach'] as const;
 /** Thème de rendu : jardin d'été, parc enneigé, plage au couchant. */
-export type TrackThemeId = 'garden' | 'snow' | 'beach';
+export type TrackThemeId = (typeof TRACK_THEMES)[number];
 
 /** Pièce de décor unique (niche, arrosoir…) : type propre au thème, position souhaitée et encombrement (m). */
 export interface LandmarkHint {
@@ -36,10 +38,9 @@ export interface TrackDefinition {
   theme: TrackThemeId;
   /** Nombre de tours (RACE_LAPS par défaut). */
   laps?: number;
-  /**
-   * Points de contrôle de la spline fermée (m). Le point 0 est sur la ligne de départ/arrivée, la
-   * course suit les indices croissants, et une ligne droite doit précéder et suivre ce point.
-   */
-  controlPoints: readonly Vec2[];
+  /** Ligne de départ : sur la ligne droite qui va du dernier coin au premier. */
+  start: Vec2;
+  /** Polygone fermé, dans l'ordre de course (voir TrackCorner). */
+  corners: readonly TrackCorner[];
   decor?: TrackDecorHints;
 }
