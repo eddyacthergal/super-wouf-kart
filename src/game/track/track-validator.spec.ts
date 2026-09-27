@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { buildCenterline } from './centerline';
+import { buildCenterline, type TrackCorner } from './centerline';
+import { buildProfile } from './profile';
 import { Track, createGardenTrack } from './track';
 import { TRACK_RULES, validateTrack } from './track-validator';
 
@@ -14,6 +15,18 @@ function stadium(straight: number, radius: number): Track {
       { x: -half - radius, z: -radius, radius },
     ]),
   );
+}
+
+/** Stade 300 × 45 avec relief : `extra[i]` complète le coin i. */
+function hillyStadium(extra: Partial<TrackCorner>[]): Track {
+  const corners: TrackCorner[] = [
+    { x: 195, z: -45, radius: 45 },
+    { x: 195, z: 45, radius: 45 },
+    { x: -195, z: 45, radius: 45 },
+    { x: -195, z: -45, radius: 45 },
+  ].map((corner, i) => ({ ...corner, ...extra[i] }));
+  const line = buildCenterline({ x: 0, z: -45 }, corners);
+  return new Track(line, buildProfile(line, corners));
 }
 
 const rules = (track: Track): string[] => validateTrack(track).map((issue) => issue.rule);
@@ -72,5 +85,44 @@ describe('validateTrack', () => {
   it('expose ses seuils (rayon minimal 16 m, murs compris dans ±230 m)', () => {
     expect(TRACK_RULES.minRadius).toBe(16);
     expect(TRACK_RULES.maxExtent).toBe(230);
+  });
+
+  it('accepte un relief raisonnable (montée de 6 m, dévers de 12°)', () => {
+    expect(
+      validateTrack(hillyStadium([{ y: 0 }, { y: 6, bank: 12 }, { y: 6, bank: 12 }, { y: 0 }])),
+    ).toEqual([]);
+  });
+
+  it('refuse une pente trop forte', () => {
+    expect(rules(hillyStadium([{ y: 0 }, { y: 24 }, { y: 24 }, { y: 0 }]))).toContain('maxGrade');
+  });
+
+  it('refuse un dévers trop fort', () => {
+    expect(rules(hillyStadium([{ y: 0 }, { y: 0, bank: 30 }]))).toContain('maxBank');
+  });
+
+  it('refuse une altitude hors de [0, 25] m', () => {
+    expect(rules(hillyStadium([{ y: -2 }]))).toContain('minHeight');
+    expect(rules(hillyStadium([{ y: 30 }]))).toContain('maxHeight');
+  });
+
+  it('refuse un départ en pente', () => {
+    // Deux repères seulement (10 m et 0 m) : la ligne droite du départ est en pente d'environ 4 %.
+    expect(rules(hillyStadium([{ y: 10 }, {}, {}, { y: 0 }]))).toContain('startMaxGrade');
+  });
+
+  it('refuse un sommet de côte trop vif', () => {
+    // Repères serrés : 0 → 3 m → 0 sur 40 m de ligne droite.
+    const corners: TrackCorner[] = [
+      { x: 195, z: -45, radius: 45, y: 0 },
+      { x: 195, z: 45, radius: 45, y: 0 },
+      { x: 20, z: 45, y: 0 },
+      { x: 0, z: 45, y: 3 },
+      { x: -20, z: 45, y: 0 },
+      { x: -195, z: 45, radius: 45, y: 0 },
+      { x: -195, z: -45, radius: 45, y: 0 },
+    ];
+    const line = buildCenterline({ x: 0, z: -45 }, corners);
+    expect(rules(new Track(line, buildProfile(line, corners)))).toContain('minCrestRadius');
   });
 });
