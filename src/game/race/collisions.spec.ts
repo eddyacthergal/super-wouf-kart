@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { KART_RADIUS } from '../core/constants';
+import { ITEMS, KART_RADIUS } from '../core/constants';
 import type { GameEvent, RacerState } from '../core/types';
 import { distance, dot, forwardOf, leftOf, sub } from '../core/vec2';
 import { createTestRacer } from '../testing/fixtures';
@@ -168,6 +168,29 @@ describe('resolveKartCollisions', () => {
     expect(other.kart.spinTime).toBeGreaterThan(0);
     expect(holder.kart.speed).toBe(30);
     expect(events).toContainEqual({ type: 'hit', racerId: 1, by: 'super-collar', ownerId: 0 });
+  });
+
+  it('victime déjà immunisée : le super-collier ne la refait pas tourner', () => {
+    const holder = createTestRacer(0, { x: 0, z: 0 }, 0);
+    const other = createTestRacer(1, { x: 0, z: 1.5 }, 0);
+    holder.kart.speed = 30;
+    other.kart.speed = 10;
+    holder.kart.collarTime = 3;
+    other.hitImmunity = 1;
+    const events: GameEvent[] = [];
+    resolveKartCollisions([holder, other], (e) => events.push(e));
+    expect(other.kart.spinTime).toBe(0);
+    expect(events.some((event) => event.type === 'hit')).toBe(false);
+  });
+
+  it('pose l’immunité sur la victime après un choc de super-collier', () => {
+    const holder = createTestRacer(0, { x: 0, z: 0 }, 0);
+    const other = createTestRacer(1, { x: 0, z: 1.5 }, 0);
+    holder.kart.speed = 30;
+    other.kart.speed = 10;
+    holder.kart.collarTime = 3;
+    resolveKartCollisions([holder, other], () => undefined);
+    expect(other.hitImmunity).toBe(ITEMS.hitImmunity);
   });
 
   it('deux porteurs du super-collier : simple choc, pas de tête-à-queue', () => {

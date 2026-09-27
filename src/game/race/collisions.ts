@@ -3,7 +3,7 @@
  * l'inverse de la masse (un kart lourd est moins dévié). Le cap ne change pas : seule la composante
  * de la nouvelle vitesse le long du cap est conservée.
  */
-import { KART_RADIUS } from '../core/constants';
+import { ITEMS, KART_RADIUS } from '../core/constants';
 import { applySpinOut } from '../core/kart-state';
 import type { EmitEvent, KartState, RacerState } from '../core/types';
 import { clamp } from '../core/vec2';
@@ -52,8 +52,9 @@ export function resolveKartCollisions(racers: readonly RacerState[], emit: EmitE
       const holderSpeed = holder?.kart.speed ?? 0;
       if (holder) {
         const victim = holder === a ? b : a;
-        if (victim.kart.spinTime <= 0) {
+        if (victim.kart.spinTime <= 0 && victim.hitImmunity <= 0) {
           applySpinOut(victim.kart);
+          victim.hitImmunity = ITEMS.hitImmunity;
           emit({ type: 'hit', racerId: victim.id, by: 'super-collar', ownerId: holder.id });
         }
       }
