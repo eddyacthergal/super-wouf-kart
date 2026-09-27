@@ -797,6 +797,45 @@ describe('rayons de contact', () => {
   );
 });
 
+describe('os en or', () => {
+  it('chaque appui donne un turbo pendant 7 s, puis l’os disparaît et la réserve avance', () => {
+    const track = createCircleTrack(STRAIGHT_RADIUS);
+    const race = createTestRace(track, 1);
+    const [racer] = race.racers;
+    placeOnTrack(racer, track, 100);
+    racer.items = ['golden-bone', 'mud'];
+    const { events, emit } = recorder();
+    useItem(race, racer, track, false, emit);
+    expect(racer.goldenBoneTime).toBe(ITEMS.goldenBoneDuration);
+    expect(racer.kart.boostTime).toBe(ITEMS.goldenBoneTurboDuration);
+    expect(racer.items).toEqual(['golden-bone', 'mud']);
+    racer.kart.boostTime = 0;
+    stepUntil(race, track, emit, 60, () => false);
+    useItem(race, racer, track, false, emit);
+    expect(racer.kart.boostTime).toBe(ITEMS.goldenBoneTurboDuration);
+    expect(events.filter((e) => e.type === 'boost')).toHaveLength(2);
+    stepUntil(
+      race,
+      track,
+      emit,
+      Math.round(ITEMS.goldenBoneDuration / FIXED_DT),
+      () => racer.goldenBoneTime === 0,
+    );
+    expect(racer.items).toEqual(['mud']);
+  });
+
+  it('os en or actif et un objet en réserve : pas de troisième objet', () => {
+    const track = createCircleTrack(STRAIGHT_RADIUS);
+    const race = createTestRace(track, 1);
+    const [racer] = race.racers;
+    racer.items = ['golden-bone', 'mud'];
+    racer.goldenBoneTime = 5;
+    race.itemBoxes = [{ id: 0, position: clone(racer.kart.position), respawn: 0, height: 0 }];
+    stepItems(race, track, fixedRng(0), FIXED_DT, () => undefined);
+    expect(racer.items).toEqual(['golden-bone', 'mud']);
+  });
+});
+
 describe('croquette turbo', () => {
   it('déclenche un boost immédiat sans créer d’entité', () => {
     const track = createCircleTrack(60);

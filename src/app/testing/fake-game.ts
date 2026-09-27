@@ -118,6 +118,7 @@ export function fakeHud(overrides: Partial<HudSnapshot> = {}): HudSnapshot {
     raceTime: 65.32,
     items: [],
     rollingSlot: null,
+    goldenBoneTime: 0,
     drifting: false,
     driftTier: 0,
     boosting: false,

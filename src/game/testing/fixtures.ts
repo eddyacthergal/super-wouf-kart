@@ -44,6 +44,7 @@ export function createTestRacer(
     items: [],
     itemRoulette: 0,
     hitImmunity: 0,
+    goldenBoneTime: 0,
     ...overrides,
   };
 }

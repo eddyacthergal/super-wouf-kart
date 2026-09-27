@@ -432,7 +432,8 @@ export class AiController implements DriverController {
       !this.wantsToUse(item, racer, race, cornerCurvature)
     )
       return false;
-    this.itemRetry = ITEM_RETRY_DELAY;
+    // L'os en or reste dans la case pendant sa durée : on réessaie plus tôt pour enchaîner les turbos.
+    this.itemRetry = item === 'golden-bone' ? this.rng.range(0.5, 0.8) : ITEM_RETRY_DELAY;
     return true;
   }
 
@@ -445,6 +446,8 @@ export class AiController implements DriverController {
     const waited = this.itemTime >= this.itemDelay;
     switch (item) {
       case 'kibble-turbo':
+        return cornerCurvature < TURBO_MAX_CURVATURE;
+      case 'golden-bone':
         return cornerCurvature < TURBO_MAX_CURVATURE;
       case 'bone':
         return waited || nearestRacerAhead(race, racer, BONE_RANGE, BONE_HALF_ANGLE) !== null;
@@ -466,6 +469,8 @@ export class AiController implements DriverController {
       case 'mud':
         return this.rng.range(ITEM_DELAY.mud.min, ITEM_DELAY.mud.max);
       case 'kibble-turbo':
+        return 0;
+      case 'golden-bone':
         return 0;
     }
   }

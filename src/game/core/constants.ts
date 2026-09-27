@@ -128,6 +128,12 @@ export const ITEMS = {
   turboStrength: 1.35,
   /** Délai (s) avant qu'un objet lancé puisse toucher son propre lanceur. */
   armTime: 0.35,
+  /** Os en or : durée pendant laquelle il reste actif dans la case (s). */
+  goldenBoneDuration: 7,
+  /** Os en or : durée du turbo donné à chaque appui (s). */
+  goldenBoneTurboDuration: 1.0,
+  /** Os en or : multiplicateur de vitesse max du turbo donné à chaque appui. */
+  goldenBoneTurboStrength: 1.3,
 } as const;
 
 /** Aspiration : rouler dans le sillage d'un kart remplit une jauge, puis donne un turbo. */

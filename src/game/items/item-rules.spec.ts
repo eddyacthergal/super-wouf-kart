@@ -23,7 +23,13 @@ function drawProportions(
   seed: number,
 ): Record<ItemKind, number> {
   const rng = createRng(seed);
-  const counts: Record<ItemKind, number> = { bone: 0, mud: 0, 'tennis-ball': 0, 'kibble-turbo': 0 };
+  const counts: Record<ItemKind, number> = {
+    bone: 0,
+    mud: 0,
+    'tennis-ball': 0,
+    'kibble-turbo': 0,
+    'golden-bone': 0,
+  };
   for (let i = 0; i < draws; i++) counts[rollItem(rank, racerCount, rng)]++;
   for (const kind of ITEM_KINDS) counts[kind] /= draws;
   return counts;
@@ -31,28 +37,48 @@ function drawProportions(
 
 describe('itemWeights', () => {
   it('reprend les poids de référence au premier, au milieu et au dernier rang', () => {
-    expect(itemWeights(1, 8)).toEqual({ bone: 45, mud: 45, 'tennis-ball': 5, 'kibble-turbo': 5 });
-    expect(itemWeights(3, 5)).toEqual({ bone: 30, mud: 20, 'tennis-ball': 25, 'kibble-turbo': 25 });
-    expect(itemWeights(8, 8)).toEqual({ bone: 15, mud: 5, 'tennis-ball': 40, 'kibble-turbo': 40 });
+    expect(itemWeights(1, 8)).toEqual({
+      bone: 40,
+      mud: 40,
+      'tennis-ball': 5,
+      'kibble-turbo': 10,
+      'golden-bone': 0,
+    });
+    expect(itemWeights(3, 5)).toEqual({
+      bone: 25,
+      mud: 15,
+      'tennis-ball': 20,
+      'kibble-turbo': 20,
+      'golden-bone': 10,
+    });
+    expect(itemWeights(8, 8)).toEqual({
+      bone: 10,
+      mud: 5,
+      'tennis-ball': 20,
+      'kibble-turbo': 15,
+      'golden-bone': 15,
+    });
   });
 
   it('interpole linéairement entre les points de référence', () => {
     // Rang 2 sur 5 : f = 0,25, à mi-chemin entre le premier et le milieu.
     const weights = itemWeights(2, 5);
-    expect(weights.bone).toBeCloseTo(37.5);
-    expect(weights.mud).toBeCloseTo(32.5);
-    expect(weights['tennis-ball']).toBeCloseTo(15);
+    expect(weights.bone).toBeCloseTo(32.5);
+    expect(weights.mud).toBeCloseTo(27.5);
+    expect(weights['tennis-ball']).toBeCloseTo(12.5);
     expect(weights['kibble-turbo']).toBeCloseTo(15);
+    expect(weights['golden-bone']).toBeCloseTo(5);
   });
 
-  it('garde une somme constante et favorise balles et turbos vers la fin du peloton', () => {
+  it('favorise balle, croquette et os en or vers la fin du peloton', () => {
     let previousBall = -Infinity;
     for (let rank = 1; rank <= 8; rank++) {
       const weights = itemWeights(rank, 8);
-      expect(sumOf(weights)).toBeCloseTo(100, 9);
-      expect(weights['tennis-ball']).toBeGreaterThan(previousBall);
+      expect(sumOf(weights)).toBeGreaterThan(0);
+      expect(weights['tennis-ball']).toBeGreaterThanOrEqual(previousBall);
       previousBall = weights['tennis-ball'];
     }
+    expect(itemWeights(8, 8)['golden-bone']).toBeGreaterThan(itemWeights(1, 8)['golden-bone']);
   });
 
   it('traite un pilote seul comme premier et borne les rangs hors limites', () => {
@@ -65,7 +91,7 @@ describe('itemWeights', () => {
   it('retombe sur les poids du premier si le rang ou le nombre de pilotes est invalide', () => {
     expect(rankFraction(Number.NaN, 8)).toBe(0);
     expect(rankFraction(3, Number.NaN)).toBe(0);
-    expect(sumOf(itemWeights(Number.NaN, 8))).toBeCloseTo(100, 9);
+    expect(itemWeights(Number.NaN, 8)).toEqual(itemWeights(1, 8));
   });
 });
 
@@ -73,15 +99,17 @@ describe('rollItem', () => {
   it('suit les poids du premier sur 5000 tirages', () => {
     const proportions = drawProportions(1, 8, 5000, 7);
     const weights = itemWeights(1, 8);
+    const total = sumOf(weights);
     for (const kind of ITEM_KINDS)
-      expect(Math.abs(proportions[kind] - weights[kind] / 100)).toBeLessThan(0.025);
+      expect(Math.abs(proportions[kind] - weights[kind] / total)).toBeLessThan(0.025);
   });
 
   it('suit les poids du dernier sur 5000 tirages', () => {
     const proportions = drawProportions(8, 8, 5000, 11);
     const weights = itemWeights(8, 8);
+    const total = sumOf(weights);
     for (const kind of ITEM_KINDS)
-      expect(Math.abs(proportions[kind] - weights[kind] / 100)).toBeLessThan(0.025);
+      expect(Math.abs(proportions[kind] - weights[kind] / total)).toBeLessThan(0.025);
   });
 
   it('est déterministe pour une même graine', () => {
@@ -93,21 +121,25 @@ describe('rollItem', () => {
   });
 
   it('découpe [0, 1[ en tranches cumulées dans l’ordre de ITEM_KINDS', () => {
-    // Premier : os [0 ; 0,45[, flaque [0,45 ; 0,90[, balle [0,90 ; 0,95[, turbo [0,95 ; 1[.
+    // Dernier (poids 10 | 5 | 20 | 15 | 15, somme 65) : os [0 ; 10/65[, flaque [10/65 ; 15/65[,
+    // balle [15/65 ; 35/65[, croquette [35/65 ; 50/65[, os en or [50/65 ; 1[.
     const cases: [number, ItemKind][] = [
       [0, 'bone'],
-      [0.449, 'bone'],
-      [0.451, 'mud'],
-      [0.899, 'mud'],
-      [0.901, 'tennis-ball'],
-      [0.949, 'tennis-ball'],
-      [0.951, 'kibble-turbo'],
+      [0.153, 'bone'],
+      [0.155, 'mud'],
+      [0.229, 'mud'],
+      [0.232, 'tennis-ball'],
+      [0.537, 'tennis-ball'],
+      [0.54, 'kibble-turbo'],
+      [0.768, 'kibble-turbo'],
+      [0.77, 'golden-bone'],
+      [0.999, 'golden-bone'],
     ];
-    for (const [value, kind] of cases) expect(rollItem(1, 8, fixedRng(value))).toBe(kind);
+    for (const [value, kind] of cases) expect(rollItem(8, 8, fixedRng(value))).toBe(kind);
   });
 
   it('renvoie un objet valide même si le tirage atteint 1 (filet contre les arrondis)', () => {
-    expect(rollItem(1, 8, fixedRng(1))).toBe('kibble-turbo');
-    expect(rollItem(8, 8, fixedRng(1))).toBe('kibble-turbo');
+    expect(rollItem(1, 8, fixedRng(1))).toBe('golden-bone');
+    expect(rollItem(8, 8, fixedRng(1))).toBe('golden-bone');
   });
 });

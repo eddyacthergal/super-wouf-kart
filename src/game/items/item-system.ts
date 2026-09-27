@@ -103,6 +103,14 @@ export function useItem(
 ): void {
   const item = usableItem(racer);
   if (item === null) return;
+  // L'os en or reste dans la case pendant sa durée : chaque appui redonne un turbo.
+  if (item === 'golden-bone') {
+    if (racer.goldenBoneTime <= 0) racer.goldenBoneTime = ITEMS.goldenBoneDuration;
+    emit({ type: 'item-use', racerId: racer.id, item });
+    applyBoost(racer.kart, ITEMS.goldenBoneTurboDuration, ITEMS.goldenBoneTurboStrength);
+    emit({ type: 'boost', racerId: racer.id, source: 'item' });
+    return;
+  }
   racer.items.shift();
   emit({ type: 'item-use', racerId: racer.id, item });
 
@@ -227,6 +235,10 @@ function updateRacerTimers(race: RaceState, dt: number, emit: EmitEvent): void {
       if (racer.itemRoulette === 0 && last !== undefined) {
         emit({ type: 'item-ready', racerId: racer.id, item: last });
       }
+    }
+    if (racer.goldenBoneTime > 0) {
+      racer.goldenBoneTime = Math.max(0, racer.goldenBoneTime - dt);
+      if (racer.goldenBoneTime === 0 && racer.items[0] === 'golden-bone') racer.items.shift();
     }
   }
 }

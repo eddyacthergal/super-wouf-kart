@@ -65,6 +65,8 @@ export interface HudSnapshot {
   items: ItemKind[];
   /** Case dont la roulette tourne (0 = objet suivant, 1 = réserve), ou null. */
   rollingSlot: 0 | 1 | null;
+  /** Temps restant de l'os en or actif du joueur (s) ; 0 : inactif. */
+  goldenBoneTime: number;
   /** Vrai dès que le joueur dérape, avant même le premier palier. */
   drifting: boolean;
   driftTier: DriftTier;

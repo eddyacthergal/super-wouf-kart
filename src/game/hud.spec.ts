@@ -97,6 +97,7 @@ describe('buildHudSnapshot', () => {
     player.rank = 2;
     player.items = ['bone'];
     player.itemRoulette = 0.4;
+    player.goldenBoneTime = 4;
     player.kart.speed = -10;
     player.kart.boostTime = 0.3;
     player.kart.drift = { active: true, direction: 1, charge: 1.7, tier: 2 };
@@ -112,6 +113,7 @@ describe('buildHudSnapshot', () => {
       raceTime: 42.5,
       items: ['bone'],
       rollingSlot: 0,
+      goldenBoneTime: 4,
       drifting: true,
       driftTier: 2,
       boosting: true,

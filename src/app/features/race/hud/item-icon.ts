@@ -28,8 +28,20 @@ import type { ItemKind } from '../../../../game/core/types';
         }
         @case ('tennis-ball') {
           <circle cx="24" cy="24" r="18" fill="#d4e83a" stroke="#6f7f10" stroke-width="2" />
-          <path d="M10 13 Q21 24 10 35" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" />
-          <path d="M38 13 Q27 24 38 35" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" />
+          <path
+            d="M10 13 Q21 24 10 35"
+            fill="none"
+            stroke="#fff"
+            stroke-width="3"
+            stroke-linecap="round"
+          />
+          <path
+            d="M38 13 Q27 24 38 35"
+            fill="none"
+            stroke="#fff"
+            stroke-width="3"
+            stroke-linecap="round"
+          />
         }
         @case ('mud') {
           <path
@@ -40,8 +52,36 @@ import type { ItemKind } from '../../../../game/core/types';
           <ellipse cx="31" cy="31" rx="4" ry="2" fill="#8f6136" />
           <circle cx="27" cy="22" r="1.8" fill="#a8774a" />
         }
+        @case ('golden-bone') {
+          <g transform="rotate(-30 24 24)">
+            <g fill="#8a6a12">
+              <rect x="11" y="19" width="26" height="10" rx="4" />
+              <circle cx="11" cy="18.5" r="6.5" />
+              <circle cx="11" cy="29.5" r="6.5" />
+              <circle cx="37" cy="18.5" r="6.5" />
+              <circle cx="37" cy="29.5" r="6.5" />
+            </g>
+            <g fill="#f5c542">
+              <rect x="11" y="20.5" width="26" height="7" rx="3" />
+              <circle cx="11" cy="18.5" r="5" />
+              <circle cx="11" cy="29.5" r="5" />
+              <circle cx="37" cy="18.5" r="5" />
+              <circle cx="37" cy="29.5" r="5" />
+            </g>
+          </g>
+          <path d="M38 8 l2 4 4 2 -4 2 -2 4 -2 -4 -4 -2 4 -2z" fill="#fff6c2" />
+          <path
+            d="M8 34 l1.4 2.8 2.8 1.4 -2.8 1.4 -1.4 2.8 -1.4 -2.8 -2.8 -1.4 2.8 -1.4z"
+            fill="#fff6c2"
+          />
+        }
         @case ('kibble-turbo') {
-          <path d="M11 18 Q24 7 37 18 Q43 30 31 38 Q18 43 11 32 Q7 24 11 18 Z" fill="#a0612b" stroke="#5c3310" stroke-width="2" />
+          <path
+            d="M11 18 Q24 7 37 18 Q43 30 31 38 Q18 43 11 32 Q7 24 11 18 Z"
+            fill="#a0612b"
+            stroke="#5c3310"
+            stroke-width="2"
+          />
           <path
             d="M27 10 L16 27 L23 27 L20 39 L33 21 L26 21 L29 10 Z"
             fill="#ffcf3f"

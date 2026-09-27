@@ -69,6 +69,8 @@ describe('noms', () => {
     expect(skinName('inconnu')).toBe('inconnu');
     expect(itemName('tennis-ball')).toBe('Balle de tennis');
     expect(itemHint('mud')).toBe('Déposée derrière toi');
+    expect(itemName('golden-bone')).toBe('Os en or');
+    expect(itemHint('golden-bone')).toBe('Turbo à chaque appui, 7 s');
   });
 
   it('joinWithEt énumère à la française', () => {

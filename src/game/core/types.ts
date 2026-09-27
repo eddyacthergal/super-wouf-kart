@@ -228,10 +228,13 @@ export interface TrackQuery {
 // Objets
 // ---------------------------------------------------------------------------
 
-/** Os (projectile droit), balle de tennis (autoguidée), flaque de boue (piège), croquette turbo (boost). */
-export type ItemKind = 'bone' | 'tennis-ball' | 'mud' | 'kibble-turbo';
+/**
+ * Os (projectile droit), balle de tennis (autoguidée), flaque de boue (piège), croquette turbo
+ * (boost), os en or (turbo à chaque appui pendant sa durée, reste dans la case).
+ */
+export type ItemKind = 'bone' | 'tennis-ball' | 'mud' | 'kibble-turbo' | 'golden-bone';
 
-export type ItemEntityKind = Exclude<ItemKind, 'kibble-turbo'>;
+export type ItemEntityKind = Exclude<ItemKind, 'kibble-turbo' | 'golden-bone'>;
 
 export interface ItemEntity {
   id: number;
@@ -298,6 +301,8 @@ export interface RacerState {
   itemRoulette: number;
   /** Temps d'invulnérabilité restant après un impact. */
   hitImmunity: number;
+  /** Temps restant de l'os en or actif (s) ; 0 : inactif. */
+  goldenBoneTime: number;
 }
 
 export interface RaceState {

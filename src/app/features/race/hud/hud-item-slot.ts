@@ -1,8 +1,14 @@
 import { Component, input } from '@angular/core';
+import { ITEMS } from '../../../../game/core/constants';
 import type { ItemKind } from '../../../../game/core/types';
+import { ITEM_KINDS } from '../../../../game/items/item-rules';
 import { ItemIcon } from './item-icon';
 
-export const ROULETTE: readonly ItemKind[] = ['bone', 'tennis-ball', 'mud', 'kibble-turbo'];
+/** Bande de la roulette : tous les objets tirables, dans l'ordre du tableau des poids. */
+export const ROULETTE: readonly ItemKind[] = ITEM_KINDS;
+
+/** Durée de l'os en or (s), pour la barre de temps restant sous son icône. */
+const GOLDEN_DURATION = ITEMS.goldenBoneDuration;
 
 /**
  * Case d'objet : icône de l'objet tenu, ou roulette pendant le tirage (« ? » fixe si animations
@@ -17,7 +23,7 @@ export const ROULETTE: readonly ItemKind[] = ['bone', 'tennis-ball', 'mud', 'kib
     <div
       role="img"
       [attr.aria-label]="label()"
-      class="grid place-items-center overflow-hidden border-white/85 bg-slate-900/80 shadow-lg"
+      class="relative grid place-items-center overflow-hidden border-white/85 bg-slate-900/80 shadow-lg"
       [class]="large() ? 'size-20 rounded-2xl border-4' : 'size-12 rounded-xl border-2'"
     >
       @let held = kind();
@@ -49,6 +55,12 @@ export const ROULETTE: readonly ItemKind[] = ['bone', 'tennis-ball', 'mud', 'kib
           </g>
         </svg>
       }
+      @if (timeLeft() > 0) {
+        <span
+          class="absolute inset-x-2 bottom-1.5 h-1.5 rounded-full bg-sun-400"
+          [style.width.%]="(timeLeft() / goldenDuration) * 100"
+        ></span>
+      }
     </div>
   `,
   styles: `
@@ -77,7 +89,10 @@ export class HudItemSlot {
   readonly kind = input<ItemKind | null>(null);
   readonly rolling = input(false);
   readonly large = input(true);
+  /** Temps restant de l'os en or actif (s), pour la barre sous l'icône (0 : aucune barre). */
+  readonly timeLeft = input(0);
   /** Libellé complet de la case (« Objet : Os », « Réserve : vide »…). */
   readonly label = input.required<string>();
   protected readonly roulette = ROULETTE;
+  protected readonly goldenDuration = GOLDEN_DURATION;
 }

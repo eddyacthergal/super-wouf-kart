@@ -62,6 +62,7 @@ export function buildHudSnapshot(state: RaceState, wrongWay: boolean): HudSnapsh
       player && player.itemRoulette > 0 && player.items.length > 0
         ? ((player.items.length - 1) as 0 | 1)
         : null,
+    goldenBoneTime: player?.goldenBoneTime ?? 0,
     drifting: kart?.drift.active ?? false,
     driftTier: kart?.drift.active ? kart.drift.tier : 0,
     boosting: (kart?.boostTime ?? 0) > 0,

@@ -22,6 +22,7 @@ import { HudItemSlot } from './hud-item-slot';
       <app-hud-item-slot
         [kind]="items()[0] ?? null"
         [rolling]="rollingSlot() === 0"
+        [timeLeft]="goldenBoneTime()"
         [label]="mainLabel()"
       />
     </div>
@@ -37,15 +38,21 @@ import { HudItemSlot } from './hud-item-slot';
 export class HudItem {
   readonly items = input<readonly ItemKind[]>([]);
   readonly rollingSlot = input<0 | 1 | null>(null);
+  /** Temps restant de l'os en or actif (s) ; 0 : inactif. */
+  readonly goldenBoneTime = input(0);
 
   /** Nom et effet de l'objet suivant (rien pendant son tirage ni sans objet). */
   protected readonly caption = computed(() => {
     const item = this.items()[0];
     return item && this.rollingSlot() !== 0 ? { name: itemName(item), hint: itemHint(item) } : null;
   });
-  protected readonly mainLabel = computed(() =>
-    slotLabel('Objet', 'aucun', this.items()[0], this.rollingSlot() === 0),
-  );
+  protected readonly mainLabel = computed(() => {
+    const item = this.items()[0];
+    const golden = this.goldenBoneTime();
+    if (item === 'golden-bone' && golden > 0)
+      return `Objet : ${itemName(item)}, ${Math.ceil(golden)} s`;
+    return slotLabel('Objet', 'aucun', item, this.rollingSlot() === 0);
+  });
   protected readonly reserveLabel = computed(() =>
     slotLabel('Réserve', 'vide', this.items()[1], this.rollingSlot() === 1),
   );

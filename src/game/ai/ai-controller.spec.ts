@@ -816,6 +816,21 @@ describe('AiController', () => {
       expect(input.brake).toBe(false);
     });
 
+    it('os en or : appuis répétés en ligne droite, espacés d’au moins 0,5 s', () => {
+      const { step } = scenario({ item: 'golden-bone' });
+      const uses: number[] = [];
+      for (let i = 1; i <= 180; i++) if (step().useItem) uses.push(i * FIXED_DT);
+      expect(uses.length).toBeGreaterThanOrEqual(3);
+      for (let k = 1; k < uses.length; k++)
+        expect(uses[k] - uses[k - 1]).toBeGreaterThanOrEqual(0.5 - 1e-9);
+    });
+
+    it('os en or : gardé dans un virage', () => {
+      expect(
+        scenario({ item: 'golden-bone', track: createCircleTrack(40, 'right') }).firstUse(5),
+      ).toBeNull();
+    });
+
     it('aucun usage pendant la roulette', () => {
       expect(
         scenario({ item: 'kibble-turbo', overrides: { itemRoulette: 1 } }).firstUse(5),

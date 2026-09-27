@@ -65,6 +65,7 @@ function createRacer(track: TrackQuery, entry: RacerEntry, id: number): RacerSta
     items: [],
     itemRoulette: 0,
     hitImmunity: 0,
+    goldenBoneTime: 0,
   };
 }
 
