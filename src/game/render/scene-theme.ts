@@ -6,6 +6,7 @@
 import type * as THREE from 'three';
 import type { TrackQuery } from '../core/types';
 import type { TrackDecorHints } from '../track/track-definition';
+import type { Terrain } from './terrain';
 
 export interface SkyStyle {
   top: string;
@@ -45,5 +46,5 @@ export interface SceneTheme {
   fog: { color: string; near: number; far: number };
   light: LightStyle;
   clouds: CloudStyle;
-  buildWorld(track: TrackQuery, decor?: TrackDecorHints): ThemeWorld;
+  buildWorld(track: TrackQuery, decor?: TrackDecorHints, terrain?: Terrain): ThemeWorld;
 }

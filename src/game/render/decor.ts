@@ -29,6 +29,7 @@ import {
 import type { DecorKind, DecorPlacement, DecorPlan } from './decor-plan';
 import { PALETTE } from './palette';
 import { type DisposalBag, paintedMaterial } from './resources';
+import { FLAT_TERRAIN, type Terrain } from './terrain';
 
 /** Couleurs du décor propres au thème (feuillage, troncs, clôture, pierres, sapins). */
 export interface DecorColors {
@@ -70,6 +71,8 @@ type HeadKind = 'daisy' | 'sunflower' | 'tulip';
 interface Flower {
   x: number;
   z: number;
+  /** Hauteur du sol sous la fleur (relief). */
+  ground: number;
   height: number;
   stemRadius: number;
   head: HeadKind;
@@ -128,6 +131,7 @@ export function buildDecor(
   plan: DecorPlan,
   bag: DisposalBag,
   colors: DecorColors = GARDEN_DECOR_COLORS,
+  terrain: Terrain = FLAT_TERRAIN,
 ): Decor {
   const group = new THREE.Group();
   group.name = 'garden-decor';
@@ -144,6 +148,7 @@ export function buildDecor(
     flowers.push({
       x: placement.x,
       z: placement.z,
+      ground: terrain.groundAt(placement.x, placement.z),
       height,
       stemRadius: 0.1 + height * 0.02,
       head,
@@ -202,7 +207,11 @@ export function buildDecor(
       [0, 1].map((k) => {
         const yaw = flower.headYaw + (k === 0 ? 1.2 : -1.9) + rng.range(-0.3, 0.3);
         return new THREE.Matrix4().compose(
-          new THREE.Vector3(flower.x, flower.height * (k === 0 ? 0.16 : 0.28), flower.z),
+          new THREE.Vector3(
+            flower.x,
+            flower.ground + flower.height * (k === 0 ? 0.16 : 0.28),
+            flower.z,
+          ),
           new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.75, yaw, 0, 'YXZ')),
           new THREE.Vector3(1, 1, 1).multiplyScalar(flower.height * 0.11),
         );
@@ -232,7 +241,7 @@ export function buildDecor(
           Math.sin(t * 0.77 + 1.3) * SWAY_AMPLITUDE * 0.7,
         ),
       );
-      position.set(flower.x, 0, flower.z);
+      position.set(flower.x, flower.ground, flower.z);
       scale.set(flower.stemRadius, flower.height, flower.stemRadius);
       stems.setMatrixAt(i, matrix.compose(position, swayQuaternion, scale));
       offset.set(0, flower.height, 0).applyQuaternion(swayQuaternion);
@@ -266,7 +275,7 @@ export function buildDecor(
       painted,
       balls.map((ball) =>
         new THREE.Matrix4().compose(
-          new THREE.Vector3(ball.x, ball.size * 0.93, ball.z),
+          new THREE.Vector3(ball.x, terrain.groundAt(ball.x, ball.z) + ball.size * 0.93, ball.z),
           new THREE.Quaternion().setFromEuler(
             new THREE.Euler(rng.range(0, 6.3), rng.range(0, 6.3), rng.range(0, 6.3)),
           ),
@@ -299,7 +308,7 @@ export function buildDecor(
     }
     const mesh = new THREE.Mesh(geometry, painted);
     mesh.name = placement.kind;
-    mesh.position.set(placement.x, 0, placement.z);
+    mesh.position.set(placement.x, terrain.groundAt(placement.x, placement.z), placement.z);
     mesh.rotation.y = placement.rotation + spec.yaw;
     mesh.castShadow = true;
     mesh.receiveShadow = true;
@@ -325,7 +334,7 @@ export function buildDecor(
     for (const placement of sprinklers) {
       const sprinkler = new THREE.Group();
       sprinkler.name = 'sprinkler';
-      sprinkler.position.set(placement.x, 0, placement.z);
+      sprinkler.position.set(placement.x, terrain.groundAt(placement.x, placement.z), placement.z);
       const base = new THREE.Mesh(baseGeometry, painted);
       base.name = 'sprinkler-base';
       base.castShadow = true;
@@ -359,17 +368,20 @@ export function buildDecor(
   const treeColors: THREE.Color[] = [];
   for (const tree of trees) {
     const h = tree.size;
+    const ground = terrain.groundAt(tree.x, tree.z);
     const tint = foliage[(tree.variant * 2 + 1) % foliage.length];
-    treeBlobs.push(matrixOf(tree.x, h * 0.68, tree.z, tree.rotation, h * 0.24, h * 0.22, h * 0.24));
+    treeBlobs.push(
+      matrixOf(tree.x, ground + h * 0.68, tree.z, tree.rotation, h * 0.24, h * 0.22, h * 0.24),
+    );
     treeColors.push(tint);
-    treeBlobs.push(matrixOf(tree.x, h * 0.86, tree.z, tree.rotation, h * 0.16));
+    treeBlobs.push(matrixOf(tree.x, ground + h * 0.86, tree.z, tree.rotation, h * 0.16));
     treeColors.push(foliage[(tree.variant * 2 + 2) % foliage.length]);
     for (let k = 0; k < 3; k++) {
       const angle = tree.rotation + (k / 3) * Math.PI * 2;
       treeBlobs.push(
         matrixOf(
           tree.x + Math.sin(angle) * h * 0.14,
-          h * 0.55,
+          ground + h * 0.55,
           tree.z + Math.cos(angle) * h * 0.14,
           angle,
           h * 0.16,
@@ -386,7 +398,7 @@ export function buildDecor(
       trees.map((tree) =>
         matrixOf(
           tree.x,
-          0,
+          terrain.groundAt(tree.x, tree.z),
           tree.z,
           tree.rotation,
           tree.size * 0.045,
@@ -406,14 +418,15 @@ export function buildDecor(
   const blossomColors: THREE.Color[] = [];
   for (const bush of byKind(plan, 'bush')) {
     const r = bush.size;
-    bushBlobs.push(matrixOf(bush.x, r * 0.5, bush.z, bush.rotation, r, r * 0.78, r));
+    const ground = terrain.groundAt(bush.x, bush.z);
+    bushBlobs.push(matrixOf(bush.x, ground + r * 0.5, bush.z, bush.rotation, r, r * 0.78, r));
     bushColors.push(foliage[(bush.variant + 1) % foliage.length]);
     for (const k of [0, 1]) {
       const angle = bush.rotation + k * Math.PI + rng.range(-0.4, 0.4);
       bushBlobs.push(
         matrixOf(
           bush.x + Math.sin(angle) * r * 0.6,
-          r * 0.34,
+          ground + r * 0.34,
           bush.z + Math.cos(angle) * r * 0.6,
           angle,
           r * 0.64,
@@ -428,7 +441,7 @@ export function buildDecor(
         blossoms.push(
           matrixOf(
             bush.x + Math.sin(angle) * Math.cos(lift) * r * 0.98,
-            r * 0.5 + Math.sin(lift) * r * 0.76,
+            ground + r * 0.5 + Math.sin(lift) * r * 0.76,
             bush.z + Math.cos(angle) * Math.cos(lift) * r * 0.98,
             angle,
             r * 0.13,
@@ -454,7 +467,15 @@ export function buildDecor(
       bag.add(stoneGeometry()),
       bag.add(new THREE.MeshStandardMaterial({ roughness: 0.95 })),
       stones.map((stone) =>
-        matrixOf(stone.x, 0.03, stone.z, stone.rotation, stone.size, 1, stone.size),
+        matrixOf(
+          stone.x,
+          terrain.groundAt(stone.x, stone.z) + 0.03,
+          stone.z,
+          stone.rotation,
+          stone.size,
+          1,
+          stone.size,
+        ),
       ),
       stones.map((stone) => stonePalette[stone.variant % stonePalette.length]),
       { cast: false },
@@ -462,12 +483,12 @@ export function buildDecor(
   );
 
   // --- Sapins -------------------------------------------------------------------
-  const firs = buildFirs(byKind(plan, 'fir'), trunkMaterial, colors, bag);
+  const firs = buildFirs(byKind(plan, 'fir'), trunkMaterial, colors, bag, terrain);
   // add() sans argument signale une erreur dans three.js : rien à ajouter sans sapins.
   if (firs.length > 0) group.add(...firs);
 
   // --- Clôture -----------------------------------------------------------------
-  if (colors.fence) group.add(...buildFence(plan, bag, colors.fence));
+  if (colors.fence) group.add(...buildFence(plan, bag, colors.fence, terrain));
 
   return {
     group,
@@ -479,7 +500,12 @@ export function buildDecor(
 }
 
 /** Clôture en bois blanche sur le pourtour du jardin : planches et deux lisses par côté. */
-function buildFence(plan: DecorPlan, bag: DisposalBag, color: string): THREE.InstancedMesh[] {
+function buildFence(
+  plan: DecorPlan,
+  bag: DisposalBag,
+  color: string,
+  terrain: Terrain,
+): THREE.InstancedMesh[] {
   const { minX, maxX, minZ, maxZ } = plan.fence;
   const pickets: THREE.Matrix4[] = [];
   const rails: THREE.Matrix4[] = [];
@@ -495,14 +521,15 @@ function buildFence(plan: DecorPlan, bag: DisposalBag, color: string): THREE.Ins
     const count = Math.round(length / PICKET_SPACING);
     for (let i = 0; i <= count; i++) {
       const t = i / count;
-      pickets.push(
-        matrixOf(from[0] + (to[0] - from[0]) * t, 0, from[1] + (to[1] - from[1]) * t, yaw, 1),
-      );
+      const x = from[0] + (to[0] - from[0]) * t;
+      const z = from[1] + (to[1] - from[1]) * t;
+      pickets.push(matrixOf(x, terrain.groundAt(x, z), z, yaw, 1));
     }
     const cx = (from[0] + to[0]) / 2 + outward[0] * 0.14;
     const cz = (from[1] + to[1]) / 2 + outward[1] * 0.14;
+    const ground = terrain.groundAt(cx, cz);
     for (const y of [0.9, 2.3]) {
-      rails.push(matrixOf(cx, y, cz, yaw, length, 0.3, 0.14));
+      rails.push(matrixOf(cx, ground + y, cz, yaw, length, 0.3, 0.14));
     }
   }
   const material = bag.add(new THREE.MeshStandardMaterial({ color, roughness: 0.7 }));
@@ -520,6 +547,7 @@ function buildFirs(
   trunkMaterial: THREE.Material,
   colors: DecorColors,
   bag: DisposalBag,
+  terrain: Terrain,
 ): THREE.InstancedMesh[] {
   if (firs.length === 0) return [];
   const palette = colors.firs.map((hex) => new THREE.Color(hex));
@@ -528,19 +556,20 @@ function buildFirs(
   const snow: THREE.Matrix4[] = [];
   for (const fir of firs) {
     const h = fir.size;
+    const ground = terrain.groundAt(fir.x, fir.z);
     const color = palette[fir.variant % palette.length];
     for (let k = 0; k < 3; k++) {
       const radius = h * (0.3 - k * 0.07);
       const base = h * (0.16 + k * 0.23);
       const height = h * (0.42 - k * 0.04);
       const yaw = fir.rotation + k * 0.7;
-      tiers.push(matrixOf(fir.x, base, fir.z, yaw, radius, height, radius));
+      tiers.push(matrixOf(fir.x, ground + base, fir.z, yaw, radius, height, radius));
       tierColors.push(color);
       // Neige : cône plus petit posé sur le haut de l'étage.
       snow.push(
         matrixOf(
           fir.x,
-          base + height * 0.42,
+          ground + base + height * 0.42,
           fir.z,
           yaw,
           radius * 0.62,
@@ -559,7 +588,7 @@ function buildFirs(
       firs.map((fir) =>
         matrixOf(
           fir.x,
-          0,
+          terrain.groundAt(fir.x, fir.z),
           fir.z,
           fir.rotation,
           fir.size * 0.035,

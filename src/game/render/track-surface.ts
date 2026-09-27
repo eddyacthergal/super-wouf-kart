@@ -74,10 +74,16 @@ function ribbonGeometry(
     for (let side = 0; side < 2; side++) {
       const lateral = side === 0 ? a : b;
       const v = row * 2 + side;
+      const ground = track.surfaceAt(sample.s, lateral);
       positions[v * 3] = sample.position.x + sample.left.x * lateral;
-      positions[v * 3 + 1] = y;
+      positions[v * 3 + 1] = ground.height + y;
       positions[v * 3 + 2] = sample.position.z + sample.left.z * lateral;
-      normals[v * 3 + 1] = 1;
+      const nx = -ground.gradient.x;
+      const nz = -ground.gradient.z;
+      const inv = 1 / Math.hypot(nx, 1, nz);
+      normals[v * 3] = nx * inv;
+      normals[v * 3 + 1] = inv;
+      normals[v * 3 + 2] = nz * inv;
       uvs[v * 2] = side === 0 ? 0 : width / tile;
       uvs[v * 2 + 1] = s / tile;
     }
@@ -186,7 +192,10 @@ function buildCurbs(track: TrackQuery, bag: DisposalBag, style: SurfaceStyle): T
       const b = ring[(k + 1) % ring.length];
       const dx = b.x - a.x;
       const dz = b.z - a.z;
-      position.set((a.x + b.x) / 2, ROAD_Y + CURB_HEIGHT / 2, (a.z + b.z) / 2);
+      const mx = (a.x + b.x) / 2;
+      const mz = (a.z + b.z) / 2;
+      const { s: sMilieu, lateral } = track.project({ x: mx, z: mz });
+      position.set(mx, track.surfaceAt(sMilieu, lateral).height + ROAD_Y + CURB_HEIGHT / 2, mz);
       quaternion.setFromAxisAngle(up, Math.atan2(dx, dz));
       scale.set(CURB_WIDTH, CURB_HEIGHT, Math.hypot(dx, dz) + 0.02);
       curbs.setMatrixAt(index, matrix.compose(position, quaternion, scale));
@@ -201,7 +210,7 @@ function buildCurbs(track: TrackQuery, bag: DisposalBag, style: SurfaceStyle): T
 /** Repère local à l'abscisse s : X = gauche du pilote, Z = sens de la course. */
 function placeAcross(object: THREE.Object3D, track: TrackQuery, s: number): void {
   const sample = track.sampleAt(s);
-  object.position.set(sample.position.x, 0, sample.position.z);
+  object.position.set(sample.position.x, track.surfaceAt(s, 0).height, sample.position.z);
   object.rotation.y = headingOf(sample.tangent);
 }
 
@@ -215,7 +224,7 @@ function buildStartLine(track: TrackQuery, bag: DisposalBag): THREE.Mesh {
   line.name = 'start-line';
   line.receiveShadow = true;
   placeAcross(line, track, 0);
-  line.position.y = MARKING_Y;
+  line.position.y += MARKING_Y;
   return line;
 }
 
@@ -237,11 +246,10 @@ function buildGridMarks(track: TrackQuery, bag: DisposalBag): THREE.InstancedMes
   const holder = new THREE.Object3D();
   for (let i = 0; i < RACER_COUNT; i++) {
     const slot = track.gridSlot(i);
-    holder.position.set(
-      slot.position.x + Math.sin(slot.heading) * 1.4,
-      MARKING_Y,
-      slot.position.z + Math.cos(slot.heading) * 1.4,
-    );
+    const x = slot.position.x + Math.sin(slot.heading) * 1.4;
+    const z = slot.position.z + Math.cos(slot.heading) * 1.4;
+    const projection = track.project({ x, z });
+    holder.position.set(x, track.surfaceAt(projection.s, projection.lateral).height + MARKING_Y, z);
     holder.rotation.y = slot.heading;
     holder.updateMatrix();
     marks.setMatrixAt(i, holder.matrix);

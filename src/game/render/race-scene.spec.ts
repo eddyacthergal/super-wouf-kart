@@ -160,7 +160,12 @@ describe('RaceScene', () => {
     const sample = track.sampleAt(track.itemBoxRows[0]);
     race.itemBoxes.push(
       { id: 0, position: { ...sample.position }, respawn: 0, height: 0 },
-      { id: 1, position: { x: sample.position.x + 3, z: sample.position.z }, respawn: 2, height: 0 },
+      {
+        id: 1,
+        position: { x: sample.position.x + 3, z: sample.position.z },
+        respawn: 2,
+        height: 0,
+      },
     );
     scene.update(race, 1, DT, []);
     const ready = scene.scene.getObjectByName('item-box-0')!;

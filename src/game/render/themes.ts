@@ -4,7 +4,7 @@
  */
 import type { TrackThemeId } from '../track/track-definition';
 import { BEACH_THEME } from './beach-world';
-import { buildGardenWorld } from './garden-world';
+import { buildGardenWorld, GARDEN_STYLE } from './garden-world';
 import { SUMMER_LIGHT } from './lighting';
 import { PALETTE } from './palette';
 import type { SceneTheme } from './scene-theme';
@@ -17,7 +17,7 @@ export const GARDEN_THEME: SceneTheme = {
   fog: { color: PALETTE.skyHorizon, near: FOG_NEAR, far: FOG_FAR },
   light: SUMMER_LIGHT,
   clouds: SUMMER_CLOUDS,
-  buildWorld: (track, decor) => buildGardenWorld(track, decor),
+  buildWorld: (track, decor, terrain) => buildGardenWorld(track, decor, GARDEN_STYLE, terrain),
 };
 
 export const SCENE_THEMES: Readonly<Record<TrackThemeId, SceneTheme>> = {

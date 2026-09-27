@@ -8,6 +8,7 @@ import { createRng } from '../core/rng';
 import type { TrackQuery } from '../core/types';
 import { PALETTE } from './palette';
 import type { DisposalBag } from './resources';
+import { FLAT_TERRAIN, type Terrain } from './terrain';
 import { distanceToSamples, offsetRing, resampleRing } from './track-geometry';
 
 /**
@@ -41,6 +42,7 @@ export function buildHedges(
   track: TrackQuery,
   bag: DisposalBag,
   style: HedgeStyle = GARDEN_HEDGES,
+  terrain: Terrain = FLAT_TERRAIN,
 ): HedgeSet {
   const rng = createRng(HEDGE_SEED);
   const offset = track.wallHalfWidth + HEDGE_CENTER_OFFSET;
@@ -61,8 +63,9 @@ export function buildHedges(
       const clearance = distanceToSamples(track, point.x, point.z) - width;
       if (clearance < track.wallHalfWidth - CROSSING_TOLERANCE) continue;
       const chunk = Math.min(CHUNK_COUNT - 1, Math.floor(point.fraction * CHUNK_COUNT));
+      const ground = terrain.groundAt(point.x, point.z);
       const y = rng.range(0.42, 0.55);
-      position.set(point.x, y, point.z);
+      position.set(point.x, ground + y, point.z);
       quaternion.setFromEuler(euler.set(0, rng.range(0, Math.PI * 2), 0));
       const height = rng.range(0.72, 0.86);
       scale.set(width, height, width);
@@ -70,7 +73,7 @@ export function buildHedges(
       colors[chunk].push(rng.pick(palette));
       if (style.cap) {
         // Calotte aplatie posée sur le haut de la touffe.
-        position.set(point.x, y + height * 0.62, point.z);
+        position.set(point.x, ground + y + height * 0.62, point.z);
         scale.set(width * 0.86, height * 0.42, width * 0.86);
         caps[chunk].push(new THREE.Matrix4().compose(position, quaternion, scale));
       }
