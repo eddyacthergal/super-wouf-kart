@@ -16,15 +16,20 @@ import {
 import type * as THREE from 'three';
 import type { BreedId, SkinSelection } from '../../../game/core/types';
 import type { RacerModel, RacerModelOptions, RacerVisualState } from '../../../game/dogs/racer-model';
+import type { EnvironmentStyle } from '../../../game/render/environment-map';
 import { PALETTE } from '../../../game/render/palette';
 import { applyRendererOutput } from '../../../game/render/renderer-output';
 import { describeDog } from '../../shared/format';
 import { prefersReducedMotion } from '../../shared/reduced-motion';
 
-/** Modules chargés à la demande par l'aperçu : three.js et le constructeur du modèle de pilote. */
+/**
+ * Modules chargés à la demande par l'aperçu : three.js, le constructeur du modèle de pilote et la
+ * fabrique de l'image d'environnement (reflets).
+ */
 export interface DogPreviewModules {
   three: typeof THREE;
   buildRacerModel: (options: RacerModelOptions) => RacerModel;
+  createEnvironmentMap: (style: EnvironmentStyle) => THREE.Texture;
 }
 
 /**
@@ -33,9 +38,14 @@ export interface DogPreviewModules {
  */
 export const DOG_PREVIEW_LOADER = new InjectionToken<() => Promise<DogPreviewModules>>('DOG_PREVIEW_LOADER', {
   factory: () => () =>
-    Promise.all([import('three'), import('../../../game/dogs/racer-model')]).then(([three, models]) => ({
+    Promise.all([
+      import('three'),
+      import('../../../game/dogs/racer-model'),
+      import('../../../game/render/environment-map'),
+    ]).then(([three, models, environment]) => ({
       three,
       buildRacerModel: models.buildRacerModel,
+      createEnvironmentMap: environment.createEnvironmentMap,
     })),
 });
 
@@ -85,6 +95,18 @@ const LIGHTS = {
   rim: { color: '#d8ebff', intensity: 2.2, azimuth: 2.6, elevation: 0.3, distance: 6 },
   /** Hauteur (m) visée par les deux lumières : milieu du pilote. */
   targetHeight: 0.8,
+} as const;
+
+/**
+ * Reflets de la coque, des chromes, de la truffe et des yeux : même image qu'en course, avec la
+ * palette du jardin. Son soleil est placé là où brille la lumière du soleil de la vitrine : le
+ * reflet glisse sur la coque quand le plateau tourne.
+ */
+const ENVIRONMENT_COLORS = {
+  top: PALETTE.skyTop,
+  horizon: PALETTE.skyHorizon,
+  sun: PALETTE.sun,
+  ground: PALETTE.hemisphereGround,
 } as const;
 
 /** Ombre du soleil, serrée sur le plateau : texels de 3,5 mm, bord adouci par le filtrage PCF. */
@@ -140,6 +162,8 @@ interface PreviewStage {
   camera: THREE.PerspectiveCamera;
   turntable: THREE.Group;
   buildModel: (options: RacerModelOptions) => RacerModel;
+  /** Image d'environnement partagée par les pilotes successifs, libérée avec l'aperçu. */
+  environment: THREE.Texture;
   disposables: Array<{ dispose(): void }>;
 }
 
@@ -214,8 +238,9 @@ export class DogPreview {
     }
 
     let renderer: THREE.WebGLRenderer | null = null;
+    let environment: THREE.Texture | null = null;
     try {
-      const { three, buildRacerModel } = await this.loadModules();
+      const { three, buildRacerModel, createEnvironmentMap } = await this.loadModules();
       if (this.destroyed) return;
 
       renderer = new three.WebGLRenderer({ canvas: this.canvas().nativeElement, alpha: true, antialias: true });
@@ -257,6 +282,8 @@ export class DogPreview {
         scene.add(light, light.target);
       }
       scene.add(hemisphere);
+      const toSun = sun.position.clone().sub(sun.target.position).normalize();
+      environment = createEnvironmentMap({ ...ENVIRONMENT_COLORS, sunDirection: [toSun.x, toSun.y, toSun.z] });
 
       const plateGeometry = new three.CylinderGeometry(
         PLATE.topRadius,
@@ -284,8 +311,10 @@ export class DogPreview {
         camera,
         turntable,
         buildModel: buildRacerModel,
-        // La carte d'ombre appartient au soleil : sun.dispose() la libère.
-        disposables: [plateGeometry, plateMaterial, sun, rim, hemisphere],
+        environment,
+        // La carte d'ombre appartient au soleil : sun.dispose() la libère. L'image d'environnement
+        // est libérée après les modèles (teardown), qui ne la libèrent pas eux-mêmes.
+        disposables: [plateGeometry, plateMaterial, sun, rim, hemisphere, environment],
       };
       this.observeSize(stage);
       this.stage.set(stage);
@@ -297,6 +326,7 @@ export class DogPreview {
       this.resizeObserver?.disconnect();
       this.resizeObserver = null;
       this.stage.set(null);
+      environment?.dispose();
       renderer?.dispose();
       if (!this.destroyed) this.status.set('unavailable');
     }
@@ -307,7 +337,12 @@ export class DogPreview {
     // (cache à compteur de références) restent en mémoire au lieu d'être détruits puis recréés.
     let next: RacerModel | null = null;
     try {
-      next = stage.buildModel({ breed, skins, kartColor: PREVIEW_KART_COLOR });
+      next = stage.buildModel({
+        breed,
+        skins,
+        kartColor: PREVIEW_KART_COLOR,
+        environment: stage.environment,
+      });
       next.update(0, IDLE_STATE);
       // Dans l'aperçu, le pilote reçoit aussi les ombres (la sienne, celle du chapeau…) : le cadre
       // d'ombre serré y donne des texels de quelques millimètres.

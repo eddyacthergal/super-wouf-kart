@@ -54,6 +54,13 @@ export interface RacerVisual {
 /** Fabrique de texture d'étiquette (null : pas d'étiquette, par exemple sans canvas 2D). */
 export type NameTagFactory = (name: string, accent: string) => THREE.Texture | null;
 
+export interface RacerVisualsOptions {
+  /** Image d'environnement de la course (reflets des pilotes), libérée par la course. */
+  environment?: THREE.Texture | null;
+  /** Fabrique des étiquettes de nom (les tests en fournissent une sans canvas). */
+  createTagTexture?: NameTagFactory;
+}
+
 /** Étiquette candidate à l'affichage pour l'image en cours. */
 interface TagSlot {
   visual: RacerVisual;
@@ -74,12 +81,12 @@ export class RacerVisuals {
   private readonly cameraPosition = new THREE.Vector3();
   private readonly projected = new THREE.Vector3();
   private readonly slots: TagSlot[] = [];
+  private readonly environment: THREE.Texture | null;
+  private readonly createTagTexture: NameTagFactory;
 
-  constructor(
-    racers: readonly RacerState[],
-    bag: DisposalBag,
-    private readonly createTagTexture: NameTagFactory = createNameTagTexture,
-  ) {
+  constructor(racers: readonly RacerState[], bag: DisposalBag, options: RacerVisualsOptions = {}) {
+    this.environment = options.environment ?? null;
+    this.createTagTexture = options.createTagTexture ?? createNameTagTexture;
     this.group.name = 'racers';
     try {
       for (const racer of racers) this.add(racer, bag);
@@ -95,6 +102,7 @@ export class RacerVisuals {
       breed: racer.breed,
       skins: racer.skins,
       kartColor: racer.kartColor,
+      environment: this.environment,
     });
     model.root.userData['racerId'] = racer.id;
     this.group.add(model.root);

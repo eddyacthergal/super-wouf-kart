@@ -33,11 +33,34 @@ const COLUMN_BASE = new THREE.Vector3(0, 0.42, 0.62);
 const COLORS = {
   trim: '#2b2d38',
   seat: '#343746',
-  metal: '#3d404c',
+  /**
+   * Chromes : leur couleur teinte les reflets (métal pur, presque sans diffus). Bloc moteur plus
+   * sombre (alu brut) que les pots et les jantes (polis).
+   */
+  engine: '#868c97',
   tire: '#1d1d22',
-  rim: '#e9e9ef',
-  exhaust: '#a4aab3',
+  rim: '#dfe2e8',
+  exhaust: '#d9dde3',
   stripe: '#fbfbf7',
+} as const;
+
+/**
+ * Finitions qui reflètent l'image d'environnement : coque satinée sous un vernis brillant, bloc
+ * moteur en alu, pots et jantes polis. `envMapIntensity` dose les reflets de chaque matériau :
+ * pleins sur les chromes, moitié sur la coque pour garder sa couleur. Sans image d'environnement
+ * (tests), les chromes paraissent sombres : ils ne reflètent alors que les lumières.
+ */
+const FINISH = {
+  body: {
+    roughness: 0.35,
+    metalness: 0.1,
+    clearcoat: 1,
+    clearcoatRoughness: 0.1,
+    envMapIntensity: 0.5,
+  },
+  engine: { roughness: 0.35, metalness: 0.9, envMapIntensity: 1 },
+  exhaust: { roughness: 0.25, metalness: 1, envMapIntensity: 1 },
+  rim: { roughness: 0.3, metalness: 1, envMapIntensity: 1 },
 } as const;
 
 export interface KartOptions {
@@ -46,6 +69,8 @@ export interface KartOptions {
   steeringCenter: THREE.Vector3;
   /** Dossier du siège (retiré pour un chien dont le corps dépasse vers l'arrière). */
   seatBack: boolean;
+  /** Image d'environnement des reflets de la coque et des chromes (null : aucun reflet). */
+  environment: THREE.Texture | null;
 }
 
 export interface KartRig {
@@ -109,13 +134,14 @@ function tireGeometry(scope: ResourceScope, radius: number, width: number): THRE
 }
 
 export function buildKart(scope: ResourceScope, options: KartOptions): KartRig {
-  const body = scope.material(options.color, { roughness: 0.45, metalness: 0.1 });
+  const envMap = options.environment;
+  const body = scope.material(options.color, { ...FINISH.body, envMap });
   const trim = scope.material(COLORS.trim, { roughness: 0.6 });
   const seatMaterial = scope.material(COLORS.seat, { roughness: 0.8 });
-  const metal = scope.material(COLORS.metal, { roughness: 0.5, metalness: 0.4 });
+  const metal = scope.material(COLORS.engine, { ...FINISH.engine, envMap });
   const tire = scope.material(COLORS.tire, { roughness: 0.9 });
-  const rim = scope.material(COLORS.rim, { roughness: 0.45, flatShading: true });
-  const exhaust = scope.material(COLORS.exhaust, { roughness: 0.3, metalness: 0.45 });
+  const rim = scope.material(COLORS.rim, { ...FINISH.rim, flatShading: true, envMap });
+  const exhaust = scope.material(COLORS.exhaust, { ...FINISH.exhaust, envMap });
   const stripe = scope.material(COLORS.stripe, { roughness: 0.5 });
 
   const lift = new THREE.Group();

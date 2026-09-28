@@ -44,6 +44,11 @@ export interface RacerModelOptions {
   skins: SkinSelection;
   /** Couleur de carrosserie (#rrggbb). */
   kartColor: string;
+  /**
+   * Image d'environnement (reflets de la coque, des chromes, de la truffe et des yeux). Elle
+   * appartient à l'appelant, qui la libère après le modèle. Sans elle, aucun reflet.
+   */
+  environment?: THREE.Texture | null;
 }
 
 /** Réglages de l'animation. */
@@ -75,16 +80,19 @@ export function buildRacerModel(options: RacerModelOptions): RacerModel {
   const breed = BREEDS[options.breed];
   const scope = new ResourceScope();
   const layout = computeDogLayout(breed.look);
+  const environment = options.environment ?? null;
   const kart = buildKart(scope, {
     color: options.kartColor,
     steeringCenter: layout.steeringCenter,
     seatBack: breed.look.seatBack,
+    environment,
   });
 
   const bodySkin = isSkinInSlot(options.skins.body, 'body') ? options.skins.body : null;
   const dog = buildDog(scope, breed, layout, {
     grips: steeringGrips(layout.steeringCenter),
     showBelly: bodySkin !== 'sweater',
+    environment,
   });
   kart.chassis.add(dog.root);
 

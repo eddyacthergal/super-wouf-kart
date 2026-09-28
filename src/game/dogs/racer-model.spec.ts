@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, describe, expect, it } from 'vitest';
 import { type BreedId, EMPTY_SKINS, type SkinSelection } from '../core/types';
+import { createEnvironmentMap } from '../render/environment-map';
 import { BREED_LIST } from './breeds';
 import { sharedGeometries, sharedMaterials } from './model-resources';
 import { buildRacerModel, type RacerModel, type RacerVisualState } from './racer-model';
@@ -16,14 +17,39 @@ const IDLE: RacerVisualState = {
 };
 const MAX_MESHES = 60;
 
+/** Pièces qui reflètent l'image d'environnement : coque vernie, chromes, truffe et yeux. */
+const REFLECTIVE_PARTS = [
+  'kart-floor',
+  'kart-pod',
+  'kart-nose',
+  'kart-hood',
+  'kart-engine',
+  'exhaust-pipe',
+  'rim',
+  'dog-nose',
+  'dog-eye-whites',
+  'dog-pupils',
+] as const;
+const CHROME_PARTS = ['kart-engine', 'exhaust-pipe', 'rim'] as const;
+
+/** Image d'environnement du jardin (construite sans WebGL). */
+const environment = createEnvironmentMap({
+  top: '#2f8fe8',
+  horizon: '#cfeaff',
+  sun: '#fff6d8',
+  ground: '#6aa845',
+  sunDirection: [0.45, 0.8, -0.38],
+});
+
 const models: RacerModel[] = [];
 
 function build(
   breed: BreedId,
   skins: SkinSelection = EMPTY_SKINS,
   kartColor = '#d7322e',
+  reflections: THREE.Texture | null = null,
 ): RacerModel {
-  const model = buildRacerModel({ breed, skins, kartColor });
+  const model = buildRacerModel({ breed, skins, kartColor, environment: reflections });
   models.push(model);
   model.root.updateMatrixWorld(true);
   return model;
@@ -32,6 +58,23 @@ function build(
 afterEach(() => {
   for (const model of models.splice(0)) model.dispose();
 });
+
+afterAll(() => environment.dispose());
+
+/** Image d'environnement d'un matériau (null s'il n'en a pas). */
+function envMapOf(material: THREE.Material): THREE.Texture | null {
+  return 'envMap' in material && material.envMap instanceof THREE.Texture ? material.envMap : null;
+}
+
+function materialsOf(mesh: THREE.Mesh): THREE.Material[] {
+  return Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+}
+
+function materialOf(root: THREE.Object3D, name: string): THREE.Material {
+  const object = named(root, name);
+  if (!(object instanceof THREE.Mesh)) throw new Error(`${name} doit être un mesh`);
+  return materialsOf(object)[0];
+}
 
 function meshesOf(root: THREE.Object3D): THREE.Mesh[] {
   const meshes: THREE.Mesh[] = [];
@@ -477,6 +520,99 @@ describe('animation', () => {
     model.root.traverse((object) => {
       for (const value of object.matrixWorld.elements) expect(Number.isFinite(value)).toBe(true);
     });
+  });
+});
+
+describe('reflets', () => {
+  it.each(BREED_LIST.map((breed) => breed.id))(
+    'seules la coque, les chromes, la truffe et les yeux reflètent l’image d’environnement (%s)',
+    (breed) => {
+      const model = build(
+        breed,
+        { head: 'crown', neck: 'bell-collar', body: 'cape' },
+        '#d7322e',
+        environment,
+      );
+      const reflective = new Set<string>();
+      for (const mesh of meshesOf(model.root)) {
+        for (const material of materialsOf(mesh)) {
+          const envMap = envMapOf(material);
+          if ((REFLECTIVE_PARTS as readonly string[]).includes(mesh.name)) {
+            expect(envMap, mesh.name).toBe(environment);
+            expect(envMap?.mapping, mesh.name).toBe(THREE.EquirectangularReflectionMapping);
+            reflective.add(mesh.name);
+          } else {
+            // Ni la fourrure, ni les accessoires (couronne et grelot compris), ni le reste du kart.
+            expect(envMap, mesh.name).toBeNull();
+          }
+        }
+      }
+      expect([...reflective].sort()).toEqual([...REFLECTIVE_PARTS].sort());
+    },
+  );
+
+  it('coque vernie, vrais chromes, truffe et yeux brillants', () => {
+    const root = build('carlin', EMPTY_SKINS, '#d7322e', environment).root;
+    const body = materialOf(root, 'kart-hood');
+    expect(body).toBeInstanceOf(THREE.MeshPhysicalMaterial);
+    const varnish = body as THREE.MeshPhysicalMaterial;
+    expect(varnish.clearcoat).toBeGreaterThanOrEqual(0.8);
+    expect(varnish.roughness).toBeCloseTo(0.35, 2);
+    expect(varnish.envMapIntensity).toBeCloseTo(0.5, 2);
+    // Toute la coque partage le même matériau.
+    for (const part of ['kart-floor', 'kart-pod', 'kart-nose']) {
+      expect(materialOf(root, part), part).toBe(body);
+    }
+    for (const part of CHROME_PARTS) {
+      const chrome = materialOf(root, part) as THREE.MeshStandardMaterial;
+      expect(chrome.metalness, part).toBeGreaterThanOrEqual(0.9);
+      expect(chrome.metalness, part).toBeLessThanOrEqual(1);
+      expect(chrome.roughness, part).toBeGreaterThanOrEqual(0.25);
+      expect(chrome.roughness, part).toBeLessThanOrEqual(0.35);
+      expect(chrome.envMapIntensity, part).toBeCloseTo(1, 1);
+    }
+    for (const part of ['dog-nose', 'dog-eye-whites', 'dog-pupils']) {
+      const glossy = materialOf(root, part) as THREE.MeshStandardMaterial;
+      expect(glossy.roughness, part).toBeLessThanOrEqual(0.3);
+      expect(glossy.envMapIntensity, part).toBeGreaterThan(0);
+    }
+  });
+
+  it('les reflets des yeux restent blancs à l’ombre : non éclairés, sans tone mapping', () => {
+    const model = build('chihuahua', EMPTY_SKINS, '#d7322e', environment);
+    const shine = materialOf(model.root, 'dog-eye-shines');
+    expect(shine).toBeInstanceOf(THREE.MeshBasicMaterial);
+    expect(shine.toneMapped).toBe(false);
+    expect((shine as THREE.MeshBasicMaterial).color.getHexString()).toBe('ffffff');
+  });
+
+  it('n’ajoute ni maillage ni matériau : autant d’appels de dessin qu’avant', () => {
+    const skins: SkinSelection = { head: 'party-hat', neck: 'bandana', body: 'cape' };
+    for (const breed of BREED_LIST) {
+      const count = (reflections: THREE.Texture | null): [number, number] => {
+        const meshes = meshesOf(build(breed.id, skins, '#d7322e', reflections).root);
+        return [meshes.length, new Set(meshes.flatMap(materialsOf)).size];
+      };
+      expect(count(environment), breed.id).toEqual(count(null));
+    }
+  });
+
+  it('rend ses matériaux au cache sans libérer l’image d’environnement, qui appartient à la course', () => {
+    const materials = sharedMaterials.size;
+    const onDispose = (): void => {
+      throw new Error('image d’environnement libérée par le modèle');
+    };
+    environment.addEventListener('dispose', onDispose);
+    const model = buildRacerModel({
+      breed: 'teckel',
+      skins: EMPTY_SKINS,
+      kartColor: '#2eb86a',
+      environment,
+    });
+    expect(sharedMaterials.size).toBeGreaterThan(materials);
+    expect(() => model.dispose()).not.toThrow();
+    environment.removeEventListener('dispose', onDispose);
+    expect(sharedMaterials.size).toBe(materials);
   });
 });
 

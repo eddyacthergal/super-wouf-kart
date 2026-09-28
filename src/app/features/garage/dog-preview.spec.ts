@@ -10,6 +10,8 @@ import {
   type RacerVisualState,
 } from '../../../game/dogs/racer-model';
 import { skinsForSlot } from '../../../game/dogs/skins-catalog';
+import { createEnvironmentMap, type EnvironmentStyle } from '../../../game/render/environment-map';
+import { PALETTE } from '../../../game/render/palette';
 import { TONE_MAPPING_EXPOSURE } from '../../../game/render/renderer-output';
 import { DOG_PREVIEW_LOADER, DogPreview, PREVIEW_KART_COLOR, type DogPreviewModules } from './dog-preview';
 
@@ -112,6 +114,8 @@ interface Frame {
 describe('DogPreview avec WebGL (renderer factice)', () => {
   let fixture: ComponentFixture<DogPreview>;
   let models: FakeModel[];
+  /** Styles demandés à la fabrique d'images d'environnement, et images rendues. */
+  let environments: Array<{ style: EnvironmentStyle; texture: THREE.Texture }>;
   let requested: Frame[];
   let cancelled: number[];
   /** Images demandées par l'aperçu (le planificateur d'Angular utilise aussi requestAnimationFrame). */
@@ -149,6 +153,11 @@ describe('DogPreview avec WebGL (renderer factice)', () => {
     const modules: DogPreviewModules = {
       three: { ...THREE, WebGLRenderer: FakeRenderer } as unknown as typeof THREE,
       buildRacerModel,
+      createEnvironmentMap: (style) => {
+        const texture = createEnvironmentMap(style);
+        environments.push({ style, texture });
+        return texture;
+      },
     };
     const loader = options.deferLoading
       ? () => new Promise<DogPreviewModules>((resolve) => (releaseLoader = () => resolve(modules)))
@@ -191,6 +200,7 @@ describe('DogPreview avec WebGL (renderer factice)', () => {
 
   beforeEach(() => {
     models = [];
+    environments = [];
     requested = [];
     cancelled = [];
     releaseLoader = null;
@@ -229,8 +239,47 @@ describe('DogPreview avec WebGL (renderer factice)', () => {
       breed: 'carlin',
       skins: { head: 'cap', neck: null, body: null },
       kartColor: PREVIEW_KART_COLOR,
+      environment: environments[0]?.texture,
     });
     expect(models[0].root.parent).not.toBeNull();
+  });
+
+  it('fait refléter au pilote le ciel, la pelouse et le soleil du jardin, sans image globale', async () => {
+    create({ head: null, neck: null, body: null });
+    await ready();
+    expect(environments).toHaveLength(1);
+    const [{ style, texture }] = environments;
+    expect(texture.mapping).toBe(THREE.EquirectangularReflectionMapping);
+    expect(style).toMatchObject({
+      top: PALETTE.skyTop,
+      horizon: PALETTE.skyHorizon,
+      sun: PALETTE.sun,
+      ground: PALETTE.hemisphereGround,
+    });
+    // Le soleil de l'image est là où brille la lumière du soleil : le reflet suit l'éclairage.
+    const sun = light('preview-sun');
+    const toSun = sun.position.clone().sub(sun.target.position).normalize();
+    expect(new THREE.Vector3(...style.sunDirection).normalize().angleTo(toSun)).toBeLessThan(1e-6);
+    expect(models[0].options.environment).toBe(texture);
+    // Seuls les matériaux du pilote qui la demandent la reçoivent.
+    expect(scene().environment).toBeNull();
+  });
+
+  it('garde la même image d’environnement d’un pilote à l’autre et la libère à la destruction', async () => {
+    create({ head: null, neck: null, body: null });
+    await ready();
+    fixture.componentRef.setInput('skins', { head: 'crown', neck: null, body: null });
+    await fixture.whenStable();
+    expect(models).toHaveLength(2);
+    expect(environments).toHaveLength(1);
+    const { texture } = environments[0];
+    expect(models[1].options.environment).toBe(texture);
+    const onDispose = vi.fn();
+    texture.addEventListener('dispose', onDispose);
+
+    fixture.destroy();
+
+    expect(onDispose).toHaveBeenCalledTimes(1);
   });
 
   it('fait tourner le plateau à chaque image', async () => {

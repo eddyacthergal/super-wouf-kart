@@ -38,8 +38,14 @@ export class RefCountedCache<T extends Disposable> {
   }
 }
 
+/**
+ * Matériaux partagés : éclairés (standard, ou physiques s'ils sont vernis) et non éclairés.
+ * La clé commence par le genre du matériau : une clé désigne toujours le même genre.
+ */
+export type SharedMaterial = THREE.MeshStandardMaterial | THREE.MeshBasicMaterial;
+
 export const sharedGeometries = new RefCountedCache<THREE.BufferGeometry>();
-export const sharedMaterials = new RefCountedCache<THREE.MeshStandardMaterial>();
+export const sharedMaterials = new RefCountedCache<SharedMaterial>();
 
 export interface MaterialOptions {
   roughness?: number;
@@ -49,6 +55,16 @@ export interface MaterialOptions {
   vertexColors?: boolean;
   doubleSided?: boolean;
   flatShading?: boolean;
+  /**
+   * Reflets : image d'environnement posée sur ce seul matériau (jamais sur toute la scène).
+   * Elle appartient à l'appelant (la course, le garage), qui la libère.
+   */
+  envMap?: THREE.Texture | null;
+  /** Force des reflets de `envMap`. */
+  envMapIntensity?: number;
+  /** Vernis transparent (0..1) : au-dessus de 0, le matériau devient un MeshPhysicalMaterial. */
+  clearcoat?: number;
+  clearcoatRoughness?: number;
 }
 
 /**
@@ -74,25 +90,70 @@ export class ResourceScope {
       vertexColors = false,
       doubleSided = false,
       flatShading = false,
+      envMap = null,
+      envMapIntensity = 1,
+      clearcoat = 0,
+      clearcoatRoughness = 0,
     } = options;
+    const physical = clearcoat > 0;
     const hex = new THREE.Color(color).getHexString();
-    const key = [hex, roughness, metalness, emissive, vertexColors, doubleSided, flatShading].join(
-      '|',
-    );
-    this.materialKeys.push(key);
-    return sharedMaterials.acquire(
+    // L'image d'environnement fait partie de la clé : une nouvelle course (nouvelle image) ne
+    // reprend jamais un matériau qui pointerait vers l'image, libérée, de la course précédente.
+    const key = [
+      physical ? 'physical' : 'standard',
+      hex,
+      roughness,
+      metalness,
+      emissive,
+      vertexColors,
+      doubleSided,
+      flatShading,
+      envMap ? envMap.uuid : 'no-env',
+      envMapIntensity,
+      clearcoat,
+      clearcoatRoughness,
+    ].join('|');
+    const material = this.acquireMaterial(key, () => {
+      const parameters: THREE.MeshStandardMaterialParameters = {
+        color,
+        roughness,
+        metalness,
+        emissive,
+        vertexColors,
+        flatShading,
+        side: doubleSided ? THREE.DoubleSide : THREE.FrontSide,
+        envMap,
+        envMapIntensity,
+      };
+      return physical
+        ? new THREE.MeshPhysicalMaterial({ ...parameters, clearcoat, clearcoatRoughness })
+        : new THREE.MeshStandardMaterial(parameters);
+    });
+    if (!(material instanceof THREE.MeshStandardMaterial)) {
+      throw new Error(`Matériau partagé d'un autre genre : ${key}`);
+    }
+    return material;
+  }
+
+  /**
+   * Matériau non éclairé (reflets des yeux) : même couleur au soleil comme à l'ombre, sans tone
+   * mapping, donc un blanc franc.
+   */
+  unlitMaterial(color: string): THREE.MeshBasicMaterial {
+    const key = ['unlit', new THREE.Color(color).getHexString()].join('|');
+    const material = this.acquireMaterial(
       key,
-      () =>
-        new THREE.MeshStandardMaterial({
-          color,
-          roughness,
-          metalness,
-          emissive,
-          vertexColors,
-          flatShading,
-          side: doubleSided ? THREE.DoubleSide : THREE.FrontSide,
-        }),
+      () => new THREE.MeshBasicMaterial({ color, toneMapped: false }),
     );
+    if (!(material instanceof THREE.MeshBasicMaterial)) {
+      throw new Error(`Matériau partagé d'un autre genre : ${key}`);
+    }
+    return material;
+  }
+
+  private acquireMaterial(key: string, create: () => SharedMaterial): SharedMaterial {
+    this.materialKeys.push(key);
+    return sharedMaterials.acquire(key, create);
   }
 
   /** Ressource propre au modèle (non partagée), libérée avec lui. */
