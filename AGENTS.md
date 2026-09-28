@@ -64,3 +64,5 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 - Every change MUST bump the version in the same branch / pull request, with `npm run release:patch` (bug fix), `npm run release:minor` (new feature) or `npm run release:major` (breaking change). These scripts update both `package.json` and `package-lock.json`.
 - Bump only once per pull request, from the version on `main`.
 - Every pull request MUST add its version at the top of `CHANGELOG.md` (in French, same format as the existing entries): one short line per change, prefixed « Ajout », « Modification » or « Correction ». Keep it concise: no details, no measurements.
+- The version heading MUST link its pull request: `## [x.y.z] – dd/mm/yyyy · [MR #N](https://github.com/eddyacthergal/super-wouf-kart/pull/N)`. The number is only known once the pull request is opened: right after opening it, add the link to the heading in a last commit on the branch, before merging. If the pull request is opened by the user, ask for its number.
+- One version per pull request: do not start a branch from another unmerged branch that already bumped the version; branch from `main`.

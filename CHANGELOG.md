@@ -2,40 +2,40 @@
 
 Versionnage sémantique. Dates de fusion dans `main`.
 
-## [0.7.3] – 28/09/2026
+## [0.7.3] – 28/09/2026 · [MR #13](https://github.com/eddyacthergal/super-wouf-kart/pull/13)
 
 - Modification : dérapage plus exigeant et turbos de dérapage plus courts.
 - Modification : frotter une haie freine vraiment.
 - Modification : le turbo de dérapage n'annule plus le ralentissement sur l'herbe.
 
-## [0.7.2] – 28/09/2026
+## [0.7.2] – 28/09/2026 · [MR #12](https://github.com/eddyacthergal/super-wouf-kart/pull/12)
 
 - Correction : turbo affiché pendant l'arrêt net du sifflet.
 - Correction : objets lancés sans cible par l'IA quand le premier est arrivé.
 - Correction : base du joystick tactile décalée quand la taille de police augmente.
 - Correction : course qui continuait sans image après la perte du contexte WebGL.
 
-## [0.7.1] – 28/09/2026
+## [0.7.1] – 28/09/2026 · [MR #12](https://github.com/eddyacthergal/super-wouf-kart/pull/12)
 
 - Ajout : rapport de revue de la qualité du code et feuille de route de refactorisation.
 
-## [0.7.0] – 27/09/2026
+## [0.7.0] – 27/09/2026 · [MR #11](https://github.com/eddyacthergal/super-wouf-kart/pull/11)
 
 - Ajout : aspiration, un turbo en roulant dans le sillage d'un concurrent.
 - Ajout : deux objets en réserve.
 - Ajout : cadeaux Écureuil, Os en or, Sifflet et Super-collier.
 
-## [0.6.0] – 27/09/2026
+## [0.6.0] – 27/09/2026 · [MR #10](https://github.com/eddyacthergal/super-wouf-kart/pull/10)
 
 - Modification : relief (côtes, descentes, virages relevés) sur Grand Jardin, Potager, Parc enneigé et Plage.
 
-## [0.5.0] – 27/09/2026
+## [0.5.0] – 27/09/2026 · [MR #9](https://github.com/eddyacthergal/super-wouf-kart/pull/9)
 
 - Ajout : circuits décrits en fichiers JSON (coins, rayons, altitude, dévers).
 - Ajout : relief : côtes, descentes et virages relevés, qui changent la vitesse.
 - Ajout : circuit La Colline.
 
-## [0.4.1] – 27/09/2026
+## [0.4.1] – 27/09/2026 · [MR #8](https://github.com/eddyacthergal/super-wouf-kart/pull/8)
 
 - Correction : dérapage au clavier, plus de choc ni de sortie de piste, même en gardant la flèche.
 - Ajout : journal des versions.
