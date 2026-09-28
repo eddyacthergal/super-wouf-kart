@@ -7,6 +7,7 @@ Versionnage sémantique. Dates de fusion dans `main`.
 - Modification : aperçu du garage mis en valeur (ombres, contre-jour, pilote plus grand).
 - Modification : karts vernis, chromes et yeux avec reflets.
 - Modification : karts bicolores et jantes chromées.
+- Modification : oreilles du chihuahua larges et arrondies, queues du chihuahua et du teckel courbées.
 - Ajout : compteur d'appels de dessin en mode débogage.
 
 ## [0.7.3] – 28/09/2026 · [MR #13](https://github.com/eddyacthergal/super-wouf-kart/pull/13)
