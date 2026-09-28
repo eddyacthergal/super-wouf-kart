@@ -19,7 +19,10 @@ export interface RaceSetup {
   muted: boolean;
   /** Préférence « réduire les animations » : pas de secousses ni d'effet de champ de vision. */
   reducedMotion: boolean;
-  /** Journalise les événements clés dans la console (préfixe « [WoufKart] »). */
+  /**
+   * Journalise les événements clés dans la console (préfixe « [WoufKart] »), avec les appels de
+   * dessin et triangles de la grille de départ (première image) puis toutes les 10 s de course.
+   */
   debug?: boolean;
   /** Commandes tactiles à l'écran (téléphone, tablette) : l'accélération devient automatique. */
   touchControls?: boolean;
