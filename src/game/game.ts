@@ -47,6 +47,12 @@ import { createTrack, trackOutline } from './track/track';
 const HUD_INTERVAL = 0.1;
 /** Intervalle du résumé périodique du journal de débogage (s de course). */
 const DEBUG_SUMMARY_INTERVAL = 10;
+/**
+ * Image (à partir de 1) dont les compteurs du rendu décrivent la grille de départ. Pas la
+ * première : three y prépare l'image d'environnement des reflets (PMREM) par des rendus imbriqués,
+ * qui remettent ses compteurs à zéro en cours d'image (ils en perdraient plus de la moitié).
+ */
+const GRID_STATS_FRAME = 2;
 const LOG_PREFIX = '[WoufKart]';
 
 // ---------------------------------------------------------------------------
@@ -201,6 +207,7 @@ function startRace(
   let hudElapsed = 0;
   let nextSummary = DEBUG_SUMMARY_INTERVAL;
   let gridStatsLogged = false;
+  let framesRendered = 0;
 
   const publishHud = (): void => callbacks.onHud(buildHudSnapshot(state, wrongWay));
 
@@ -270,8 +277,8 @@ function startRace(
 
   const render = (alpha: number, frameDt: number): void => {
     renderer.render(state, alpha, frameDt, frameEvents);
-    if (!gridStatsLogged) {
-      // Première image : la grille de départ, pendant le compte à rebours.
+    if (!gridStatsLogged && ++framesRendered >= GRID_STATS_FRAME) {
+      // La grille de départ, pendant le compte à rebours.
       gridStatsLogged = true;
       const stats = describeRenderStats();
       if (stats) log(`Grille de départ : ${stats}`);

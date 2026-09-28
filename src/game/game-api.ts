@@ -21,7 +21,7 @@ export interface RaceSetup {
   reducedMotion: boolean;
   /**
    * Journalise les événements clés dans la console (préfixe « [WoufKart] »), avec les appels de
-   * dessin et triangles de la grille de départ (première image) puis toutes les 10 s de course.
+   * dessin et triangles de la grille de départ (deuxième image) puis toutes les 10 s de course.
    */
   debug?: boolean;
   /** Commandes tactiles à l'écran (téléphone, tablette) : l'accélération devient automatique. */

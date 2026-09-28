@@ -522,14 +522,26 @@ describe('createGameWithDeps — boucle', () => {
     ).toBe(true);
   }, 60_000);
 
-  it('en débogage, journalise dès la première image les appels de dessin et triangles de la grille', () => {
+  it('en débogage, journalise à la deuxième image les appels de dessin et triangles de la grille', () => {
     const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
     const h = harness();
     start(h, { debug: true });
+    const gridMessages = (): string[] =>
+      info.mock.calls
+        .map((call) => String(call[0]))
+        .filter((message) => message.startsWith('[WoufKart] Grille de départ'));
+
+    // Première image : three y prépare les reflets (PMREM) par des rendus imbriqués qui remettent
+    // ses compteurs à zéro en cours d'image. Ils seraient faux : rien n'est lu.
+    h.frames.frame();
+    expect(gridMessages()).toEqual([]);
+    expect(h.renderer.statsCalls).toBe(0);
+
     h.frames.frame();
     expect(h.rec.phases.at(-1)).toBe('countdown');
-    const messages = info.mock.calls.map((call) => String(call[0]));
-    expect(messages).toContain('[WoufKart] Grille de départ : 812 appels de dessin, 912345 triangles');
+    expect(gridMessages()).toEqual([
+      '[WoufKart] Grille de départ : 812 appels de dessin, 912345 triangles',
+    ]);
 
     // Lus une seule fois, pas à chaque image (le résumé périodique ne vient qu'après 10 s de course).
     h.frames.frames(60, FAST_FRAME_MS);
