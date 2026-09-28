@@ -56,6 +56,7 @@ export interface DogLook {
 
   earStyle: EarStyle;
   earLength: number;
+  /** Largeur de la base pour les oreilles dressées et tombantes ; rayon du cône pour les autres. */
   earWidth: number;
 
   legRadius: number;
@@ -109,7 +110,7 @@ const CHIHUAHUA: BreedDefinition = {
     wrinkles: false,
     earStyle: 'erect',
     earLength: 0.34,
-    earWidth: 0.15,
+    earWidth: 0.22,
     legRadius: 0.042,
     hindLegLength: 0.17,
     hindLegAngle: 1.25,
