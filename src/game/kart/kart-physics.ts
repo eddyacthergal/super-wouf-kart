@@ -35,8 +35,6 @@ const REVERSE_ACCELERATION_FACTOR = 0.5;
 const DRIFT_STEER_THRESHOLD = 0.2;
 /** Sous cette fraction de DRIFT.minSpeed, le dérapage s'annule sans boost. */
 const DRIFT_CANCEL_RATIO = 0.7;
-/** Charge supplémentaire quand on braque dans le sens du dérapage. */
-const DRIFT_CHARGE_STEER_BONUS = 0.5;
 /** Paliers de charge signalés par un événement 'drift-tier'. */
 const CHARGED_TIERS: readonly DriftTier[] = [1, 2, 3];
 
@@ -315,7 +313,7 @@ function stepDrift(
         steer * drift.direction,
         DRIFT.steerResponse * dt,
       );
-      drift.charge += dt * (1 + DRIFT_CHARGE_STEER_BONUS * Math.max(0, steer * drift.direction));
+      drift.charge += dt * (1 + DRIFT.chargeSteerBonus * steer * drift.direction);
       // Un événement par palier franchi, même si un grand pas en franchit plusieurs.
       const tier = tierFor(drift.charge);
       for (const reached of CHARGED_TIERS) {

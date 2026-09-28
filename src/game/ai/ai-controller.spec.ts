@@ -555,7 +555,10 @@ describe('AiController', () => {
 
   describe('dérapage', () => {
     describe.each([1, -1] as const)('long virage serré (sens %d)', (turn) => {
-      it.each([1, 2] as const)(
+      // Avec le palier 2 repoussé à 2 s de charge, ce virage (≈75 m d'arc) ne suffit plus à
+      // l'atteindre : voir « une IA qui vise le palier 2 tient son dérapage plus longtemps » plus
+      // bas pour la comparaison palier 1 / palier 2.
+      it.each([1] as const)(
         'dérape, atteint le palier %d visé, relâche en sortie et reste sur la route',
         (targetTier) => {
           const straight = 120;
@@ -603,7 +606,7 @@ describe('AiController', () => {
 
     it('une IA qui vise le palier 2 tient son dérapage plus longtemps que celle qui vise le palier 1', () => {
       const releases = (targetTier: 1 | 2): { tier: number; at: number }[] => {
-        // Épingles de 13 m de rayon : le palier 2 n'arrive qu'en toute fin de virage.
+        // Épingles de 13 m de rayon.
         const track = createSegmentTrack(stadium(100, 13));
         const racer = placeRacer(track, 1, 10, 0, { speed: 20 });
         const race = raceOf(track, [racer]);
@@ -627,9 +630,11 @@ describe('AiController', () => {
       };
       const tierOne = releases(1);
       const tierTwo = releases(2);
-      // Deux virages par tour : relâché dès le palier 1 en sortie, ou tenu jusqu'au palier 2.
+      // Deux virages par tour. Avec les paliers repoussés (palier 2 à 2 s de charge), cette
+      // épingle ne permet plus d'atteindre le palier 2 même en visant plus haut : seule la durée
+      // tenue distingue encore les deux IA (celle qui vise plus haut relâche plus tard).
       expect(tierOne.map((release) => release.tier)).toEqual([1, 1]);
-      expect(tierTwo.map((release) => release.tier)).toEqual([2, 2]);
+      expect(tierTwo.map((release) => release.tier)).toEqual([1, 1]);
       tierOne.forEach((release, i) => expect(release.at).toBeLessThan(tierTwo[i].at));
     });
 
