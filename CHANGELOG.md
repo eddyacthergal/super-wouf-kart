@@ -2,6 +2,13 @@
 
 Versionnage sémantique. Dates de fusion dans `main`.
 
+## [0.8.0] – 28/09/2026
+
+- Modification : aperçu du garage mis en valeur (ombres, contre-jour, pilote plus grand).
+- Modification : karts vernis, chromes et yeux avec reflets.
+- Modification : karts bicolores et jantes chromées.
+- Ajout : compteur d'appels de dessin en mode débogage.
+
 ## [0.7.3] – 28/09/2026 · [MR #13](https://github.com/eddyacthergal/super-wouf-kart/pull/13)
 
 - Modification : dérapage plus exigeant et turbos de dérapage plus courts.
