@@ -15,10 +15,13 @@ const visuals: RacerVisuals[] = [];
 /** Texture d'étiquette factice (les vraies demandent un canvas 2D, absent en Node). */
 const fakeTag: NameTagFactory = () => new THREE.DataTexture(new Uint8Array(4), 1, 1);
 
-function setup(factory?: NameTagFactory): { racers: RacerVisuals; race: RaceState } {
+function setup(
+  factory?: NameTagFactory,
+  environment: THREE.Texture | null = null,
+): { racers: RacerVisuals; race: RaceState } {
   const race = createTestRace(track, 4);
   const bag = new DisposalBag();
-  const racers = new RacerVisuals(race.racers, bag, factory);
+  const racers = new RacerVisuals(race.racers, bag, { createTagTexture: factory, environment });
   bags.push(bag);
   visuals.push(racers);
   return { racers, race };
@@ -30,6 +33,19 @@ afterEach(() => {
 });
 
 describe('RacerVisuals', () => {
+  it('donne l’image d’environnement de la course à chaque modèle', () => {
+    const environment = new THREE.DataTexture(new Uint8Array(4), 1, 1);
+    environment.mapping = THREE.EquirectangularReflectionMapping;
+    const { racers } = setup(undefined, environment);
+    expect(racers.list).toHaveLength(4);
+    for (const visual of racers.list) {
+      const hood = visual.model.root.getObjectByName('kart-hood');
+      expect(hood).toBeInstanceOf(THREE.Mesh);
+      expect(((hood as THREE.Mesh).material as THREE.MeshStandardMaterial).envMap).toBe(environment);
+    }
+    environment.dispose();
+  });
+
   it('traduit l’état du kart en pose du modèle (dérapage, boost, tête-à-queue, saut)', () => {
     const { racers, race } = setup();
     const drifting = race.racers[1].kart;

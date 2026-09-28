@@ -9,6 +9,7 @@ import { clamp } from '../core/vec2';
 import type { TrackDecorHints, TrackThemeId } from '../track/track-definition';
 import { CameraRig, CHASE, type CameraTarget } from './camera-rig';
 import { Effects } from './effects';
+import { createEnvironmentMap, environmentStyleOf } from './environment-map';
 import { ItemVisuals } from './item-visuals';
 import { SceneLighting } from './lighting';
 import { RacerVisuals } from './racer-visuals';
@@ -68,7 +69,11 @@ export class RaceScene {
     let racerVisuals: RacerVisuals | null = null;
     try {
       world = theme.buildWorld(track, options.decor, terrain);
-      racerVisuals = new RacerVisuals(racers, this.bag);
+      // Reflets des pilotes seulement (pas de scene.environment) ; image libérée avec la course.
+      const environment = this.bag.add(
+        createEnvironmentMap(environmentStyleOf(theme.sky, theme.light)),
+      );
+      racerVisuals = new RacerVisuals(racers, this.bag, { environment });
       this.world = world;
       this.racers = racerVisuals;
       this.sky = buildSkyDome(this.bag, theme.sky);

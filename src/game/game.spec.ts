@@ -22,6 +22,7 @@ import type {
   RaceResultEntry,
   RaceSetup,
 } from './game-api';
+import type { RenderStats } from './render/race-renderer';
 
 // ---------------------------------------------------------------------------
 // Doublures
@@ -35,6 +36,9 @@ class FakeRenderer implements RendererLike {
   readonly resizes: [number, number][] = [];
   disposeCalls = 0;
   failWith: unknown = null;
+  /** Compteurs renvoyés par stats(), et nombre de lectures (débogage seulement). */
+  readonly lastStats: RenderStats = { calls: 812, triangles: 912_345 };
+  statsCalls = 0;
 
   render(state: RaceState, _alpha: number, _frameDt: number, events: readonly GameEvent[]): void {
     if (this.failWith !== null) throw this.failWith;
@@ -42,6 +46,11 @@ class FakeRenderer implements RendererLike {
     this.lastState = state;
     const playerFinished = state.racers[state.playerId]?.finished ?? false;
     for (const event of events) this.received.push({ phase: state.phase, playerFinished, event });
+  }
+
+  stats(): Readonly<RenderStats> {
+    this.statsCalls++;
+    return this.lastStats;
   }
 
   resize(width: number, height: number): void {
@@ -505,14 +514,48 @@ describe('createGameWithDeps — boucle', () => {
     ).toBe(true);
     expect(messages.some((message) => message.startsWith('[WoufKart] Résultats'))).toBe(true);
     expect(messages.some((message) => /rang \d\/8 · tour 1\/1/.test(message))).toBe(true);
+    // Le résumé périodique donne aussi les compteurs du rendu (R15).
+    expect(
+      messages.some((message) =>
+        /rang \d\/8 · tour 1\/1 · 812 appels de dessin, 912345 triangles$/.test(message),
+      ),
+    ).toBe(true);
   }, 60_000);
 
-  it('sans debug, rien n’est journalisé', () => {
+  it('en débogage, journalise à la deuxième image les appels de dessin et triangles de la grille', () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    const h = harness();
+    start(h, { debug: true });
+    const gridMessages = (): string[] =>
+      info.mock.calls
+        .map((call) => String(call[0]))
+        .filter((message) => message.startsWith('[WoufKart] Grille de départ'));
+
+    // Première image : three y prépare les reflets (PMREM) par des rendus imbriqués qui remettent
+    // ses compteurs à zéro en cours d'image. Ils seraient faux : rien n'est lu.
+    h.frames.frame();
+    expect(gridMessages()).toEqual([]);
+    expect(h.renderer.statsCalls).toBe(0);
+
+    h.frames.frame();
+    expect(h.rec.phases.at(-1)).toBe('countdown');
+    expect(gridMessages()).toEqual([
+      '[WoufKart] Grille de départ : 812 appels de dessin, 912345 triangles',
+    ]);
+
+    // Lus une seule fois, pas à chaque image (le résumé périodique ne vient qu'après 10 s de course).
+    h.frames.frames(60, FAST_FRAME_MS);
+    expect(h.rec.phases).toContain('racing');
+    expect(h.renderer.statsCalls).toBe(1);
+  });
+
+  it('sans debug, rien n’est journalisé et les compteurs du rendu ne sont jamais lus', () => {
     const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
     const h = harness();
     start(h, { autopilot: true });
     h.frames.frames(100, FAST_FRAME_MS);
     expect(info).not.toHaveBeenCalled();
+    expect(h.renderer.statsCalls).toBe(0);
   });
 
   it('une erreur dans la boucle est transmise à onError et arrête la boucle', () => {

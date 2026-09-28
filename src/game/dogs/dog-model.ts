@@ -26,6 +26,20 @@ const PUPIL_COLOR = '#16110f';
 const TONGUE_COLOR = '#f2798c';
 /** Plis du front du carlin : un peu plus foncés que le pelage. */
 const WRINKLE_COLOR = '#c49a66';
+const EYE_WHITE_COLOR = '#ffffff';
+/** Reflet des yeux : non éclairé, il reste blanc à l'ombre. */
+const EYE_SHINE_COLOR = '#ffffff';
+
+/**
+ * Truffe et yeux brillants, comme mouillés : ils reflètent l'image d'environnement (ciel, soleil).
+ * Le blanc de l'œil en reçoit moins, pour ne pas se teinter de ciel. La fourrure n'en reçoit pas :
+ * elle s'éclaircirait sans gagner de reflet.
+ */
+const GLOSS = {
+  nose: { roughness: 0.25, envMapIntensity: 0.8 },
+  eyeWhite: { roughness: 0.25, envMapIntensity: 0.4 },
+  pupil: { roughness: 0.15, envMapIntensity: 1 },
+} as const;
 
 /** Direction des bras vers le volant (vers l'avant, légèrement vers le bas). */
 const ARM_DIRECTION = new THREE.Vector3(0, -0.28, 1).normalize();
@@ -83,6 +97,8 @@ export interface DogOptions {
   grips: readonly [THREE.Vector3, THREE.Vector3];
   /** Tache claire du poitrail (masquée sous un pull). */
   showBelly: boolean;
+  /** Image d'environnement des reflets de la truffe et des yeux (null : aucun reflet). */
+  environment: THREE.Texture | null;
 }
 
 /** Pose d'une oreille gauche (+X) ; la droite est symétrique. */
@@ -184,7 +200,8 @@ export function buildDog(
   const bellyMaterial = scope.material(look.bellyColor, { roughness: 0.8 });
   const muzzleMaterial = scope.material(look.muzzleColor, { roughness: 0.75 });
   const earMaterial = scope.material(look.earColor, { roughness: 0.8 });
-  const noseMaterial = scope.material(NOSE_COLOR, { roughness: 0.25 });
+  const envMap = options.environment;
+  const noseMaterial = scope.material(NOSE_COLOR, { ...GLOSS.nose, envMap });
 
   const root = new THREE.Group();
   root.name = 'dog';
@@ -309,13 +326,9 @@ export function buildDog(
     new THREE.Vector3(0.2, 0.2, 0.12),
   );
   head.add(
-    mesh(whites, scope.material('#ffffff', { roughness: 0.3 }), 'dog-eye-whites'),
-    mesh(pupils, scope.material(PUPIL_COLOR, { roughness: 0.15 }), 'dog-pupils'),
-    mesh(
-      shines,
-      scope.material('#ffffff', { roughness: 0.2, emissive: '#9a9a9a' }),
-      'dog-eye-shines',
-    ),
+    mesh(whites, scope.material(EYE_WHITE_COLOR, { ...GLOSS.eyeWhite, envMap }), 'dog-eye-whites'),
+    mesh(pupils, scope.material(PUPIL_COLOR, { ...GLOSS.pupil, envMap }), 'dog-pupils'),
+    mesh(shines, scope.unlitMaterial(EYE_SHINE_COLOR), 'dog-eye-shines'),
   );
 
   // Taches : calottes sur les côtés de la tête (liseré blanc au milieu) et une tache sur le dos.

@@ -42,6 +42,68 @@ describe('ResourceScope', () => {
     scope.dispose();
   });
 
+  it('pose l’image d’environnement et le vernis sur le seul matériau qui les demande', () => {
+    const scope = new ResourceScope();
+    const environment = new THREE.DataTexture(new Uint8Array(4), 1, 1);
+    environment.mapping = THREE.EquirectangularReflectionMapping;
+    const plain = scope.material('#d7322e', { roughness: 0.35 });
+    const glossy = scope.material('#d7322e', {
+      roughness: 0.35,
+      envMap: environment,
+      envMapIntensity: 0.5,
+    });
+    const varnished = scope.material('#d7322e', {
+      roughness: 0.35,
+      envMap: environment,
+      envMapIntensity: 0.5,
+      clearcoat: 1,
+      clearcoatRoughness: 0.1,
+    });
+    expect(plain.envMap).toBeNull();
+    expect(glossy.envMap).toBe(environment);
+    expect(glossy.envMapIntensity).toBe(0.5);
+    expect(glossy).not.toBeInstanceOf(THREE.MeshPhysicalMaterial);
+    expect(varnished).toBeInstanceOf(THREE.MeshPhysicalMaterial);
+    expect((varnished as THREE.MeshPhysicalMaterial).clearcoat).toBe(1);
+    expect((varnished as THREE.MeshPhysicalMaterial).clearcoatRoughness).toBe(0.1);
+    // Chaque réglage des reflets distingue le matériau partagé.
+    expect(new Set([plain, glossy, varnished]).size).toBe(3);
+    const stronger = scope.material('#d7322e', {
+      roughness: 0.35,
+      envMap: environment,
+      envMapIntensity: 1,
+    });
+    expect(stronger).not.toBe(glossy);
+    // Une autre image (une autre course) donne un autre matériau : jamais de texture libérée.
+    const other = new THREE.DataTexture(new Uint8Array(4), 1, 1);
+    const next = scope.material('#d7322e', { roughness: 0.35, envMap: other, envMapIntensity: 0.5 });
+    expect(next).not.toBe(glossy);
+    expect(next.envMap).toBe(other);
+    scope.dispose();
+    environment.dispose();
+    other.dispose();
+  });
+
+  it('fabrique des matériaux non éclairés, partagés et libérés avec le modèle', () => {
+    const before = sharedMaterials.size;
+    const first = new ResourceScope();
+    const second = new ResourceScope();
+    const shine = first.unlitMaterial('#ffffff');
+    expect(shine).toBeInstanceOf(THREE.MeshBasicMaterial);
+    expect(shine.toneMapped).toBe(false);
+    expect(shine.color.getHexString()).toBe('ffffff');
+    expect(second.unlitMaterial('#FFFFFF')).toBe(shine);
+    // Pas confondu avec un matériau éclairé de même couleur.
+    expect(first.material('#ffffff')).not.toBe(shine);
+    const onDispose = vi.fn();
+    shine.addEventListener('dispose', onDispose);
+    first.dispose();
+    expect(onDispose).not.toHaveBeenCalled();
+    second.dispose();
+    expect(onDispose).toHaveBeenCalledTimes(1);
+    expect(sharedMaterials.size).toBe(before);
+  });
+
   it('rend les ressources partagées et libère les ressources propres, une seule fois', () => {
     const geometriesBefore = sharedGeometries.size;
     const materialsBefore = sharedMaterials.size;

@@ -5,14 +5,23 @@
 import * as THREE from 'three';
 import type { GameEvent, RaceState, RacerState, TrackQuery } from '../core/types';
 import { RaceScene, type RaceSceneOptions } from './race-scene';
+import { applyRendererOutput } from './renderer-output';
 
 const MAX_PIXEL_RATIO = 2;
-const TONE_MAPPING_EXPOSURE = 1;
+
+/** Compteurs de la dernière image dessinée, passe d'ombre comprise (journal `?debug=1`). */
+export interface RenderStats {
+  /** Appels de dessin. */
+  calls: number;
+  triangles: number;
+}
 
 export class RaceRenderer {
   private readonly renderer: THREE.WebGLRenderer;
   private readonly raceScene: RaceScene;
   private disposed = false;
+  /** Recopie de `renderer.info`, préallouée : une lecture n'alloue rien. */
+  private readonly lastStats: RenderStats = { calls: 0, triangles: 0 };
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -33,13 +42,8 @@ export class RaceRenderer {
       );
     }
     const renderer = this.renderer;
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = TONE_MAPPING_EXPOSURE;
-    renderer.shadowMap.enabled = true;
-    // PCFSoftShadowMap a été retiré de three r186 (avertissement puis repli) : PCFShadowMap
-    // y filtre désormais en douceur selon shadow.radius.
-    renderer.shadowMap.type = THREE.PCFShadowMap;
+    // Mêmes réglages que l'aperçu du garage (ACES, ombres PCF).
+    applyRendererOutput(renderer, THREE);
     const ratio = typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1;
     renderer.setPixelRatio(Math.min(ratio, MAX_PIXEL_RATIO));
 
@@ -58,6 +62,17 @@ export class RaceRenderer {
     if (this.disposed) return;
     this.raceScene.update(state, alpha, frameDt, events);
     this.renderer.render(this.raceScene.scene, this.raceScene.camera);
+  }
+
+  /**
+   * Appels de dessin et triangles de la dernière image. three remet `info` à zéro au début de
+   * chaque `render()`, avant la passe d'ombre : les deux passes sont comptées.
+   */
+  stats(): Readonly<RenderStats> {
+    const counters = this.renderer.info.render;
+    this.lastStats.calls = counters.calls;
+    this.lastStats.triangles = counters.triangles;
+    return this.lastStats;
   }
 
   /** Taille du tampon de dessin en pixels CSS (le style du canvas n'est pas modifié). */

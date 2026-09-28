@@ -38,7 +38,7 @@ import {
 import { TouchInput } from './input/touch-input';
 import { createRoster } from './race/roster';
 import { RaceSimulation } from './race/simulation';
-import { RaceRenderer } from './render/race-renderer';
+import { RaceRenderer, type RenderStats } from './render/race-renderer';
 import type { RaceSceneOptions } from './render/race-scene';
 import { findTrack } from './track/catalog';
 import { createTrack, trackOutline } from './track/track';
@@ -47,6 +47,12 @@ import { createTrack, trackOutline } from './track/track';
 const HUD_INTERVAL = 0.1;
 /** Intervalle du résumé périodique du journal de débogage (s de course). */
 const DEBUG_SUMMARY_INTERVAL = 10;
+/**
+ * Image (à partir de 1) dont les compteurs du rendu décrivent la grille de départ. Pas la
+ * première : three y prépare l'image d'environnement des reflets (PMREM) par des rendus imbriqués,
+ * qui remettent ses compteurs à zéro en cours d'image (ils en perdraient plus de la moitié).
+ */
+const GRID_STATS_FRAME = 2;
 const LOG_PREFIX = '[WoufKart]';
 
 // ---------------------------------------------------------------------------
@@ -57,6 +63,8 @@ export interface RendererLike {
   render(state: RaceState, alpha: number, frameDt: number, events: readonly GameEvent[]): void;
   resize(width: number, height: number): void;
   dispose(): void;
+  /** Compteurs de la dernière image (appels de dessin, triangles), lus seulement en débogage. */
+  stats?(): Readonly<RenderStats>;
 }
 
 export interface AudioLike {
@@ -198,8 +206,19 @@ function startRace(
   let resultsSent = false;
   let hudElapsed = 0;
   let nextSummary = DEBUG_SUMMARY_INTERVAL;
+  let gridStatsLogged = false;
+  let framesRendered = 0;
 
   const publishHud = (): void => callbacks.onHud(buildHudSnapshot(state, wrongWay));
+
+  /**
+   * Débogage : appels de dessin et triangles de la dernière image rendue, passe d'ombre comprise.
+   * Null hors débogage (compteurs jamais lus) ou si le rendu ne sait pas compter.
+   */
+  const describeRenderStats = (): string | null => {
+    const stats = setup.debug === true ? renderer.stats?.() : undefined;
+    return stats ? `${stats.calls} appels de dessin, ${stats.triangles} triangles` : null;
+  };
 
   const playerAudio = (active: boolean): PlayerAudioState => {
     if (!player) return { ...SILENT_PLAYER };
@@ -247,8 +266,10 @@ function startRace(
     if (state.phase === 'racing' && state.time >= nextSummary) {
       nextSummary += DEBUG_SUMMARY_INTERVAL;
       if (player) {
+        const stats = describeRenderStats();
         log(
-          `t = ${state.time.toFixed(1)} s · rang ${player.rank}/${state.racers.length} · tour ${player.lap}/${state.laps}`,
+          `t = ${state.time.toFixed(1)} s · rang ${player.rank}/${state.racers.length} · tour ${player.lap}/${state.laps}` +
+            (stats ? ` · ${stats}` : ''),
         );
       }
     }
@@ -256,6 +277,12 @@ function startRace(
 
   const render = (alpha: number, frameDt: number): void => {
     renderer.render(state, alpha, frameDt, frameEvents);
+    if (!gridStatsLogged && ++framesRendered >= GRID_STATS_FRAME) {
+      // La grille de départ, pendant le compte à rebours.
+      gridStatsLogged = true;
+      const stats = describeRenderStats();
+      if (stats) log(`Grille de départ : ${stats}`);
+    }
     if (audioEvents.length > 0) audio.handleEvents(audioEvents, state.playerId);
     audio.updatePlayer(playerAudio(true));
     hudElapsed += frameDt;

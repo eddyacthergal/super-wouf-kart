@@ -5,9 +5,23 @@ import type { GameEvent, ItemEntity, RaceState, TrackQuery } from '../core/types
 import { forwardOf, lerpAngle } from '../core/vec2';
 import { createTestRace } from '../testing/fixtures';
 import { createGardenTrack } from '../track/track';
+import { createEnvironmentMap, environmentStyleOf } from './environment-map';
 import { RaceScene, type RaceSceneOptions } from './race-scene';
+import { SCENE_THEMES } from './themes';
 
 const DT = 1 / 60;
+/** Pièces des pilotes qui reflètent l'image d'environnement : coque, chromes, truffe et yeux. */
+const REFLECTIVE_PARTS = [
+  'kart-pod',
+  'kart-nose',
+  'kart-hood',
+  'kart-engine',
+  'exhaust-pipe',
+  'rim',
+  'dog-nose',
+  'dog-eye-whites',
+  'dog-pupils',
+];
 const scenes: RaceScene[] = [];
 let track: TrackQuery;
 
@@ -36,6 +50,38 @@ function racerRoot(scene: RaceScene, id: number): THREE.Object3D {
   });
   if (!found) throw new Error(`pilote ${id} introuvable`);
   return found;
+}
+
+/** Objets de la scène qui portent une image d'environnement, avec cette image. */
+function reflectiveObjects(scene: RaceScene): Array<{ object: THREE.Object3D; envMap: THREE.Texture }> {
+  const found: Array<{ object: THREE.Object3D; envMap: THREE.Texture }> = [];
+  scene.scene.traverse((object) => {
+    if (
+      !(
+        object instanceof THREE.Mesh ||
+        object instanceof THREE.Points ||
+        object instanceof THREE.Line ||
+        object instanceof THREE.Sprite
+      )
+    ) {
+      return;
+    }
+    const materials: THREE.Material[] = [object.material].flat();
+    for (const material of materials) {
+      if ('envMap' in material && material.envMap instanceof THREE.Texture) {
+        found.push({ object, envMap: material.envMap });
+      }
+    }
+  });
+  return found;
+}
+
+/** Vrai si `object` appartient au modèle d'un pilote. */
+function inRacer(object: THREE.Object3D): boolean {
+  for (let node: THREE.Object3D | null = object; node; node = node.parent) {
+    if (typeof node.userData['racerId'] === 'number') return true;
+  }
+  return false;
 }
 
 function run(scene: RaceScene, race: RaceState, frames: number, events: GameEvent[] = []): void {
@@ -384,6 +430,10 @@ describe('RaceScene', () => {
           if (material instanceof THREE.MeshStandardMaterial && material.map) {
             textures.add(material.map);
           }
+          // L'image d'environnement des pilotes.
+          if (material instanceof THREE.MeshStandardMaterial && material.envMap) {
+            textures.add(material.envMap);
+          }
         }
       }
     });
@@ -401,6 +451,56 @@ describe('RaceScene', () => {
     // Idempotent, et sans effet après coup.
     expect(() => scene.dispose()).not.toThrow();
     expect(() => scene.update(race, 1, DT, [])).not.toThrow();
+  });
+
+  it('pose l’image d’environnement sur les seules pièces réfléchissantes des pilotes, jamais sur la scène', () => {
+    const { scene, race } = setup();
+    run(scene, race, 2);
+    // Pas d'image globale : le décor et la fourrure ne paient pas les reflets.
+    expect(scene.scene.environment).toBeNull();
+    const reflective = reflectiveObjects(scene);
+    const environment = reflective[0]?.envMap;
+    expect(environment).toBeInstanceOf(THREE.DataTexture);
+    expect(environment?.mapping).toBe(THREE.EquirectangularReflectionMapping);
+    const parts = new Set<string>();
+    for (const { object, envMap } of reflective) {
+      expect(envMap, object.name).toBe(environment);
+      expect(inRacer(object), object.name).toBe(true);
+      expect(REFLECTIVE_PARTS, object.name).toContain(object.name);
+      parts.add(object.name);
+    }
+    expect([...parts].sort()).toEqual([...REFLECTIVE_PARTS].sort());
+  });
+
+  it('tire l’image d’environnement du ciel et du sol du thème', () => {
+    for (const theme of ['garden', 'snow', 'beach'] as const) {
+      const { scene } = setup({ reducedMotion: false, theme });
+      const environment = reflectiveObjects(scene)[0]?.envMap;
+      const expected = createEnvironmentMap(
+        environmentStyleOf(SCENE_THEMES[theme].sky, SCENE_THEMES[theme].light),
+      );
+      expect(environment, theme).toBeInstanceOf(THREE.DataTexture);
+      expect((environment as THREE.DataTexture).image.data, theme).toEqual(expected.image.data);
+      expected.dispose();
+    }
+  });
+
+  it('crée une image d’environnement par course et la libère avec elle', () => {
+    const first = setup().scene;
+    const second = setup().scene;
+    const firstMap = reflectiveObjects(first)[0]?.envMap;
+    const secondMap = reflectiveObjects(second)[0]?.envMap;
+    expect(firstMap).toBeDefined();
+    expect(secondMap).toBeDefined();
+    expect(firstMap).not.toBe(secondMap);
+    const onFirst = vi.fn();
+    const onSecond = vi.fn();
+    firstMap?.addEventListener('dispose', onFirst);
+    secondMap?.addEventListener('dispose', onSecond);
+    scenes.splice(scenes.indexOf(first), 1);
+    first.dispose();
+    expect(onFirst).toHaveBeenCalledTimes(1);
+    expect(onSecond).not.toHaveBeenCalled();
   });
 
   it('ajuste le rapport largeur/hauteur de la caméra', () => {
