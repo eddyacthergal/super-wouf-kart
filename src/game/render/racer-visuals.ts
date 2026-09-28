@@ -5,6 +5,7 @@
  */
 import * as THREE from 'three';
 import { DRIFT } from '../core/constants';
+import { isBoostActive } from '../core/kart-state';
 import type { RaceState, RacerState } from '../core/types';
 import { clamp, lerpAngle } from '../core/vec2';
 import { buildRacerModel, type RacerModel, type RacerVisualState } from '../dogs/racer-model';
@@ -141,7 +142,7 @@ export class RacerVisuals {
       pose.speed = kart.speed;
       pose.steer = kart.steer;
       pose.driftDirection = kart.drift.active ? kart.drift.direction : 0;
-      pose.boosting = kart.boostTime > 0;
+      pose.boosting = isBoostActive(kart);
       pose.spinning = kart.spinTime > 0;
       pose.hop = kart.hopTime > 0 ? Math.sin(Math.PI * (1 - kart.hopTime / DRIFT.hopDuration)) : 0;
       visual.model.update(dt, pose);

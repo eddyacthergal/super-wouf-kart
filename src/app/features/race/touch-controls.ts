@@ -6,7 +6,7 @@ export interface TouchControlChange {
   pressed: boolean;
 }
 
-/** Joystick affiché : coin haut gauche de sa base (px, dans la zone de direction) et décalage du bouton. */
+/** Joystick affiché : centre de sa base (px, dans la zone de direction) et décalage du bouton. */
 interface Stick {
   left: number;
   top: number;
@@ -18,8 +18,6 @@ const ACTIONS: readonly TouchAction[] = ['brake', 'drift', 'item'];
 
 /** Course du bouton du joystick (px) : le braquage est maximal à cette distance du centre. */
 export const STICK_RADIUS = 56;
-/** Demi-côté de la base du joystick (px), cf. `.touch-stick-base` (8rem) dans styles.css. */
-const STICK_BASE_HALF = 64;
 /** Zone morte (fraction de la course) : un pouce qui tremble ne fait pas zigzaguer le kart. */
 const DEAD_ZONE = 0.12;
 
@@ -52,6 +50,7 @@ const DEAD_ZONE = 0.12;
       @if (stick(); as current) {
         <div
           class="touch-stick-base absolute"
+          style="transform: translate(-50%, -50%)"
           [style.left.px]="current.left"
           [style.top.px]="current.top"
         >
@@ -174,10 +173,11 @@ export class TouchControls {
     this.stickPointer = event.pointerId;
     const zone = zoneRect(event);
     this.stickOrigin = { x: event.clientX, y: event.clientY };
-    // Base centrée sous le pouce.
+    // Base centrée sous le pouce par translate(-50%, -50%) (template) : pas de demi-côté en
+    // pixels à supposer ici, la base reste centrée quelle que soit sa taille CSS réelle.
     this.stick.set({
-      left: event.clientX - zone.left - STICK_BASE_HALF,
-      top: event.clientY - zone.top - STICK_BASE_HALF,
+      left: event.clientX - zone.left,
+      top: event.clientY - zone.top,
       dx: 0,
       dy: 0,
     });

@@ -66,6 +66,15 @@ describe('RacerVisuals', () => {
     for (const spy of spies) expect(spy).toHaveBeenCalledWith(DT, expect.any(Object));
   });
 
+  it('turbo pas actif dans la pose pendant l’arrêt net, même avec du turbo en réserve', () => {
+    const { racers, race } = setup();
+    const kart = race.racers[1].kart;
+    kart.boostTime = 0.4;
+    kart.stunTime = 0.2;
+    racers.update(race, 1, DT);
+    expect(racers.get(1)!.visual.boosting).toBe(false);
+  });
+
   it('pose le kart à sa hauteur interpolée, nez relevé en montée, penché à gauche si roll > 0', () => {
     const { racers, race } = setup();
     const racer = race.racers[0];

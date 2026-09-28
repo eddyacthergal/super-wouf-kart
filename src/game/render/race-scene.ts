@@ -3,6 +3,7 @@
  * sans WebGL : constructible et testable en Node. RaceRenderer se contente de le dessiner.
  */
 import * as THREE from 'three';
+import { isBoostActive } from '../core/kart-state';
 import type { GameEvent, RaceState, RacerState, TrackQuery } from '../core/types';
 import { clamp } from '../core/vec2';
 import type { TrackDecorHints, TrackThemeId } from '../track/track-definition';
@@ -107,7 +108,7 @@ export class RaceScene {
       this.target.x = visual.position.x;
       this.target.z = visual.position.z;
       this.target.heading = visual.heading;
-      this.target.boosting = followed.kart.boostTime > 0;
+      this.target.boosting = isBoostActive(followed.kart);
       this.target.y = visual.position.y;
       this.shakeOnEvents(events, followed.id);
       this.rig.update(this.target, state.phase, state.countdown, dt);

@@ -7,6 +7,7 @@ import { AiController } from './ai/ai-controller';
 import { createAiPersonality } from './ai/personality';
 import { AudioEngine, type PlayerAudioState } from './audio/audio-engine';
 import { RACE_LAPS } from './core/constants';
+import { isBoostActive } from './core/kart-state';
 import { createRng } from './core/rng';
 import type {
   DriverController,
@@ -165,6 +166,7 @@ function startRace(
 
   let paused = false;
   let disposed = false;
+  let contextLost = false;
 
   // La touche pause ne fait que mettre en pause : la reprise passe par le menu de l'interface.
   const keyboard = deps.createKeyboard({ onPauseRequest: () => requestPause() });
@@ -207,7 +209,7 @@ function startRace(
       speed01: maxSpeed > 0 ? clamp(Math.abs(kart.speed) / maxSpeed, 0, 1) : 0,
       drifting: kart.drift.active,
       driftTier: kart.drift.active ? kart.drift.tier : 0,
-      boosting: kart.boostTime > 0 && kart.stunTime <= 0,
+      boosting: isBoostActive(kart),
       offroad: kart.offroad,
       active: active && state.phase === 'racing',
     };
@@ -293,6 +295,11 @@ function startRace(
 
   const resume = (): void => {
     if (disposed || !paused) return;
+    if (contextLost) {
+      // Le navigateur n'a pas rendu le contexte : reprendre ferait rouler sans image.
+      callbacks.onError(new Error('WebGL context lost'));
+      return;
+    }
     paused = false;
     // Touches enfoncées pendant la pause (menu) : oubliées, la répétition les rétablit si besoin.
     keyboard.reset();
@@ -327,6 +334,25 @@ function startRace(
   };
   doc.addEventListener('visibilitychange', onVisibilityChange);
   cleanups.push(() => doc.removeEventListener('visibilitychange', onVisibilityChange));
+
+  // three.js appelle déjà preventDefault : le navigateur peut rendre le contexte, et three.js renvoie
+  // alors textures, tampons et shaders au GPU tout seul. En attendant, la course s'arrête.
+  const onContextLost = (event: Event): void => {
+    event.preventDefault();
+    contextLost = true;
+    log('Contexte WebGL perdu');
+    requestPause();
+  };
+  const onContextRestored = (): void => {
+    contextLost = false;
+    log('Contexte WebGL rendu');
+  };
+  canvas.addEventListener('webglcontextlost', onContextLost);
+  canvas.addEventListener('webglcontextrestored', onContextRestored);
+  cleanups.push(() => {
+    canvas.removeEventListener('webglcontextlost', onContextLost);
+    canvas.removeEventListener('webglcontextrestored', onContextRestored);
+  });
 
   // Le son est autorisé tout de suite (on arrive ici par un clic) et, par précaution, au premier geste.
   const resumeAudio = (): void => {

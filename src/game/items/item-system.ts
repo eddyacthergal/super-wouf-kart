@@ -199,6 +199,21 @@ export function useItem(
 }
 
 /**
+ * Vrai s'il existe un pilote mieux classé que `racer`, encore en course et non protégé par le
+ * super-collier : seule cible réelle du sifflet et de la balle. Un pilote mieux classé mais
+ * arrivé, comme un rival sous super-collier, ne justifie pas l'usage de l'objet.
+ */
+export function hasRivalAhead(race: RaceState, racer: RacerState): boolean {
+  return race.racers.some(
+    (other) =>
+      other.id !== racer.id &&
+      !other.finished &&
+      other.rank < racer.rank &&
+      other.kart.collarTime <= 0,
+  );
+}
+
+/**
  * Cible de la balle : le pilote encore en course le plus proche devant au classement
  * (rang inférieur le plus grand). Les pilotes arrivés sont ignorés ; null si personne devant.
  */
@@ -211,10 +226,24 @@ function ballTarget(race: RaceState, racer: RacerState): RacerState | null {
   return target;
 }
 
-/** Cible de l'écureuil : le premier encore en course, ou le deuxième si c'est le lanceur. */
-function squirrelTarget(race: RaceState, ownerId: number): RacerState | null {
-  const running = race.racers.filter((racer) => !racer.finished).sort((a, b) => a.rank - b.rank);
-  return running.find((racer) => racer.id !== ownerId) ?? null;
+/**
+ * Cible de l'écureuil : le pilote encore en course le mieux classé parmi ceux mieux classés que
+ * le lanceur. Si le lanceur est déjà en tête (aucun pilote, arrivé ou non, n'est mieux classé),
+ * viser le meilleur autre pilote encore en course, pour une défense. Sinon — les seuls pilotes
+ * mieux classés que le lanceur sont arrivés — aucune cible réelle : ne pas viser un pilote qui,
+ * lui, est derrière le lanceur.
+ */
+export function squirrelTarget(race: RaceState, ownerId: number): RacerState | null {
+  const owner = race.racers.find((racer) => racer.id === ownerId);
+  if (owner === undefined) return null;
+  let rival: RacerState | null = null;
+  for (const other of race.racers) {
+    if (other.id === ownerId || other.finished) continue;
+    if (rival === null || other.rank < rival.rank) rival = other;
+  }
+  if (rival === null) return null;
+  if (rival.rank < owner.rank) return rival;
+  return owner.rank === 1 ? rival : null;
 }
 
 function spawnEntity(

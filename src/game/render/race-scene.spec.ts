@@ -276,6 +276,14 @@ describe('RaceScene', () => {
     expect(reduced.scene.camera.fov).toBe(65);
   });
 
+  it('n’élargit pas le champ de vision pendant l’arrêt net, même avec du turbo en réserve', () => {
+    const { scene, race } = setup({ reducedMotion: false });
+    race.racers[0].kart.boostTime = 5;
+    race.racers[0].kart.stunTime = 2;
+    run(scene, race, 60);
+    expect(scene.camera.fov).toBe(65);
+  });
+
   it('secoue la caméra sur un impact ou une haie du joueur, sauf si « réduire les animations »', () => {
     const measure = (reducedMotion: boolean, events: GameEvent[]): number => {
       const { scene, race } = setup({ reducedMotion });

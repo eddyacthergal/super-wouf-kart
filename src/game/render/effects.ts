@@ -5,6 +5,7 @@
  * Particules et traces en réserve préallouée.
  */
 import * as THREE from 'three';
+import { isBoostActive } from '../core/kart-state';
 import { createRng } from '../core/rng';
 import type { GameEvent, RaceState, TrackQuery } from '../core/types';
 import { REAR_WHEEL } from '../dogs/kart-model';
@@ -386,7 +387,7 @@ export class Effects {
       }
 
       // Flammes de boost.
-      const boosting = kart.boostTime > 0 && kart.stunTime <= 0;
+      const boosting = isBoostActive(kart);
       const flames = this.flames.get(racer.id);
       if (flames) {
         const strength = 0.85 + (kart.boostStrength - 1) * 1.2;

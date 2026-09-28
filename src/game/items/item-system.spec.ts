@@ -982,6 +982,23 @@ describe('écureuil', () => {
     expect(solo.race.items).toHaveLength(0);
   });
 
+  it('le premier arrivé ne fait pas viser un pilote derrière le lanceur', () => {
+    // Le rang 1 est arrivé : le lanceur (rang 2) est en tête des pilotes encore en course, mais
+    // aucun pilote mieux classé que lui n'est encore en course. Il ne doit pas viser le rang 3,
+    // qui est derrière lui.
+    const { track, race } = squirrelRace(3);
+    const [leader, behind, thrower] = race.racers;
+    leader.finished = true;
+    thrower.rank = 2;
+    behind.rank = 3;
+    thrower.items = ['squirrel'];
+    const { events, emit } = recorder();
+    useItem(race, thrower, track, false, emit);
+    stepUntil(race, track, emit, 300, () => race.items.length === 0);
+    expect(hits(events)).toEqual([]);
+    expect(behind.kart.spinTime).toBe(0);
+  });
+
   it('n’attrape pas une cible à la même abscisse mais 3 m de côté', () => {
     const { track, race } = squirrelRace(2);
     const [leader, thrower] = race.racers;

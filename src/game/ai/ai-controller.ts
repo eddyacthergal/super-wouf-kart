@@ -21,7 +21,7 @@ import {
 } from '../core/types';
 import { approach, clamp, wrapAngle, type Vec2 } from '../core/vec2';
 import { assistedWheelFor, driftAssistFactor } from '../kart/kart-physics';
-import { usableItem } from '../items/item-system';
+import { hasRivalAhead, squirrelTarget, usableItem } from '../items/item-system';
 import type { AiPersonality } from './personality';
 
 // Point visé : s + TARGET_BASE_DISTANCE + vitesse × TARGET_SPEED_FACTOR.
@@ -452,15 +452,15 @@ export class AiController implements DriverController {
       case 'bone':
         return waited || nearestRacerAhead(race, racer, BONE_RANGE, BONE_HALF_ANGLE) !== null;
       case 'tennis-ball':
-        return waited && racer.rank > 1;
+        return waited && hasRivalAhead(race, racer);
       case 'mud':
         return waited || hasRacerBehind(race, racer, MUD_RANGE);
       case 'whistle':
-        return waited && racer.rank > 1;
+        return waited && hasRivalAhead(race, racer);
       case 'super-collar':
         return waited;
       case 'squirrel':
-        return waited && racer.rank > 1;
+        return waited && squirrelTarget(race, racer.id) !== null;
     }
   }
 

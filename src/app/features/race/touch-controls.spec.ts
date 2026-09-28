@@ -62,10 +62,11 @@ describe('TouchControls', () => {
     const zone = control(element, 'steer');
     pointer(zone, 'pointerdown', 1, 200, 300);
     await fixture.whenStable();
-    // jsdom : zone en (0, 0) ; la base (8rem = 128 px) est centrée sous le pouce.
+    // jsdom : zone en (0, 0) ; la base est centrée sous le pouce par translate(-50%, -50%),
+    // quelle que soit sa taille CSS.
     const base = zone.querySelector<HTMLElement>('.touch-stick-base');
-    expect(base?.style.left).toBe('136px');
-    expect(base?.style.top).toBe('236px');
+    expect(base?.style.left).toBe('200px');
+    expect(base?.style.top).toBe('300px');
     expect(steers).toEqual([]);
 
     pointer(zone, 'pointermove', 1, 200 - STICK_RADIUS, 300);
@@ -84,6 +85,26 @@ describe('TouchControls', () => {
     // Perte de capture après le relâchement : pas de second signal.
     pointer(zone, 'lostpointercapture', 1);
     expect(steers).toEqual([-1, 0.5, 0]);
+  });
+
+  it('la base active est centrée par translate, pas par un décalage en pixels lié à sa taille CSS', async () => {
+    const { fixture, element } = await render();
+    const zone = control(element, 'steer');
+    pointer(zone, 'pointerdown', 1, 200, 300);
+    await fixture.whenStable();
+    const base = zone.querySelector<HTMLElement>('.touch-stick-base');
+    // Le style de position porte le point de contact brut : le centrage est fait par transform,
+    // pas en soustrayant un demi-côté fixe qui suppose la taille CSS de la base.
+    expect(base?.style.left).toBe('200px');
+    expect(base?.style.top).toBe('300px');
+    expect(base?.style.transform).toBe('translate(-50%, -50%)');
+    // Le repère au repos, qui partage la classe .touch-stick-base, n'a pas ce translate :
+    // il est déjà positionné par ses coins via les classes utilitaires.
+    pointer(zone, 'pointerup', 1, 200, 300);
+    pointer(zone, 'lostpointercapture', 1);
+    await fixture.whenStable();
+    const idle = zone.querySelector<HTMLElement>('.touch-stick-base');
+    expect(idle?.style.transform).toBe('');
   });
 
   it('un seul pouce tient le joystick ; les autres doigts de la zone sont ignorés', async () => {

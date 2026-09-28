@@ -2,6 +2,17 @@
 
 Versionnage sémantique. Dates de fusion dans `main`.
 
+## [0.7.2] – 28/09/2026
+
+- Correction : turbo affiché pendant l'arrêt net du sifflet.
+- Correction : objets lancés sans cible par l'IA quand le premier est arrivé.
+- Correction : base du joystick tactile décalée quand la taille de police augmente.
+- Correction : course qui continuait sans image après la perte du contexte WebGL.
+
+## [0.7.1] – 28/09/2026
+
+- Ajout : rapport de revue de la qualité du code et feuille de route de refactorisation.
+
 ## [0.7.0] – 27/09/2026
 
 - Ajout : aspiration, un turbo en roulant dans le sillage d'un concurrent.

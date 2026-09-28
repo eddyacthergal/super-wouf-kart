@@ -584,6 +584,39 @@ describe('createGameWithDeps — pause, reprise, libération', () => {
     expect(h.rec.pauses).toEqual([true]);
   });
 
+  it('met en pause à la perte du contexte WebGL et reprend une fois le contexte rendu', () => {
+    const h = harness();
+    const game = start(h);
+    h.frames.frames(3);
+    h.canvas.dispatchEvent(new Event('webglcontextlost', { cancelable: true }));
+    expect(game.paused).toBe(true);
+    expect(h.rec.pauses).toEqual([true]);
+    expect(h.frames.pending).toBe(0);
+
+    h.canvas.dispatchEvent(new Event('webglcontextrestored'));
+    game.resume();
+    expect(game.paused).toBe(false);
+    expect(h.rec.errors).toEqual([]);
+  });
+
+  it('reprendre sans contexte WebGL signale l’erreur au lieu de rouler sans image', () => {
+    const h = harness();
+    const game = start(h);
+    h.canvas.dispatchEvent(new Event('webglcontextlost', { cancelable: true }));
+    game.resume();
+    expect(game.paused).toBe(true);
+    expect(h.rec.errors).toHaveLength(1);
+    expect(String(h.rec.errors[0])).toMatch(/webgl/i);
+  });
+
+  it('ignore la perte du contexte provoquée par la libération', () => {
+    const h = harness();
+    const game = start(h);
+    game.dispose();
+    h.canvas.dispatchEvent(new Event('webglcontextlost', { cancelable: true }));
+    expect(h.rec.pauses).toEqual([]);
+  });
+
   it('réautorise le son à chaque geste tant qu’il ne joue pas, relâchement du doigt compris', () => {
     const h = harness();
     const game = start(h);

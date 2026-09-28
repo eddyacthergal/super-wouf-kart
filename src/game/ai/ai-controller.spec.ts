@@ -764,7 +764,9 @@ describe('AiController', () => {
     });
 
     it('balle de tennis : lancée après 0.5 à 2 s si pas premier', () => {
-      const time = scenario({ item: 'tennis-ball', overrides: { rank: 3 } }).firstUse(5);
+      const { race, firstUse } = scenario({ item: 'tennis-ball', overrides: { rank: 3 } });
+      race.racers.push(placeRacer(straight, 20, 500, 0, { overrides: { rank: 1 } }));
+      const time = firstUse(5);
       expect(time).toBeGreaterThanOrEqual(0.5);
       expect(time).toBeLessThanOrEqual(2);
     });
@@ -773,8 +775,20 @@ describe('AiController', () => {
       expect(scenario({ item: 'tennis-ball', overrides: { rank: 1 } }).firstUse(10)).toBeNull();
     });
 
+    it('balle de tennis : gardée si le seul pilote mieux classé est arrivé', () => {
+      // Rang 2 mais le rang 1 est déjà arrivé : aucune cible réelle devant.
+      const { race, firstUse } = scenario({ item: 'tennis-ball' });
+      race.racers.push(placeRacer(straight, 20, 500, 0, { overrides: { rank: 1, finished: true } }));
+      expect(firstUse(5)).toBeNull();
+    });
+
     it('balle de tennis : lancée dès que l’IA perd la tête', () => {
-      const { racer, step, firstUse } = scenario({ item: 'tennis-ball', overrides: { rank: 1 } });
+      const { racer, race, step, firstUse } = scenario({
+        item: 'tennis-ball',
+        overrides: { rank: 1 },
+      });
+      // Rival réel au rang 1 : le rang du lanceur seul décide s'il est devant ou non.
+      race.racers.push(placeRacer(straight, 20, 500, 0, { overrides: { rank: 1 } }));
       for (let i = 0; i < 180; i++) expect(step().useItem).toBe(false);
       racer.rank = 2;
       expect(firstUse(0.5)).toBeLessThanOrEqual(2 * FIXED_DT);
@@ -832,7 +846,9 @@ describe('AiController', () => {
     });
 
     it('sifflet : utilisé entre 0,3 et 1 s au rang 3', () => {
-      const time = scenario({ item: 'whistle', overrides: { rank: 3 } }).firstUse(1.2);
+      const { race, firstUse } = scenario({ item: 'whistle', overrides: { rank: 3 } });
+      race.racers.push(placeRacer(straight, 20, 500, 0, { overrides: { rank: 1 } }));
+      const time = firstUse(1.2);
       expect(time).not.toBeNull();
       expect(time).toBeGreaterThanOrEqual(0.3);
       expect(time).toBeLessThanOrEqual(1);
@@ -840,6 +856,13 @@ describe('AiController', () => {
 
     it('sifflet : gardé au rang 1 (premier)', () => {
       expect(scenario({ item: 'whistle', overrides: { rank: 1 } }).firstUse(2)).toBeNull();
+    });
+
+    it('sifflet : gardé si le seul pilote mieux classé est arrivé', () => {
+      // Rang 2 mais le rang 1 est déjà arrivé : le sifflet n'arrêterait personne.
+      const { race, firstUse } = scenario({ item: 'whistle' });
+      race.racers.push(placeRacer(straight, 20, 500, 0, { overrides: { rank: 1, finished: true } }));
+      expect(firstUse(2)).toBeNull();
     });
 
     it('super-collier : utilisé entre 0,5 et 1,5 s', () => {
@@ -850,7 +873,9 @@ describe('AiController', () => {
     });
 
     it('écureuil : utilisé entre 0,5 et 2 s au rang 4', () => {
-      const time = scenario({ item: 'squirrel', overrides: { rank: 4 } }).firstUse(2.5);
+      const { race, firstUse } = scenario({ item: 'squirrel', overrides: { rank: 4 } });
+      race.racers.push(placeRacer(straight, 20, 500, 0, { overrides: { rank: 1 } }));
+      const time = firstUse(2.5);
       expect(time).not.toBeNull();
       expect(time).toBeGreaterThanOrEqual(0.5);
       expect(time).toBeLessThanOrEqual(2);
@@ -858,6 +883,13 @@ describe('AiController', () => {
 
     it('écureuil : gardé au rang 1 (premier)', () => {
       expect(scenario({ item: 'squirrel', overrides: { rank: 1 } }).firstUse(2.5)).toBeNull();
+    });
+
+    it('écureuil : gardé si le seul pilote mieux classé est arrivé (ne vise pas derrière)', () => {
+      // Rang 2 mais le rang 1 est déjà arrivé : aucune cible réelle devant le lanceur.
+      const { race, firstUse } = scenario({ item: 'squirrel' });
+      race.racers.push(placeRacer(straight, 20, 500, 0, { overrides: { rank: 1, finished: true } }));
+      expect(firstUse(2.5)).toBeNull();
     });
 
     it('aucun usage pendant la roulette', () => {
