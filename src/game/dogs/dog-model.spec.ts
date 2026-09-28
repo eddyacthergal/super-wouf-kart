@@ -260,3 +260,171 @@ describe('oreilles dressées (chihuahua)', () => {
     expect(flapOf('teckel').type).toBe('SphereGeometry');
   });
 });
+
+const ORIGIN = new THREE.Vector3();
+
+/** Queue d'un chien, accrochée à son pivot. */
+const tailOf = (rig: DogRig): THREE.Mesh => part(rig.tail, 'dog-tail-mesh');
+
+/** Nombre de triangles bordés par chaque arête (sommets soudés : géométrie indexée). */
+function edgeUses(geometry: THREE.BufferGeometry): Map<string, number> {
+  const index = geometry.index;
+  if (!index) throw new Error('la géométrie doit être indexée');
+  const edges = new Map<string, number>();
+  for (let k = 0; k < index.count; k += 3) {
+    const corners = [index.getX(k), index.getX(k + 1), index.getX(k + 2)];
+    corners.forEach((a, i) => {
+      const b = corners[(i + 1) % 3];
+      const edge = a < b ? `${a}:${b}` : `${b}:${a}`;
+      edges.set(edge, (edges.get(edge) ?? 0) + 1);
+    });
+  }
+  return edges;
+}
+
+describe('queue en tube courbe et effilé (chihuahua, teckel)', () => {
+  const TUBE_TAILS: readonly BreedId[] = ['chihuahua', 'teckel'];
+
+  it('remplace le cône pointu du chihuahua et du teckel ; carlin et jack russell gardent leur queue', () => {
+    // Styles qui étaient un cône pointu : fine et relevée, longue dans l'axe du corps.
+    const spiky: readonly string[] = ['thin', 'long'];
+    const breeds = BREED_LIST.filter((breed) => spiky.includes(breed.look.tailStyle));
+    expect(breeds.map((breed) => breed.id)).toEqual(TUBE_TAILS);
+    for (const breed of TUBE_TAILS) {
+      expect(tailOf(buildRig(breed)).geometry.type, breed).not.toBe('ConeGeometry');
+    }
+    expect(tailOf(buildRig('carlin')).geometry.type).toBe('TubeGeometry');
+    expect(tailOf(buildRig('jack-russell')).geometry.type).toBe('CapsuleGeometry');
+  });
+
+  it('une seule pièce, accrochée au pivot qui la fait remuer : aucun maillage en plus', () => {
+    for (const [breed, count] of [
+      ['chihuahua', 21],
+      ['teckel', 18],
+    ] as const) {
+      const rig = buildRig(breed);
+      expect(rig.tail.children.map((child) => child.name), breed).toEqual(['dog-tail-mesh']);
+      expect(meshCount(rig.root), breed).toBe(count);
+    }
+  });
+
+  it.each(TUBE_TAILS)('effilée : épaisse à la racine, fine au bout (%s)', (breed) => {
+    const vertices = pivotVertices(tailOf(buildRig(breed)));
+    const tip = farthest(vertices, ORIGIN);
+    // Demi-largeur (le long de l'axe latéral X du pivot) à moins de `reach` d'un point.
+    const halfWidth = (near: THREE.Vector3, reach: number): number =>
+      Math.max(...vertices.filter((v) => v.distanceTo(near) < reach).map((v) => Math.abs(v.x)));
+    const root = halfWidth(ORIGIN, 0.1);
+    expect(root).toBeGreaterThan(BREEDS[breed].look.legRadius * 0.75);
+    expect(halfWidth(tip, 0.03)).toBeLessThan(root * 0.5);
+  });
+
+  it.each(TUBE_TAILS)('bout arrondi, pas de pointe : encore large à 2 cm du bout (%s)', (breed) => {
+    const vertices = pivotVertices(tailOf(buildRig(breed)));
+    const tip = farthest(vertices, ORIGIN);
+    const end = vertices.filter((v) => v.distanceTo(tip) < 0.02);
+    expect(span(end.map((v) => v.x))).toBeGreaterThan(0.015);
+  });
+
+  it('courbée : celle du chihuahua remonte en arc, celle du teckel se relève un peu', () => {
+    // Angle entre la direction de départ (+Y du pivot) et la corde racine → bout, vers +Z.
+    const bend = (breed: BreedId): number => {
+      const tip = farthest(pivotVertices(tailOf(buildRig(breed))), ORIGIN);
+      expect(Math.abs(tip.x), breed).toBeLessThan(1e-3);
+      return degrees(Math.atan2(tip.z, tip.y));
+    };
+    expect(bend('chihuahua')).toBeGreaterThan(30);
+    expect(bend('chihuahua')).toBeLessThan(60);
+    expect(bend('teckel')).toBeGreaterThan(8);
+    expect(bend('teckel')).toBeLessThan(25);
+
+    // Chihuahua : le bout monte presque à la verticale au-dessus de la racine.
+    const rig = buildRig('chihuahua');
+    const base = rig.tail.getWorldPosition(new THREE.Vector3());
+    const chord = farthest(worldVertices(tailOf(rig)), base).sub(base);
+    expect(degrees(Math.atan2(Math.abs(chord.z), chord.y))).toBeLessThan(20);
+    // Teckel : le bout reste loin derrière la racine.
+    const teckel = buildRig('teckel');
+    const root = teckel.tail.getWorldPosition(new THREE.Vector3());
+    expect(farthest(worldVertices(tailOf(teckel)), root).z).toBeLessThan(root.z - 0.3);
+  });
+
+  it.each(TUBE_TAILS)('le pivot la fait remuer sur le côté, racine fixe (%s)', (breed) => {
+    const rig = buildRig(breed);
+    const tail = tailOf(rig);
+    const base = rig.tail.getWorldPosition(new THREE.Vector3());
+    const before = worldVertices(tail);
+    const tip = before.indexOf(farthest(before, base));
+    rig.tail.rotation.z = 0.5;
+    rig.root.updateMatrixWorld(true);
+    const after = worldVertices(tail);
+    expect(Math.abs(after[tip].x - before[tip].x)).toBeGreaterThan(0.05);
+    before.forEach((vertex, i) => {
+      if (vertex.distanceTo(base) < 0.03) expect(after[i].distanceTo(vertex)).toBeLessThan(0.02);
+    });
+  });
+
+  it.each(TUBE_TAILS)('bout fermé, racine cachée dans le bassin même en remuant (%s)', (breed) => {
+    const rig = buildRig(breed);
+    const tail = tailOf(rig);
+    const hips = part(rig.root, 'dog-hips');
+    const uses = edgeUses(tail.geometry);
+    expect([...uses.values()].every((count) => count === 1 || count === 2)).toBe(true);
+    // Sommets des arêtes qui ne bordent qu'un triangle : le bord de la racine, rien d'autre.
+    const open = new Set(
+      [...uses.entries()]
+        .filter(([, count]) => count === 1)
+        .flatMap(([edge]) => edge.split(':').map(Number)),
+    );
+    expect(open.size).toBeGreaterThan(0);
+    // Amplitude du remuement de la queue en course (racer-model).
+    for (const wag of [-0.55, 0, 0.55]) {
+      rig.tail.rotation.z = wag;
+      rig.root.updateMatrixWorld(true);
+      const world = worldVertices(tail);
+      for (const i of open) {
+        expect(hips.worldToLocal(world[i].clone()).length(), `${wag}`).toBeLessThan(1);
+      }
+    }
+  });
+
+  it.each(TUBE_TAILS)('ombrage lisse et maillage léger (%s)', (breed) => {
+    const tail = tailOf(buildRig(breed));
+    expect((tail.material as THREE.MeshStandardMaterial).flatShading).toBe(false);
+    const positions = tail.geometry.getAttribute('position');
+    const normals = tail.geometry.getAttribute('normal');
+    const seen = new Map<string, THREE.Vector3>();
+    let creases = 0;
+    for (let i = 0; i < positions.count; i++) {
+      const key = [positions.getX(i), positions.getY(i), positions.getZ(i)]
+        .map((value) => Math.round(value * 1e5))
+        .join(':');
+      const normal = new THREE.Vector3().fromBufferAttribute(normals, i);
+      const other = seen.get(key);
+      if (!other) seen.set(key, normal);
+      else if (normal.dot(other) < 0.999) creases++;
+    }
+    expect(creases).toBe(0);
+    expect((tail.geometry.index?.count ?? 0) / 3).toBeLessThan(800);
+  });
+
+  it('géométrie partagée entre modèles, libérée avec le dernier ; construction déterministe', () => {
+    const geometries = sharedGeometries.size;
+    const first = new ResourceScope();
+    const second = new ResourceScope();
+    const geometry = tailOf(buildRig('chihuahua', first)).geometry;
+    expect(tailOf(buildRig('chihuahua', second)).geometry).toBe(geometry);
+    const positions = Array.from(geometry.getAttribute('position').array);
+    const onDispose = vi.fn();
+    geometry.addEventListener('dispose', onDispose);
+    first.dispose();
+    expect(onDispose).not.toHaveBeenCalled();
+    second.dispose();
+    expect(onDispose).toHaveBeenCalledTimes(1);
+    expect(sharedGeometries.size).toBe(geometries);
+    // Reconstruite après libération : exactement les mêmes sommets.
+    const rebuilt = tailOf(buildRig('chihuahua')).geometry;
+    expect(rebuilt).not.toBe(geometry);
+    expect(Array.from(rebuilt.getAttribute('position').array)).toEqual(positions);
+  });
+});

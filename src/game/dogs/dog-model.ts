@@ -22,6 +22,7 @@ import {
   unitSphere,
 } from './model-resources';
 import type { SkinFit } from './skin-models';
+import { tailTubeGeometry } from './tail-tube';
 
 const NOSE_COLOR = '#1b1514';
 const PUPIL_COLOR = '#16110f';
@@ -232,13 +233,39 @@ function erectEarSpecs(look: DogLook): { flap: EarLeafSpec; inner: EarLeafSpec }
   return { flap, inner };
 }
 
-/** Direction de la queue (plan YZ) selon son style. */
+/** Direction de départ de la queue (plan YZ) selon son style. */
 const TAIL_DIRECTIONS: Record<TailStyle, THREE.Vector3> = {
-  thin: new THREE.Vector3(0, 0.8, -0.6).normalize(),
+  // Assez en arrière pour que l'arc de la faucille se détache du dos.
+  thin: new THREE.Vector3(0, 0.55, -0.83).normalize(),
   corkscrew: new THREE.Vector3(0, 0.55, -0.8).normalize(),
   long: new THREE.Vector3(0, 0.3, -1).normalize(),
   short: new THREE.Vector3(0, 1, -0.35).normalize(),
 };
+
+/** Queues en tube courbe et effilé : fine et relevée, longue dans l'axe du corps. */
+type TubeTailStyle = Extract<TailStyle, 'thin' | 'long'>;
+
+/** Forme d'une queue en tube. */
+interface TailTubeShape {
+  /** Rayon de la racine, en rayons de patte. */
+  baseRadius: number;
+  /** Rayon du bout arrondi, en fraction de celui de la racine. */
+  tipRadius: number;
+  /**
+   * Enroulement de la racine au bout (rad), vers +Z local : vers l'avant pour une queue dressée,
+   * vers le haut pour une queue portée en arrière.
+   */
+  curl: number;
+}
+
+const TAIL_TUBES: Record<TubeTailStyle, TailTubeShape> = {
+  // Faucille du chihuahua : part vers l'arrière, puis remonte en arc au-dessus du dos.
+  thin: { baseRadius: 0.8, tipRadius: 0.35, curl: 1.7 },
+  // Queue du teckel : longue, dans l'axe du corps, légèrement relevée.
+  long: { baseRadius: 1.1, tipRadius: 0.3, curl: 0.5 },
+};
+/** Racine des queues en tube enfoncée dans le bassin (m) : aucun jour quand elles remuent. */
+const TAIL_TUBE_SINK = 0.02;
 
 /** Hélice partant de l'origine et montant le long de +Y (queue en tire-bouchon). */
 class CorkscrewCurve extends THREE.Curve<THREE.Vector3> {
@@ -690,15 +717,23 @@ function buildTail(
       );
       tailMesh.position.y = length / 2;
       break;
-    default:
-      // Queue effilée : cône dont la base est au pivot.
-      tailMesh = mesh(unitCone(scope), material, 'dog-tail-mesh');
-      tailMesh.position.y = length / 2;
-      tailMesh.scale.set(
-        r * (look.tailStyle === 'long' ? 1.1 : 0.8),
-        length,
-        r * (look.tailStyle === 'long' ? 1.1 : 0.8),
+    case 'thin':
+    case 'long': {
+      // Tube courbe et effilé au bout arrondi, racine au pivot (géométrie partagée par la race).
+      const tube = TAIL_TUBES[look.tailStyle];
+      const baseRadius = r * tube.baseRadius;
+      const geometry = scope.geometry(key('tail'), () =>
+        tailTubeGeometry({
+          length,
+          baseRadius,
+          tipRadius: baseRadius * tube.tipRadius,
+          curl: tube.curl,
+          sink: TAIL_TUBE_SINK,
+        }),
       );
+      tailMesh = mesh(geometry, material, 'dog-tail-mesh');
+      break;
+    }
   }
   pivot.add(tailMesh);
   return { mount, pivot };
