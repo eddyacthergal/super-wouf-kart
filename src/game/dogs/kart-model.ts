@@ -8,7 +8,9 @@ import {
   alignBetween,
   capsule,
   dim,
+  mergeParts,
   mesh,
+  type PartTransform,
   type ResourceScope,
   unitCylinder,
 } from './model-resources';
@@ -31,6 +33,11 @@ const GRIP_ANGLE = 0.95;
 const COLUMN_BASE = new THREE.Vector3(0, 0.42, 0.62);
 
 const COLORS = {
+  /**
+   * Plancher, pare-chocs et direction. Livrée bicolore : la couleur du pilote est réservée à la
+   * carrosserie (pontons, nez et capot), posée sur ce plancher sombre. Des pontons sombres
+   * laisseraient trop peu de couleur pour reconnaître les adversaires de dos.
+   */
   trim: '#2b2d38',
   seat: '#343746',
   /**
@@ -62,6 +69,69 @@ const FINISH = {
   exhaust: { roughness: 0.25, metalness: 1, envMapIntensity: 1 },
   rim: { roughness: 0.3, metalness: 1, envMapIntensity: 1 },
 } as const;
+
+/**
+ * Détail des roues, dans le repère d'une roue : `r` en fraction de son rayon, `h` en fraction de
+ * sa demi-largeur (le long de l'axe). Jante pleine et lisse, sans bâtons : à 24 m/s, une roue
+ * arrière tourne de ~74° par image, et des bâtons tous les 72° paraîtraient presque arrêtés.
+ */
+const WHEEL_DETAIL = {
+  /** Segments autour de l'axe, pour la jante et le moyeu : un bord rond, sans facettes. */
+  segments: 20,
+  /** Rayon intérieur du pneu : le trou que ferme la jante. */
+  tireInner: 0.6,
+  /**
+   * Profil d'une face de la jante, du moyeu vers l'extérieur : fond de cuvette, haut de la
+   * cuvette, rebord (légèrement en retrait du flanc du pneu), puis fût caché dans le pneu, un peu
+   * plus large que son trou pour ne laisser aucun jour.
+   */
+  rimProfile: [
+    [0.26, 0.58],
+    [0.54, 0.86],
+    [0.64, 0.9],
+    [0.66, 0.8],
+  ],
+  /**
+   * Profil d'une face du moyeu (dans le pneu, même gomme sombre), de l'axe vers l'extérieur :
+   * face plate, chanfrein, flanc. Plus large que le fond de la jante, dont il dépasse.
+   */
+  hubProfile: [
+    [0, 0.72],
+    [0.22, 0.72],
+    [0.27, 0.67],
+  ],
+  /** Écrous chromés sur la face du moyeu (fusionnés dans la jante), en couronne. */
+  nuts: {
+    count: 5,
+    /** Rayon de la couronne. */
+    ring: 0.15,
+    radius: 0.045,
+    height: 0.14,
+    /** Part enfoncée dans le moyeu. */
+    sink: 0.04,
+    /** Six pans. */
+    segments: 6,
+  },
+} as const;
+
+type WheelProfile = ReadonlyArray<readonly [number, number]>;
+
+/**
+ * Tour fermé à partir du profil d'une face (de l'axe vers l'extérieur) et de son symétrique :
+ * face arrière vers l'extérieur, puis face avant vers l'axe (normales vers l'extérieur).
+ * Axe du tour : Y, en attendant la rotation vers l'axe X de la roue.
+ */
+function mirroredLathe(
+  profile: WheelProfile,
+  radius: number,
+  halfWidth: number,
+): THREE.LatheGeometry {
+  const back = profile.map(([r, h]) => new THREE.Vector2(r * radius, -h * halfWidth));
+  const front = [...profile]
+    .reverse()
+    .map(([r, h]) => new THREE.Vector2(r * radius, h * halfWidth));
+  return new THREE.LatheGeometry([...back, ...front], WHEEL_DETAIL.segments);
+}
 
 export interface KartOptions {
   color: string;
@@ -111,10 +181,13 @@ function roundedBox(
   );
 }
 
-/** Pneu au profil arrondi (tour creux), axe de rotation X. */
+/**
+ * Pneu au profil arrondi (tour creux) et moyeu sombre fusionné dedans (même gomme : aucun
+ * maillage en plus), axe de rotation X.
+ */
 function tireGeometry(scope: ResourceScope, radius: number, width: number): THREE.BufferGeometry {
-  return scope.geometry(`tire:${dim(radius)}:${dim(width)}`, () => {
-    const inner = radius * 0.6;
+  return scope.geometry(`tire-hub:${dim(radius)}:${dim(width)}`, () => {
+    const inner = radius * WHEEL_DETAIL.tireInner;
     const half = width / 2;
     const corner = Math.min((radius - inner) * 0.45, half * 0.6);
     const points: THREE.Vector2[] = [new THREE.Vector2(inner, -half)];
@@ -127,7 +200,54 @@ function tireGeometry(scope: ResourceScope, radius: number, width: number): THRE
     arc(radius - corner, -half + corner, -Math.PI / 2);
     arc(radius - corner, half - corner, 0);
     points.push(new THREE.Vector2(inner, half));
-    const geometry = new THREE.LatheGeometry(points, 24);
+    const geometry = mergeParts([
+      [new THREE.LatheGeometry(points, 24), {}],
+      [mirroredLathe(WHEEL_DETAIL.hubProfile, radius, half), {}],
+    ]);
+    geometry.rotateZ(Math.PI / 2);
+    return geometry;
+  });
+}
+
+/**
+ * Jante chromée : cuvette lisse et ronde, avec les écrous du moyeu fusionnés (sur les deux faces,
+ * pour servir aux roues gauches comme droites), axe de rotation X.
+ */
+function rimGeometry(scope: ResourceScope, radius: number, width: number): THREE.BufferGeometry {
+  return scope.geometry(`rim:${dim(radius)}:${dim(width)}`, () => {
+    const half = width / 2;
+    const { nuts } = WHEEL_DETAIL;
+    const hubFace = WHEEL_DETAIL.hubProfile[0][1];
+    const nutHeight = nuts.height * half;
+    const nut = new THREE.CylinderGeometry(
+      nuts.radius * radius,
+      nuts.radius * radius,
+      nutHeight,
+      nuts.segments,
+    );
+    const axial = hubFace * half + nutHeight / 2 - nuts.sink * half;
+    const parts: Array<readonly [THREE.BufferGeometry, PartTransform]> = [
+      [mirroredLathe(WHEEL_DETAIL.rimProfile, radius, half), {}],
+    ];
+    for (const side of [1, -1]) {
+      for (let i = 0; i < nuts.count; i++) {
+        const angle = (i / nuts.count) * Math.PI * 2;
+        parts.push([
+          nut,
+          {
+            // Même convention d'angle que LatheGeometry (x = r sin, z = r cos).
+            position: new THREE.Vector3(
+              nuts.ring * radius * Math.sin(angle),
+              side * axial,
+              nuts.ring * radius * Math.cos(angle),
+            ),
+            // Un pan tourné vers l'axe, comme un écrou serré.
+            quaternion: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), angle),
+          },
+        ]);
+      }
+    }
+    const geometry = mergeParts(parts);
     geometry.rotateZ(Math.PI / 2);
     return geometry;
   });
@@ -140,7 +260,7 @@ export function buildKart(scope: ResourceScope, options: KartOptions): KartRig {
   const seatMaterial = scope.material(COLORS.seat, { roughness: 0.8 });
   const metal = scope.material(COLORS.engine, { ...FINISH.engine, envMap });
   const tire = scope.material(COLORS.tire, { roughness: 0.9 });
-  const rim = scope.material(COLORS.rim, { ...FINISH.rim, flatShading: true, envMap });
+  const rim = scope.material(COLORS.rim, { ...FINISH.rim, envMap });
   const exhaust = scope.material(COLORS.exhaust, { ...FINISH.exhaust, envMap });
   const stripe = scope.material(COLORS.stripe, { roughness: 0.5 });
 
@@ -157,8 +277,8 @@ export function buildKart(scope: ResourceScope, options: KartOptions): KartRig {
     return part;
   };
 
-  // Plancher et pontons latéraux.
-  add(mesh(roundedBox(scope, 0.95, 0.14, 1.75, 0.05), body, 'kart-floor'), 0, 0.2, -0.02);
+  // Plancher sombre et pontons latéraux à la couleur du pilote (livrée bicolore).
+  add(mesh(roundedBox(scope, 0.95, 0.14, 1.75, 0.05), trim, 'kart-floor'), 0, 0.2, -0.02);
   for (const side of [1, -1]) {
     const pod = add(mesh(capsule(scope, 0.11, 1.1), body, 'kart-pod'), side * 0.33, 0.3, 0);
     pod.rotation.x = Math.PI / 2;
@@ -248,7 +368,6 @@ export function buildKart(scope: ResourceScope, options: KartOptions): KartRig {
   const frontPivots: THREE.Object3D[] = [];
   const wheelSpins: THREE.Object3D[] = [];
   const rearWheels: THREE.Object3D[] = [];
-  const rimGeometry = unitCylinder(scope, 6);
   const buildWheel = (
     spec: typeof FRONT_WHEEL | typeof REAR_WHEEL,
     side: number,
@@ -260,9 +379,7 @@ export function buildKart(scope: ResourceScope, options: KartOptions): KartRig {
     const spin = new THREE.Group();
     spin.name = 'wheel-spin';
     const tireMesh = mesh(tireGeometry(scope, spec.radius, spec.width), tire, 'tire');
-    const rimMesh = mesh(rimGeometry, rim, 'rim');
-    rimMesh.rotation.z = Math.PI / 2;
-    rimMesh.scale.set(spec.radius * 0.62, spec.width * 0.96, spec.radius * 0.62);
+    const rimMesh = mesh(rimGeometry(scope, spec.radius, spec.width), rim, 'rim');
     spin.add(tireMesh, rimMesh);
     if (front) {
       const pivot = new THREE.Group();

@@ -12,7 +12,6 @@ import { SCENE_THEMES } from './themes';
 const DT = 1 / 60;
 /** Pièces des pilotes qui reflètent l'image d'environnement : coque, chromes, truffe et yeux. */
 const REFLECTIVE_PARTS = [
-  'kart-floor',
   'kart-pod',
   'kart-nose',
   'kart-hood',

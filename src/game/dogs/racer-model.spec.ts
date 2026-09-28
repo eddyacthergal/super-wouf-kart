@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { afterAll, afterEach, describe, expect, it } from 'vitest';
 import { type BreedId, EMPTY_SKINS, type SkinSelection } from '../core/types';
 import { createEnvironmentMap } from '../render/environment-map';
-import { BREED_LIST } from './breeds';
+import { BREED_LIST, BREEDS } from './breeds';
 import { sharedGeometries, sharedMaterials } from './model-resources';
 import { buildRacerModel, type RacerModel, type RacerVisualState } from './racer-model';
 import { SKINS, skinsForSlot } from './skins-catalog';
@@ -17,9 +17,11 @@ const IDLE: RacerVisualState = {
 };
 const MAX_MESHES = 60;
 
-/** Pièces qui reflètent l'image d'environnement : coque vernie, chromes, truffe et yeux. */
+/**
+ * Pièces qui reflètent l'image d'environnement : coque vernie (pontons, nez et capot, à la couleur
+ * du pilote), chromes, truffe et yeux. Le plancher est dans le matériau sombre des garnitures.
+ */
 const REFLECTIVE_PARTS = [
-  'kart-floor',
   'kart-pod',
   'kart-nose',
   'kart-hood',
@@ -559,8 +561,8 @@ describe('reflets', () => {
     expect(varnish.clearcoat).toBeGreaterThanOrEqual(0.8);
     expect(varnish.roughness).toBeCloseTo(0.35, 2);
     expect(varnish.envMapIntensity).toBeCloseTo(0.5, 2);
-    // Toute la coque partage le même matériau.
-    for (const part of ['kart-floor', 'kart-pod', 'kart-nose']) {
+    // Les pontons, le nez et le capot partagent le même matériau.
+    for (const part of ['kart-pod', 'kart-nose']) {
       expect(materialOf(root, part), part).toBe(body);
     }
     for (const part of CHROME_PARTS) {
@@ -613,6 +615,192 @@ describe('reflets', () => {
     expect(() => model.dispose()).not.toThrow();
     environment.removeEventListener('dispose', onDispose);
     expect(sharedMaterials.size).toBe(materials);
+  });
+});
+
+/** Groupes qui tournent avec la vitesse (un par roue). */
+function wheelSpins(root: THREE.Object3D): THREE.Object3D[] {
+  const spins: THREE.Object3D[] = [];
+  root.traverse((object) => {
+    if (object.name === 'wheel-spin') spins.push(object);
+  });
+  return spins;
+}
+
+function meshNamed(root: THREE.Object3D, name: string): THREE.Mesh {
+  const object = named(root, name);
+  if (!(object instanceof THREE.Mesh)) throw new Error(`${name} doit être un mesh`);
+  return object;
+}
+
+/** Sommets d'une pièce de roue dans le repère de sa rotation (axe de la roue : X). */
+function wheelVertices(mesh: THREE.Mesh): THREE.Vector3[] {
+  mesh.updateMatrix();
+  const positions = mesh.geometry.getAttribute('position');
+  const vertices: THREE.Vector3[] = [];
+  for (let i = 0; i < positions.count; i++)
+    vertices.push(new THREE.Vector3().fromBufferAttribute(positions, i).applyMatrix4(mesh.matrix));
+  return vertices;
+}
+
+/** Distance à l'axe de la roue. */
+const radial = (vertex: THREE.Vector3): number => Math.hypot(vertex.y, vertex.z);
+
+/** Angle autour de l'axe de la roue, dans [0, 2π[. */
+function azimuth(vertex: THREE.Vector3): number {
+  const angle = Math.atan2(vertex.z, vertex.y);
+  return angle < 0 ? angle + Math.PI * 2 : angle;
+}
+
+/**
+ * Îlots d'une géométrie : groupes de sommets reliés par des triangles, les sommets confondus
+ * (coutures, couvercles) étant soudés. Du plus grand au plus petit.
+ */
+function islands(mesh: THREE.Mesh): THREE.Vector3[][] {
+  const vertices = wheelVertices(mesh);
+  const parent = vertices.map((_, i) => i);
+  const find = (i: number): number => {
+    let root = i;
+    while (parent[root] !== root) root = parent[root];
+    parent[i] = root;
+    return root;
+  };
+  const union = (a: number, b: number): void => {
+    parent[find(a)] = find(b);
+  };
+  const welded = new Map<string, number>();
+  vertices.forEach((vertex, i) => {
+    const key = vertex
+      .toArray()
+      .map((value) => Math.round(value * 1e4))
+      .join(':');
+    const first = welded.get(key);
+    if (first === undefined) welded.set(key, i);
+    else union(i, first);
+  });
+  const index = mesh.geometry.index;
+  const count = index ? index.count : vertices.length;
+  const at = (k: number): number => (index ? index.getX(k) : k);
+  for (let k = 0; k + 2 < count; k += 3) {
+    union(at(k), at(k + 1));
+    union(at(k), at(k + 2));
+  }
+  const groups = new Map<number, THREE.Vector3[]>();
+  vertices.forEach((vertex, i) => {
+    const root = find(i);
+    const group = groups.get(root) ?? [];
+    group.push(vertex);
+    groups.set(root, group);
+  });
+  return [...groups.values()].sort((a, b) => b.length - a.length);
+}
+
+const boxCenter = (points: readonly THREE.Vector3[]): THREE.Vector3 =>
+  new THREE.Box3().setFromPoints([...points]).getCenter(new THREE.Vector3());
+
+describe('livrée et roues', () => {
+  it('livrée bicolore : plancher sombre comme les garnitures, carrosserie à la couleur du pilote', () => {
+    for (const reflections of [null, environment]) {
+      const root = build('jack-russell', EMPTY_SKINS, '#2e7dd7', reflections).root;
+      const trim = materialOf(root, 'kart-bumper') as THREE.MeshStandardMaterial;
+      expect(materialOf(root, 'kart-floor')).toBe(trim);
+      // Garnitures sombres, sans reflet.
+      expect(trim.color.getHSL({ h: 0, s: 0, l: 0 }).l).toBeLessThan(0.2);
+      expect(envMapOf(trim)).toBeNull();
+      // Pontons, nez et capot : de quoi reconnaître le pilote de dos comme de face.
+      for (const part of ['kart-pod', 'kart-nose', 'kart-hood']) {
+        const body = materialOf(root, part) as THREE.MeshStandardMaterial;
+        expect(body.color.getHexString(), part).toBe(new THREE.Color('#2e7dd7').getHexString());
+      }
+    }
+  });
+
+  it('aucun maillage en plus : deux par roue (pneu et jante), 22 ou 23 pour le kart', () => {
+    for (const breed of BREED_LIST) {
+      const root = build(breed.id, { head: 'party-hat', neck: 'bandana', body: 'cape' }).root;
+      for (const spin of wheelSpins(root)) {
+        expect(meshesOf(spin).map((mesh) => mesh.name).sort(), breed.id).toEqual(['rim', 'tire']);
+      }
+      const dog = new Set(meshesOf(named(root, 'dog')));
+      const kart = meshesOf(root).filter((mesh) => !dog.has(mesh));
+      // Coque (5), bande, pare-chocs, moteur, siège et dossier, direction (3), pots (2), roues (8).
+      expect(kart.length, breed.id).toBe(BREEDS[breed.id].look.seatBack ? 23 : 22);
+    }
+  });
+
+  it('jantes rondes et lisses : 16 à 24 segments, sans ombrage plat', () => {
+    const root = build('teckel').root;
+    const spins = wheelSpins(root);
+    expect(spins).toHaveLength(4);
+    for (const spin of spins) {
+      const rim = meshNamed(spin, 'rim');
+      expect((rim.material as THREE.MeshStandardMaterial).flatShading).toBe(false);
+      const vertices = wheelVertices(rim);
+      const lip = Math.max(...vertices.map(radial));
+      // Angles distincts sur le bord de la jante (couture comprise : 2π ≡ 0).
+      const turn = Math.round(Math.PI * 2 * 1e3);
+      const angles = new Set(
+        vertices
+          .filter((vertex) => radial(vertex) > lip * 0.8)
+          .map((vertex) => Math.round(azimuth(vertex) * 1e3) % turn),
+      );
+      expect(angles.size).toBeGreaterThanOrEqual(16);
+      expect(angles.size).toBeLessThanOrEqual(24);
+    }
+  });
+
+  it('moyeu sombre fusionné dans le pneu, en saillie au fond de la jante', () => {
+    const root = build('carlin').root;
+    for (const spin of wheelSpins(root)) {
+      const tire = meshNamed(spin, 'tire');
+      const tireMaterial = tire.material as THREE.MeshStandardMaterial;
+      expect(tireMaterial.color.getHSL({ h: 0, s: 0, l: 0 }).l).toBeLessThan(0.15);
+      const vertices = wheelVertices(tire);
+      const radius = Math.max(...vertices.map(radial));
+      const halfWidth = Math.max(
+        ...vertices
+          .filter((vertex) => radial(vertex) > radius * 0.7)
+          .map((vertex) => Math.abs(vertex.x)),
+      );
+      // Le moyeu ferme le centre de la roue, sur les deux faces…
+      const hub = vertices.filter((vertex) => radial(vertex) < radius * 0.1);
+      expect(hub.some((vertex) => vertex.x > 0)).toBe(true);
+      expect(hub.some((vertex) => vertex.x < 0)).toBe(true);
+      const hubFace = Math.max(...hub.map((vertex) => Math.abs(vertex.x)));
+      // … dépasse du fond de la jante, sans sortir du pneu.
+      const [rimBody] = islands(meshNamed(spin, 'rim'));
+      const innerRing = Math.min(...rimBody.map(radial));
+      const rimBottom = Math.max(
+        ...rimBody
+          .filter((vertex) => radial(vertex) < innerRing + 1e-3)
+          .map((vertex) => Math.abs(vertex.x)),
+      );
+      expect(hubFace).toBeGreaterThan(rimBottom + 0.005);
+      expect(hubFace).toBeLessThan(halfWidth);
+    }
+  });
+
+  it('écrous fusionnés dans la jante, en couronne régulière sur les deux faces', () => {
+    const root = build('chihuahua').root;
+    for (const spin of wheelSpins(root)) {
+      const [rimBody, ...nuts] = islands(meshNamed(spin, 'rim'));
+      const lip = Math.max(...rimBody.map(radial));
+      const centers = nuts.map(boxCenter);
+      const outer = centers.filter((center) => center.x > 0);
+      const inner = centers.filter((center) => center.x < 0);
+      expect(outer.length).toBeGreaterThanOrEqual(3);
+      expect(outer.length).toBeLessThanOrEqual(6);
+      expect(inner).toHaveLength(outer.length);
+      const ring = radial(outer[0]);
+      expect(ring).toBeLessThan(lip * 0.5);
+      for (const center of centers) expect(radial(center)).toBeCloseTo(ring, 3);
+      const angles = outer.map(azimuth).sort((a, b) => a - b);
+      const step = (Math.PI * 2) / angles.length;
+      angles.forEach((angle, i) => {
+        const next = i + 1 < angles.length ? angles[i + 1] : angles[0] + Math.PI * 2;
+        expect(next - angle).toBeCloseTo(step, 2);
+      });
+    }
   });
 });
 
