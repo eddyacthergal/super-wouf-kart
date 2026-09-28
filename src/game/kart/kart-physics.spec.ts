@@ -764,7 +764,7 @@ describe('stepKart — haies', () => {
     expect(kart.speed).toBeGreaterThan(5);
   });
 
-  it('un choc rasant coûte peu et aligne le kart le long de la haie', () => {
+  it('un choc rasant coûte au moins 20 % de vitesse et aligne le kart le long de la haie', () => {
     const kart = kartOn(STRAIGHT, 100, -WALL_LIMIT + 0.05, 25, -0.05);
     let speedBefore = kart.speed;
     let events: KartEvent[] = [];
@@ -776,8 +776,10 @@ describe('stepKart — haies', () => {
     const walls = ofType(events, 'wall');
     expect(walls).toHaveLength(1);
     expect(walls[0].intensity).toBeLessThan(0.1);
-    // Perte ≈ 40 % × (2 × 0,05 + 0,2) = 12 %.
-    expect(kart.speed).toBeGreaterThan(speedBefore * 0.87);
+    // Le plancher (wallImpactFloor) garantit au moins 40 % × 0,5 = 20 % de perte, même rasant.
+    expect(kart.speed).toBeLessThanOrEqual(speedBefore * 0.8 + 1e-9);
+    // ... mais nettement moins qu'un choc franc (qui retient wallSpeedRetention = 60 %).
+    expect(kart.speed).toBeGreaterThan(speedBefore * PHYSICS.wallSpeedRetention);
     const tangentHeading = headingOf(STRAIGHT.project(kart.position).sample.tangent);
     expect(Math.abs(wrapAngle(kart.heading - tangentHeading))).toBeLessThan(1e-9);
   });
@@ -872,6 +874,50 @@ describe('stepKart — haies', () => {
     expect(kart.lateral).toBeCloseTo(-WALL_LIMIT, 9);
     expect(kart.speed).toBeCloseTo(20 - PHYSICS.coastDeceleration * FIXED_DT, 9);
     expect(events).toEqual([]);
+  });
+
+  describe('frottement prolongé', () => {
+    /** Amène le kart au contact de la haie extérieure (droite), comme le choc rasant ci-dessus. */
+    function grazeIntoWall(speed: number): KartState {
+      const kart = kartOn(STRAIGHT, 100, -WALL_LIMIT + 0.05, speed, -0.05);
+      for (let i = 0; i < 30 && !kart.wallContact; i++) {
+        step(kart, { throttle: true });
+      }
+      expect(kart.wallContact).toBe(true);
+      return kart;
+    }
+
+    it('gaz à fond en frottant la haie pendant 1 s : la vitesse descend sous 60 % du max et y reste', () => {
+      const kart = grazeIntoWall(TEST_TUNING.maxSpeed);
+      const cap = TEST_TUNING.maxSpeed * PHYSICS.wallRubSpeedCap;
+      let contactSteps = 0;
+      let staysUnderCapAfterHalfSecond = true;
+      // Braque vers la haie (steer +1 = droite = la haie extérieure) pour continuer à la frotter.
+      run(kart, 1, { throttle: true, steer: 1 }, {
+        observe: (t) => {
+          if (kart.wallContact) contactSteps++;
+          if (t >= 0.5 && kart.speed > cap + 1e-6) staysUnderCapAfterHalfSecond = false;
+        },
+      });
+      expect(contactSteps).toBeGreaterThan(50);
+      expect(kart.speed).toBeLessThanOrEqual(cap + 1e-6);
+      expect(staysUnderCapAfterHalfSecond).toBe(true);
+    });
+
+    it('même chose sous turbo : le plafond de frottement tient quand même', () => {
+      const kart = grazeIntoWall(TEST_TUNING.maxSpeed);
+      applyBoost(kart, 2, ITEMS.turboStrength, 'item');
+      const cap = TEST_TUNING.maxSpeed * PHYSICS.wallRubSpeedCap;
+      let staysUnderCapAfterHalfSecond = true;
+      run(kart, 1, { throttle: true, steer: 1 }, {
+        observe: (t) => {
+          if (t >= 0.5 && kart.speed > cap + 1e-6) staysUnderCapAfterHalfSecond = false;
+        },
+      });
+      expect(kart.boostTime).toBeGreaterThan(0);
+      expect(kart.speed).toBeLessThanOrEqual(cap + 1e-6);
+      expect(staysUnderCapAfterHalfSecond).toBe(true);
+    });
   });
 });
 

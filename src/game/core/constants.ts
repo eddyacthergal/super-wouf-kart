@@ -43,6 +43,12 @@ export const PHYSICS = {
   minTurnSpeed: 6,
   /** Fraction de vitesse conservée lors d'un choc contre une haie. */
   wallSpeedRetention: 0.6,
+  /** Perte de vitesse minimale d'un choc contre une haie, même rasant (fraction de la perte maximale). */
+  wallImpactFloor: 0.5,
+  /** Freinage (m/s²) tant que le kart frotte la haie après le choc, jusqu'au plafond wallRubSpeedCap. */
+  wallRubDeceleration: 20,
+  /** Vitesse plafond en frottant la haie, en fraction de la vitesse max du kart (même sous turbo ou super-collier). */
+  wallRubSpeedCap: 0.6,
   /** Pente : part de la vitesse max perdue en montée, gagnée en descente, par unité de pente (0,1 = 10 %). */
   slopeSpeedFactor: 1.5,
   /** Pente : accélération (m/s²) par unité de pente, comme la gravité, gaz ou pas. */
