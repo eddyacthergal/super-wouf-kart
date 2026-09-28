@@ -16,6 +16,8 @@ import {
 import type * as THREE from 'three';
 import type { BreedId, SkinSelection } from '../../../game/core/types';
 import type { RacerModel, RacerModelOptions, RacerVisualState } from '../../../game/dogs/racer-model';
+import { PALETTE } from '../../../game/render/palette';
+import { applyRendererOutput } from '../../../game/render/renderer-output';
 import { describeDog } from '../../shared/format';
 import { prefersReducedMotion } from '../../shared/reduced-motion';
 
@@ -43,6 +45,91 @@ const TURNTABLE_SPEED = 0.45;
 /** Angle de présentation initial (trois quarts avant). */
 const TURNTABLE_START = -0.6;
 const IDLE_STATE: RacerVisualState = { speed: 0, steer: 0, driftDirection: 0, boosting: false, spinning: false, hop: 0 };
+
+/** Position sur une orbite autour de l'axe du plateau. */
+interface Orbit {
+  /** Angle horizontal (rad), de +Z vers +X. */
+  azimuth: number;
+  /** Hauteur angulaire au-dessus de l'horizontale (rad). */
+  elevation: number;
+  /** Distance (m) au point visé. */
+  distance: number;
+}
+
+/**
+ * Cadrage : caméra rapprochée (4,75 m au lieu de 5,8) en trois quarts avant. L'image carrée va de
+ * la pointe du plus haut pilote (carlin au chapeau de fête) au bord avant du plateau, d'où une
+ * visée assez basse : le pilote occupe 78 % de la hauteur de l'image au lieu de 63 %. Pilote,
+ * queue du teckel et plateau restent entiers à tous les angles : voir le test du cadrage.
+ */
+const CAMERA = {
+  /** Champ vertical (degrés). */
+  fov: 35,
+  near: 0.1,
+  far: 50,
+  /** Hauteur (m) visée sur l'axe du plateau. */
+  targetHeight: 0.5,
+  orbit: { azimuth: 0.733, elevation: 0.35, distance: 4.75 },
+} as const;
+
+/**
+ * Éclairage de vitrine, fixe pendant que le plateau tourne : ciel, pelouse et soleil du jardin
+ * comme en course, plus un contre-jour froid qui découpe la silhouette. Azimuts comptés depuis
+ * la caméra : négatif = à sa gauche, ±π = derrière le pilote.
+ */
+const LIGHTS = {
+  hemisphereIntensity: 0.9,
+  // De côté : l'ombre tombe à droite du pilote, sur le plateau, au lieu de se cacher derrière lui.
+  sun: { intensity: 2.8, azimuth: -1.25, elevation: 0.95, distance: 6 },
+  // Rasant : il éclaire les bords du pilote sans blanchir le plateau ni noyer l'ombre.
+  rim: { color: '#d8ebff', intensity: 2.2, azimuth: 2.6, elevation: 0.3, distance: 6 },
+  /** Hauteur (m) visée par les deux lumières : milieu du pilote. */
+  targetHeight: 0.8,
+} as const;
+
+/** Ombre du soleil, serrée sur le plateau : texels de 3,5 mm, bord adouci par le filtrage PCF. */
+const SHADOW = {
+  mapSize: 1024,
+  /** Demi-côté (m) du cadre d'ombre : plateau et pilote le plus haut, à tous les angles (voir le test). */
+  halfExtent: 1.8,
+  near: 1,
+  far: 12,
+  bias: -0.0004,
+  /** Décalage le long de la normale (m) : pas d'acné sur le pilote, qui reçoit aussi l'ombre. */
+  normalBias: 0.01,
+  /** Rayon du flou PCF (texels). */
+  radius: 3,
+} as const;
+
+/**
+ * Plateau tournant (m) : juste plus large que le kart (1,17 m de rayon aux coins du pare-chocs),
+ * pour que la caméra rapprochée le montre entier.
+ */
+const PLATE = {
+  topRadius: 1.32,
+  bottomRadius: 1.42,
+  height: 0.14,
+  segments: 48,
+  // Plus soutenu qu'avant : le tone mapping ACES éclaircit et désature les verts clairs.
+  color: '#86c867',
+  roughness: 0.9,
+} as const;
+
+/** Place `position` sur `orbit` autour du point (0, `height`, 0), azimut décalé de `baseAzimuth`. */
+function placeOnOrbit(
+  position: THREE.Vector3,
+  orbit: Orbit,
+  baseAzimuth: number,
+  height: number,
+): void {
+  const azimuth = baseAzimuth + orbit.azimuth;
+  const flat = Math.cos(orbit.elevation) * orbit.distance;
+  position.set(
+    Math.sin(azimuth) * flat,
+    height + Math.sin(orbit.elevation) * orbit.distance,
+    Math.cos(azimuth) * flat,
+  );
+}
 
 type PreviewStatus = 'loading' | 'ready' | 'unavailable';
 
@@ -134,22 +221,57 @@ export class DogPreview {
       renderer = new three.WebGLRenderer({ canvas: this.canvas().nativeElement, alpha: true, antialias: true });
       renderer.setPixelRatio(Math.min(view.devicePixelRatio || 1, 2));
       renderer.setClearColor(0x000000, 0);
+      applyRendererOutput(renderer, three);
 
       const scene = new three.Scene();
-      const camera = new three.PerspectiveCamera(35, 1, 0.1, 50);
-      camera.position.set(3.6, 2.6, 4);
-      camera.lookAt(0, 0.5, 0);
+      const camera = new three.PerspectiveCamera(CAMERA.fov, 1, CAMERA.near, CAMERA.far);
+      placeOnOrbit(camera.position, CAMERA.orbit, 0, CAMERA.targetHeight);
+      camera.lookAt(0, CAMERA.targetHeight, 0);
 
-      // Éclairage doux : ciel et pelouse, plus un soleil léger.
-      scene.add(new three.HemisphereLight('#e8f6ff', '#7cc46a', 2.2));
-      const sun = new three.DirectionalLight('#fff4dc', 2.2);
-      sun.position.set(3, 6, 4);
-      scene.add(sun);
+      const hemisphere = new three.HemisphereLight(
+        PALETTE.hemisphereSky,
+        PALETTE.hemisphereGround,
+        LIGHTS.hemisphereIntensity,
+      );
+      const sun = new three.DirectionalLight(PALETTE.sunLight, LIGHTS.sun.intensity);
+      sun.name = 'preview-sun';
+      placeOnOrbit(sun.position, LIGHTS.sun, CAMERA.orbit.azimuth, LIGHTS.targetHeight);
+      sun.castShadow = true;
+      const shadow = sun.shadow;
+      shadow.mapSize.set(SHADOW.mapSize, SHADOW.mapSize);
+      shadow.camera.left = -SHADOW.halfExtent;
+      shadow.camera.right = SHADOW.halfExtent;
+      shadow.camera.top = SHADOW.halfExtent;
+      shadow.camera.bottom = -SHADOW.halfExtent;
+      shadow.camera.near = SHADOW.near;
+      shadow.camera.far = SHADOW.far;
+      shadow.camera.updateProjectionMatrix();
+      shadow.bias = SHADOW.bias;
+      shadow.normalBias = SHADOW.normalBias;
+      shadow.radius = SHADOW.radius;
+      const rim = new three.DirectionalLight(LIGHTS.rim.color, LIGHTS.rim.intensity);
+      rim.name = 'preview-rim';
+      placeOnOrbit(rim.position, LIGHTS.rim, CAMERA.orbit.azimuth, LIGHTS.targetHeight);
+      for (const light of [sun, rim]) {
+        light.target.position.set(0, LIGHTS.targetHeight, 0);
+        scene.add(light, light.target);
+      }
+      scene.add(hemisphere);
 
-      const plateGeometry = new three.CylinderGeometry(1.45, 1.55, 0.14, 48);
-      const plateMaterial = new three.MeshStandardMaterial({ color: '#9fd784', roughness: 0.9 });
+      const plateGeometry = new three.CylinderGeometry(
+        PLATE.topRadius,
+        PLATE.bottomRadius,
+        PLATE.height,
+        PLATE.segments,
+      );
+      const plateMaterial = new three.MeshStandardMaterial({
+        color: PLATE.color,
+        roughness: PLATE.roughness,
+      });
       const plate = new three.Mesh(plateGeometry, plateMaterial);
-      plate.position.y = -0.07;
+      plate.name = 'preview-plate';
+      plate.position.y = -PLATE.height / 2;
+      plate.receiveShadow = true;
 
       const turntable = new three.Group();
       turntable.rotation.y = TURNTABLE_START;
@@ -162,7 +284,8 @@ export class DogPreview {
         camera,
         turntable,
         buildModel: buildRacerModel,
-        disposables: [plateGeometry, plateMaterial],
+        // La carte d'ombre appartient au soleil : sun.dispose() la libère.
+        disposables: [plateGeometry, plateMaterial, sun, rim, hemisphere],
       };
       this.observeSize(stage);
       this.stage.set(stage);
@@ -186,6 +309,11 @@ export class DogPreview {
     try {
       next = stage.buildModel({ breed, skins, kartColor: PREVIEW_KART_COLOR });
       next.update(0, IDLE_STATE);
+      // Dans l'aperçu, le pilote reçoit aussi les ombres (la sienne, celle du chapeau…) : le cadre
+      // d'ombre serré y donne des texels de quelques millimètres.
+      next.root.traverse((object) => {
+        object.receiveShadow = true;
+      });
     } catch (error) {
       console.warn('[WoufKart] Modèle du pilote impossible à construire', error);
       next?.dispose();
