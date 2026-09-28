@@ -38,7 +38,7 @@ export function stepSlipstream(racers: readonly RacerState[], dt: number, emit: 
       : Math.max(0, kart.slipstream - rate * SLIPSTREAM.decayFactor);
     if (kart.slipstream >= 1 - 1e-9) {
       kart.slipstream = 0;
-      applyBoost(kart, SLIPSTREAM.boostDuration, SLIPSTREAM.boostStrength);
+      applyBoost(kart, SLIPSTREAM.boostDuration, SLIPSTREAM.boostStrength, 'slipstream');
       emit({ type: 'boost', racerId: racer.id, source: 'slipstream' });
     }
   }

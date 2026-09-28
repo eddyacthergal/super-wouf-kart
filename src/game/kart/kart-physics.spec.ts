@@ -683,7 +683,7 @@ describe('stepKart — bas-côté', () => {
     },
   );
 
-  it('ne ralentit pas pendant un boost', () => {
+  it('un turbo d’objet ignore le ralentissement du bas-côté', () => {
     const kart = kartOn(
       STRAIGHT,
       0,
@@ -692,10 +692,30 @@ describe('stepKart — bas-côté', () => {
     );
     step(kart, { throttle: true });
     expect(kart.offroad).toBe(true);
-    applyBoost(kart, 1, DRIFT.boostStrength);
+    applyBoost(kart, 1, ITEMS.turboStrength, 'item');
     run(kart, 1, (k) => ({ throttle: true, steer: followLine(k, STRAIGHT, offroadLateral) }));
     expect(kart.offroad).toBe(true);
     expect(kart.speed).toBeGreaterThan(TEST_TUNING.maxSpeed);
+  });
+
+  it('un turbo de dérapage ne dépasse plus la vitesse max du bas-côté', () => {
+    const kart = kartOn(
+      STRAIGHT,
+      0,
+      offroadLateral,
+      TEST_TUNING.maxSpeed * TEST_TUNING.offroadFactor,
+    );
+    step(kart, { throttle: true });
+    expect(kart.offroad).toBe(true);
+    applyBoost(kart, 1, DRIFT.boostStrength, 'drift');
+    run(kart, 1, (k) => ({ throttle: true, steer: followLine(k, STRAIGHT, offroadLateral) }));
+    expect(kart.offroad).toBe(true);
+    // Plafonné à offroadFactor × boostStrength de la vitesse max, bien sous la vitesse max normale.
+    expect(kart.speed).toBeLessThan(TEST_TUNING.maxSpeed);
+    expect(kart.speed).toBeCloseTo(
+      TEST_TUNING.maxSpeed * TEST_TUNING.offroadFactor * DRIFT.boostStrength,
+      0,
+    );
   });
 });
 

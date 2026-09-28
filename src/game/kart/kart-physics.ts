@@ -301,7 +301,7 @@ function stepDrift(
     if (!held) {
       const tier = drift.tier;
       if (tier > 0) {
-        applyBoost(kart, DRIFT.boostDurations[tier], DRIFT.boostStrength);
+        applyBoost(kart, DRIFT.boostDurations[tier], DRIFT.boostStrength, 'drift');
         emit({ type: 'boost', source: 'drift', tier });
       }
       resetDrift(drift);
@@ -362,11 +362,15 @@ function stepSpeed(kart: KartState, input: DriverInput, tuning: KartTuning, dt: 
     SLOPE_FACTOR_MAX,
   );
   const collar = kart.collarTime > 0;
+  // Le mini-turbo de dérapage n'ignore plus le ralentissement du bas-côté (contrairement aux
+  // turbos d'objets et au super-collier) : il reste un bonus de pilotage, pas un raccourci pour
+  // foncer dans l'herbe.
+  const offroadIgnoredByBoost = boosting && kart.boostSource !== 'drift';
   const maxSpeed =
     tuning.maxSpeed *
     (boosting ? kart.boostStrength : 1) *
     (collar ? ITEMS.collarSpeedFactor : 1) *
-    (kart.offroad && !boosting && !collar ? tuning.offroadFactor : 1) *
+    (kart.offroad && !offroadIgnoredByBoost && !collar ? tuning.offroadFactor : 1) *
     slopeFactor;
 
   if (input.brake) {

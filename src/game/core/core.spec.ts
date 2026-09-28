@@ -57,6 +57,15 @@ describe('effets sur le kart', () => {
     expect(kart.boostStrength).toBe(1.3);
   });
 
+  it('applyBoost retient la source du turbo (« item » par défaut)', () => {
+    const kart = createKartState({ x: 0, z: 0 }, 0);
+    expect(kart.boostSource).toBe('item');
+    applyBoost(kart, 1, 1.2, 'drift');
+    expect(kart.boostSource).toBe('drift');
+    applyBoost(kart, 1, 1.3);
+    expect(kart.boostSource).toBe('item');
+  });
+
   it('le tête-à-queue annule dérapage et boost', () => {
     const kart = createKartState({ x: 0, z: 0 }, 0);
     kart.speed = 20;
