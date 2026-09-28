@@ -43,6 +43,12 @@ export const PHYSICS = {
   minTurnSpeed: 6,
   /** Fraction de vitesse conservée lors d'un choc contre une haie. */
   wallSpeedRetention: 0.6,
+  /** Perte de vitesse minimale d'un choc contre une haie, même rasant (fraction de la perte maximale). */
+  wallImpactFloor: 0.5,
+  /** Freinage (m/s²) tant que le kart frotte la haie après le choc, jusqu'au plafond wallRubSpeedCap. */
+  wallRubDeceleration: 20,
+  /** Vitesse plafond en frottant la haie, en fraction de la vitesse max du kart (même sous turbo ou super-collier). */
+  wallRubSpeedCap: 0.6,
   /** Pente : part de la vitesse max perdue en montée, gagnée en descente, par unité de pente (0,1 = 10 %). */
   slopeSpeedFactor: 1.5,
   /** Pente : accélération (m/s²) par unité de pente, comme la gravité, gaz ou pas. */
@@ -55,16 +61,23 @@ export const PHYSICS = {
 
 /** Dérapage et mini-turbo. */
 export const DRIFT = {
-  minSpeed: 12,
+  /** Vitesse minimale (m/s) pour lancer un dérapage. */
+  minSpeed: 15,
   /**
-   * Durée de dérapage (s) pour atteindre les paliers 1 (bleu), 2 (orange), 3 (violet), sans braquer ;
-   * un tiers plus vite en braquant dans le sens du dérapage.
+   * Durée de dérapage (s) pour atteindre les paliers 1 (bleu), 2 (orange), 3 (violet), au neutre
+   * du volant de dérapage (voir chargeSteerBonus pour l'effet du braquage sur cette vitesse).
    */
-  tierThresholds: [0.6, 1.2, 2.0],
+  tierThresholds: [1.0, 2.0, 3.0],
   /** Durée du boost (s) selon le palier atteint (index = palier). */
-  boostDurations: [0, 0.6, 1.1, 1.7],
+  boostDurations: [0, 0.4, 0.8, 1.3],
   /** Multiplicateur de vitesse max pendant un boost de dérapage. */
-  boostStrength: 1.28,
+  boostStrength: 1.2,
+  /**
+   * Vitesse de charge du dérapage : facteur 1 + chargeSteerBonus × (braquage × sens du dérapage),
+   * de -1 (contre-braquage) à +1 (braquage vers l'intérieur) : ×(1 − chargeSteerBonus) en
+   * contre-braquant, ×1 au neutre, ×(1 + chargeSteerBonus) en braquant vers l'intérieur.
+   */
+  chargeSteerBonus: 0.5,
   /**
    * Angle de glisse visuel du kart pendant le dérapage (rad) : le nez pointe vers l'intérieur du
    * virage, l'arrière part vers l'extérieur, comme dans Mario Kart.

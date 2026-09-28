@@ -103,6 +103,9 @@ export interface DriftState {
   tier: DriftTier;
 }
 
+/** Origine d'un turbo (voir KartState.boostSource). */
+export type BoostSource = 'drift' | 'item' | 'slipstream';
+
 export interface KartState {
   position: Vec2;
   /** Cap θ : avant = (sin θ, cos θ). */
@@ -116,6 +119,11 @@ export interface KartState {
   boostTime: number;
   /** Multiplicateur de vitesse max pendant le boost en cours. */
   boostStrength: number;
+  /**
+   * Origine du turbo en cours (sans effet si boostTime est à 0) : seul le mini-turbo de dérapage
+   * respecte encore le ralentissement du bas-côté, contrairement aux objets et à l'aspiration (stepSpeed).
+   */
+  boostSource: BoostSource;
   /** Jauge d'aspiration (0 à 1) ; pleine, elle donne un turbo. */
   slipstream: number;
   /** Temps restant du petit saut de début de dérapage (visuel). */

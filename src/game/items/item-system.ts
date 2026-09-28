@@ -111,7 +111,7 @@ export function useItem(
   if (item === 'golden-bone') {
     if (racer.goldenBoneTime <= 0) racer.goldenBoneTime = ITEMS.goldenBoneDuration;
     emit({ type: 'item-use', racerId: racer.id, item });
-    applyBoost(racer.kart, ITEMS.goldenBoneTurboDuration, ITEMS.goldenBoneTurboStrength);
+    applyBoost(racer.kart, ITEMS.goldenBoneTurboDuration, ITEMS.goldenBoneTurboStrength, 'item');
     emit({ type: 'boost', racerId: racer.id, source: 'item' });
     return;
   }
@@ -161,7 +161,7 @@ export function useItem(
       );
       break;
     case 'kibble-turbo':
-      applyBoost(kart, ITEMS.turboDuration, ITEMS.turboStrength);
+      applyBoost(kart, ITEMS.turboDuration, ITEMS.turboStrength, 'item');
       emit({ type: 'boost', racerId: racer.id, source: 'item' });
       break;
     case 'whistle':

@@ -1,5 +1,5 @@
 import { ITEMS } from './constants';
-import type { KartState } from './types';
+import type { BoostSource, KartState } from './types';
 import { clone, type Vec2 } from './vec2';
 
 /** Kart à l'arrêt, prêt au départ. */
@@ -12,6 +12,7 @@ export function createKartState(position: Vec2, heading: number, trackIndex = 0)
     drift: { active: false, direction: 0, charge: 0, tier: 0 },
     boostTime: 0,
     boostStrength: 1,
+    boostSource: 'item',
     slipstream: 0,
     hopTime: 0,
     spinTime: 0,
@@ -37,9 +38,17 @@ export function createKartState(position: Vec2, heading: number, trackIndex = 0)
  * Déclenche un boost. Un boost en cours n'est jamais raccourci :
  * on garde la plus longue durée et la plus forte intensité.
  */
-export function applyBoost(kart: KartState, duration: number, strength: number): void {
+export function applyBoost(
+  kart: KartState,
+  duration: number,
+  strength: number,
+  source: BoostSource = 'item',
+): void {
   kart.boostStrength = kart.boostTime > 0 ? Math.max(kart.boostStrength, strength) : strength;
   kart.boostTime = Math.max(kart.boostTime, duration);
+  // Chevauchement rare (un objet pendant un mini-turbo, ou l'inverse) : la source la plus récente
+  // l'emporte, comme un nouvel appui qui redéfinit ce qu'on est en train de faire.
+  kart.boostSource = source;
 }
 
 /** Turbo réellement actif : gelé pendant l'arrêt net (sifflet), même s'il en reste en réserve. */
@@ -52,4 +61,5 @@ export function applySpinOut(kart: KartState): void {
   kart.drift = { active: false, direction: 0, charge: 0, tier: 0 };
   kart.boostTime = 0;
   kart.boostStrength = 1;
+  kart.boostSource = 'item';
 }

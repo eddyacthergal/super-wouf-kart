@@ -35,15 +35,9 @@ const REVERSE_ACCELERATION_FACTOR = 0.5;
 const DRIFT_STEER_THRESHOLD = 0.2;
 /** Sous cette fraction de DRIFT.minSpeed, le dérapage s'annule sans boost. */
 const DRIFT_CANCEL_RATIO = 0.7;
-/** Charge supplémentaire quand on braque dans le sens du dérapage. */
-const DRIFT_CHARGE_STEER_BONUS = 0.5;
 /** Paliers de charge signalés par un événement 'drift-tier'. */
 const CHARGED_TIERS: readonly DriftTier[] = [1, 2, 3];
 
-/** Perte de vitesse minimale d'un choc, même rasant (fraction de la perte maximale). */
-const WALL_IMPACT_FLOOR = 0.2;
-/** Freinage en frottant la haie après le choc (m/s²). */
-const WALL_RUB_DECELERATION = 8;
 /** Part de l'écart ramenée vers la tangente à chaque pas de contact. */
 const WALL_HEADING_BLEND = 0.35;
 /** En dessous de cette incidence, le cap est aligné d'un coup (glissade le long de la haie). */
@@ -157,7 +151,9 @@ export function stepKart(
     const steer = Number.isFinite(input.steer) ? clamp(input.steer, -1, 1) : 0;
     kart.steer = approach(kart.steer, steer, PHYSICS.steerResponse * dt);
     stepDrift(kart, memory, input.drift, driftPressed, steer, dt, emit);
-    stepSpeed(kart, input, tuning, dt);
+    // memory.wallContact reflète encore le pas précédent : collideWithTrack (plus bas) ne l'a pas
+    // encore recalculé pour ce pas-ci.
+    stepSpeed(kart, input, tuning, dt, memory.wallContact);
     if (kart.drift.active) {
       memory.driftAssisted = input.driftAssist !== false;
       memory.driftNeutral = memory.driftAssisted
@@ -176,7 +172,7 @@ export function stepKart(
     z: kart.position.z + Math.cos(kart.heading) * distance,
   };
 
-  collideWithTrack(kart, track, dt, memory, emit);
+  collideWithTrack(kart, track, tuning, dt, memory, emit);
 
   if (!spinning) {
     const target = kart.drift.active ? driftVisualYaw(kart.drift.direction, memory.driftWheel) : 0;
@@ -303,7 +299,7 @@ function stepDrift(
     if (!held) {
       const tier = drift.tier;
       if (tier > 0) {
-        applyBoost(kart, DRIFT.boostDurations[tier], DRIFT.boostStrength);
+        applyBoost(kart, DRIFT.boostDurations[tier], DRIFT.boostStrength, 'drift');
         emit({ type: 'boost', source: 'drift', tier });
       }
       resetDrift(drift);
@@ -315,7 +311,7 @@ function stepDrift(
         steer * drift.direction,
         DRIFT.steerResponse * dt,
       );
-      drift.charge += dt * (1 + DRIFT_CHARGE_STEER_BONUS * Math.max(0, steer * drift.direction));
+      drift.charge += dt * (1 + DRIFT.chargeSteerBonus * steer * drift.direction);
       // Un événement par palier franchi, même si un grand pas en franchit plusieurs.
       const tier = tierFor(drift.charge);
       for (const reached of CHARGED_TIERS) {
@@ -352,7 +348,13 @@ function stepDrift(
   }
 }
 
-function stepSpeed(kart: KartState, input: DriverInput, tuning: KartTuning, dt: number): void {
+function stepSpeed(
+  kart: KartState,
+  input: DriverInput,
+  tuning: KartTuning,
+  dt: number,
+  rubbingWall: boolean,
+): void {
   const boosting = kart.boostTime > 0;
   // Pente du pas précédent (tangage), amplifiée par le poids : réduit la vitesse max en montée,
   // l'augmente en descente ; s'annule à plat (tangage nul → facteur 1).
@@ -364,12 +366,22 @@ function stepSpeed(kart: KartState, input: DriverInput, tuning: KartTuning, dt: 
     SLOPE_FACTOR_MAX,
   );
   const collar = kart.collarTime > 0;
+  // Le mini-turbo de dérapage n'ignore plus le ralentissement du bas-côté (contrairement aux
+  // turbos d'objets et au super-collier) : il reste un bonus de pilotage, pas un raccourci pour
+  // foncer dans l'herbe.
+  const offroadIgnoredByBoost = boosting && kart.boostSource !== 'drift';
   const maxSpeed =
     tuning.maxSpeed *
     (boosting ? kart.boostStrength : 1) *
     (collar ? ITEMS.collarSpeedFactor : 1) *
-    (kart.offroad && !boosting && !collar ? tuning.offroadFactor : 1) *
+    (kart.offroad && !offroadIgnoredByBoost && !collar ? tuning.offroadFactor : 1) *
     slopeFactor;
+  // Tant que le kart frotte la haie (déjà en contact au pas précédent), l'accélération ne vise
+  // jamais plus que le plafond de frottement : sinon elle compenserait le freinage du pas suivant
+  // (collideWithTrack), même sous turbo ou super-collier.
+  const effectiveMaxSpeed = rubbingWall
+    ? Math.min(maxSpeed, tuning.maxSpeed * PHYSICS.wallRubSpeedCap)
+    : maxSpeed;
 
   if (input.brake) {
     kart.speed =
@@ -381,22 +393,22 @@ function stepSpeed(kart: KartState, input: DriverInput, tuning: KartTuning, dt: 
             REVERSE_ACCELERATION_FACTOR * tuning.acceleration * dt,
           );
   } else if (input.throttle || boosting) {
-    if (kart.speed < maxSpeed) {
-      const ratio = kart.speed / maxSpeed;
+    if (kart.speed < effectiveMaxSpeed) {
+      const ratio = kart.speed / effectiveMaxSpeed;
       const boostFactor = boosting ? BOOST_ACCELERATION_FACTOR : 1;
       const acceleration =
         tuning.acceleration * boostFactor * (1 - ACCELERATION_FALLOFF * ratio * ratio);
-      kart.speed = Math.min(maxSpeed, kart.speed + acceleration * dt);
+      kart.speed = Math.min(effectiveMaxSpeed, kart.speed + acceleration * dt);
     } else {
-      kart.speed = approach(kart.speed, maxSpeed, OVERSPEED_DECELERATION * dt);
+      kart.speed = approach(kart.speed, effectiveMaxSpeed, OVERSPEED_DECELERATION * dt);
     }
   } else {
     // Au-dessus du max effectif (fin de boost, entrée sur le bas-côté), lâcher les gaz ne doit pas
     // ralentir moins vite que les garder : on redescend au moins comme avec les gaz.
     const coasting = approach(kart.speed, 0, PHYSICS.coastDeceleration * dt);
     kart.speed =
-      kart.speed > maxSpeed
-        ? Math.min(coasting, approach(kart.speed, maxSpeed, OVERSPEED_DECELERATION * dt))
+      kart.speed > effectiveMaxSpeed
+        ? Math.min(coasting, approach(kart.speed, effectiveMaxSpeed, OVERSPEED_DECELERATION * dt))
         : coasting;
   }
 
@@ -437,6 +449,7 @@ function bankGripFactor(kart: KartState, turnSign: number): number {
 function collideWithTrack(
   kart: KartState,
   track: TrackQuery,
+  tuning: KartTuning,
   dt: number,
   memory: KartMemory,
   emit: (event: KartEvent) => void,
@@ -479,19 +492,25 @@ function collideWithTrack(
   if (normal === 0) return;
 
   // Un choc (premier contact, ou choc plus fort pendant un contact) coûte une part de la vitesse
-  // selon l'incidence ; ensuite, le kart qui frotte la haie freine simplement.
+  // selon l'incidence ; ensuite, tant que le kart frotte la haie, sa vitesse est freinée jusqu'au
+  // plafond de frottement (même sous turbo ou super-collier). stepSpeed plafonne déjà sa propre
+  // accélération dès le pas suivant (memory.wallContact) : ce freinage ne fait que rattraper le
+  // dépassement du pas où le contact vient de commencer.
   const intensity = clamp((normal * Math.abs(kart.speed)) / WALL_FULL_IMPACT_SPEED, 0, 1);
   memory.wallIntensity = intensity;
   const impact =
     !wasInContact || (intensity > WALL_REPEAT_INTENSITY && intensity > previousIntensity);
   if (impact) {
     kart.speed *=
-      1 - (1 - PHYSICS.wallSpeedRetention) * Math.min(1, normal * 2 + WALL_IMPACT_FLOOR);
+      1 - (1 - PHYSICS.wallSpeedRetention) * Math.min(1, normal * 2 + PHYSICS.wallImpactFloor);
     if (intensity > 0) emit({ type: 'wall', intensity });
     // Un vrai choc casse la glisse, sans turbo ; un simple frôlement la laisse continuer.
     if (kart.drift.active && intensity > DRIFT.wallCancelIntensity) resetDrift(kart.drift);
   } else {
-    kart.speed = approach(kart.speed, 0, WALL_RUB_DECELERATION * dt);
+    const rubSpeedCap = tuning.maxSpeed * PHYSICS.wallRubSpeedCap;
+    if (kart.speed > rubSpeedCap) {
+      kart.speed = approach(kart.speed, rubSpeedCap, PHYSICS.wallRubDeceleration * dt);
+    }
   }
 
   // Cap ramené le long de la haie, dans le sens de la course sauf si le kart pointe nettement à contre-sens.

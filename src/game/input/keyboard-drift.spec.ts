@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { AiController } from '../ai/ai-controller';
 import { createAiPersonality } from '../ai/personality';
-import { FIXED_DT } from '../core/constants';
+import { DRIFT, FIXED_DT } from '../core/constants';
 import { createRng } from '../core/rng';
 import { EMPTY_SKINS, type DriverController, type GameEvent } from '../core/types';
 import { headingOf, sub, wrapAngle } from '../core/vec2';
@@ -84,7 +84,9 @@ function playLap(definition: TrackDefinition, style: Style): Lap {
         style !== 'sans dérapage' &&
         phase === 'drive' &&
         Math.abs(curvature) > 1 / 50 &&
-        kart.speed > 14
+        // Marge au-dessus de DRIFT.minSpeed (comme l'ancien 14 au-dessus de l'ancien minSpeed 12) :
+        // on ne tente le dérapage que si la vitesse reste sûrement au-dessus du seuil pendant le saut.
+        kart.speed > DRIFT.minSpeed + 2
       ) {
         arrow = curvature > 0 ? 'ArrowLeft' : 'ArrowRight';
         key('keyup', 'ArrowLeft');
@@ -138,8 +140,21 @@ describe('dérapage au clavier, par le vrai chemin des commandes', () => {
         expect(lap.wrongWay, style).toBe(0);
         expect(lap.walls, style).toBe(0);
         expect(lap.offroad / lap.time, style).toBeLessThan(0.02);
-        expect(lap.boosts, style).toBeGreaterThanOrEqual(lap.drifts - 2);
-        expect(lap.time, style).toBeLessThan(reference.time);
+        if (style === 'flèche gardée') {
+          // Braquage maintenu tout le dérapage : la charge accélérée (×1,5) atteint quasiment
+          // toujours le palier 1 avant la sortie de virage, même avec les seuils repoussés.
+          expect(lap.boosts, style).toBeGreaterThanOrEqual(lap.drifts - 2);
+          expect(lap.time, style).toBeLessThan(reference.time);
+        } else {
+          // Braquage relâché après 0,2 s : la charge retombe au taux neutre (×1) pour le reste
+          // du virage. Avec le palier 1 repoussé à 1 s de charge, cette correction courte ne
+          // charge plus assez dans certains virages pour garantir un turbo à chaque tentative,
+          // ni un tour plus rapide que sans déraper : seule une glisse tenue jusqu'au bout
+          // (« flèche gardée ») le garantit encore. On garde un garde-fou large : au moins la
+          // moitié des dérapages payés, et un tour pas nettement plus lent que la référence.
+          expect(lap.boosts, style).toBeGreaterThanOrEqual(Math.ceil(lap.drifts / 2));
+          expect(lap.time, style).toBeLessThan(reference.time * 1.03);
+        }
       }
     },
     120_000,

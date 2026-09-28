@@ -2,6 +2,12 @@
 
 Versionnage sémantique. Dates de fusion dans `main`.
 
+## [0.7.3] – 28/09/2026
+
+- Modification : dérapage plus exigeant et turbos de dérapage plus courts.
+- Modification : frotter une haie freine vraiment.
+- Modification : le turbo de dérapage n'annule plus le ralentissement sur l'herbe.
+
 ## [0.7.2] – 28/09/2026
 
 - Correction : turbo affiché pendant l'arrêt net du sifflet.

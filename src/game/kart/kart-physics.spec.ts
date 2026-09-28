@@ -221,9 +221,10 @@ describe('stepKart — dérapage', () => {
     const kart = kartOn(OPEN, 0, 0, 25);
     step(kart, { throttle: true, drift: true, steer: 1 }, OPEN);
     const reached: { tier: number; t: number }[] = [];
+    // Marge d'1 s au-delà du dernier palier (3 s) pour ne pas dépendre d'un pas pile à l'égalité.
     run(
       kart,
-      3,
+      4,
       { throttle: true, drift: true, steer: 0 },
       {
         track: OPEN,
@@ -240,18 +241,19 @@ describe('stepKart — dérapage', () => {
 
   it.each([
     [1, 1, 1.5],
-    [1, -1, 1],
+    [1, -1, 0.5],
     [-1, -1, 1.5],
-    [-1, 1, 1],
+    [-1, 1, 0.5],
   ] as const)(
-    'dérapage %d, braquage %d : charge à la vitesse ×%d (le contre-braquage ne ralentit pas)',
+    'dérapage %d, braquage %d : charge à la vitesse ×%d (le contre-braquage ralentit la charge)',
     (direction, steer, rate) => {
       const kart = kartOn(OPEN, 0, 0, 25);
       step(kart, { throttle: true, drift: true, steer: direction }, OPEN);
       let firstTierAt = 0;
+      // Marge large : au contre-braquage (rate 0,5), le palier 1 n'arrive qu'à 2 s.
       run(
         kart,
-        1,
+        2.5,
         { throttle: true, drift: true, steer },
         {
           track: OPEN,
@@ -265,6 +267,47 @@ describe('stepKart — dérapage', () => {
       );
     },
   );
+
+  it('charge plus lente en contre-braquant qu’au neutre, plus rapide en braquant vers l’intérieur', () => {
+    const timeToTier1 = (steer: number): number => {
+      const kart = kartOn(OPEN, 0, 0, 25);
+      step(kart, { throttle: true, drift: true, steer: 1 }, OPEN);
+      let firstTierAt = 0;
+      // Marge large : au contre-braquage (×0,5), le palier 1 n'arrive qu'à 2 s.
+      run(
+        kart,
+        3,
+        { throttle: true, drift: true, steer },
+        {
+          track: OPEN,
+          observe: (t, events) => {
+            if (!firstTierAt && ofType(events, 'drift-tier').length) firstTierAt = t;
+          },
+        },
+      );
+      return firstTierAt;
+    };
+    const counterSteer = timeToTier1(-1);
+    const neutral = timeToTier1(0);
+    const innerSteer = timeToTier1(1);
+    expect(counterSteer).toBeGreaterThan(neutral);
+    expect(neutral).toBeGreaterThan(innerSteer);
+    expect(neutral).toBeCloseTo(DRIFT.tierThresholds[0], 1);
+  });
+
+  it('réglages de dérapage : vitesse minimale, paliers et durées de boost', () => {
+    expect(DRIFT.minSpeed).toBe(15);
+    expect(DRIFT.tierThresholds).toEqual([1.0, 2.0, 3.0]);
+    expect(DRIFT.boostDurations).toEqual([0, 0.4, 0.8, 1.3]);
+    expect(DRIFT.boostStrength).toBe(1.2);
+  });
+
+  it('ne démarre toujours pas juste sous 15 m/s, même en braquant à fond dans le bon sens', () => {
+    const kart = kartOn(OPEN, 0, 0, 14.9);
+    const events = step(kart, { throttle: true, drift: true, steer: 1 }, OPEN);
+    expect(kart.drift.active).toBe(false);
+    expect(ofType(events, 'drift-start')).toHaveLength(0);
+  });
 
   it('un grand pas qui franchit plusieurs paliers les signale tous, dans l’ordre', () => {
     const kart = kartOn(OPEN, 0, 0, 25);
@@ -305,10 +348,11 @@ describe('stepKart — dérapage', () => {
     expect(events).toEqual([]);
   });
 
-  it('relâcher au palier 2 donne un boost de 1,1 s', () => {
+  it('relâcher au palier 2 donne un boost de 0,8 s', () => {
     const kart = kartOn(OPEN, 0, 0, 25);
     step(kart, { throttle: true, drift: true, steer: 1 }, OPEN);
-    run(kart, 2, { throttle: true, drift: true, steer: 0 }, { track: OPEN });
+    // Marge au-delà du seuil du palier 2 (2 s) pour ne pas dépendre d'un pas pile à l'égalité.
+    run(kart, 2.5, { throttle: true, drift: true, steer: 0 }, { track: OPEN });
     expect(kart.drift.tier).toBe(2);
     const events = step(kart, { throttle: true }, OPEN);
     expect(events).toEqual([{ type: 'boost', source: 'drift', tier: 2 }]);
@@ -639,7 +683,7 @@ describe('stepKart — bas-côté', () => {
     },
   );
 
-  it('ne ralentit pas pendant un boost', () => {
+  it('un turbo d’objet ignore le ralentissement du bas-côté', () => {
     const kart = kartOn(
       STRAIGHT,
       0,
@@ -648,10 +692,30 @@ describe('stepKart — bas-côté', () => {
     );
     step(kart, { throttle: true });
     expect(kart.offroad).toBe(true);
-    applyBoost(kart, 1, DRIFT.boostStrength);
+    applyBoost(kart, 1, ITEMS.turboStrength, 'item');
     run(kart, 1, (k) => ({ throttle: true, steer: followLine(k, STRAIGHT, offroadLateral) }));
     expect(kart.offroad).toBe(true);
     expect(kart.speed).toBeGreaterThan(TEST_TUNING.maxSpeed);
+  });
+
+  it('un turbo de dérapage ne dépasse plus la vitesse max du bas-côté', () => {
+    const kart = kartOn(
+      STRAIGHT,
+      0,
+      offroadLateral,
+      TEST_TUNING.maxSpeed * TEST_TUNING.offroadFactor,
+    );
+    step(kart, { throttle: true });
+    expect(kart.offroad).toBe(true);
+    applyBoost(kart, 1, DRIFT.boostStrength, 'drift');
+    run(kart, 1, (k) => ({ throttle: true, steer: followLine(k, STRAIGHT, offroadLateral) }));
+    expect(kart.offroad).toBe(true);
+    // Plafonné à offroadFactor × boostStrength de la vitesse max, bien sous la vitesse max normale.
+    expect(kart.speed).toBeLessThan(TEST_TUNING.maxSpeed);
+    expect(kart.speed).toBeCloseTo(
+      TEST_TUNING.maxSpeed * TEST_TUNING.offroadFactor * DRIFT.boostStrength,
+      0,
+    );
   });
 });
 
@@ -700,7 +764,7 @@ describe('stepKart — haies', () => {
     expect(kart.speed).toBeGreaterThan(5);
   });
 
-  it('un choc rasant coûte peu et aligne le kart le long de la haie', () => {
+  it('un choc rasant coûte au moins 20 % de vitesse et aligne le kart le long de la haie', () => {
     const kart = kartOn(STRAIGHT, 100, -WALL_LIMIT + 0.05, 25, -0.05);
     let speedBefore = kart.speed;
     let events: KartEvent[] = [];
@@ -712,8 +776,10 @@ describe('stepKart — haies', () => {
     const walls = ofType(events, 'wall');
     expect(walls).toHaveLength(1);
     expect(walls[0].intensity).toBeLessThan(0.1);
-    // Perte ≈ 40 % × (2 × 0,05 + 0,2) = 12 %.
-    expect(kart.speed).toBeGreaterThan(speedBefore * 0.87);
+    // Le plancher (wallImpactFloor) garantit au moins 40 % × 0,5 = 20 % de perte, même rasant.
+    expect(kart.speed).toBeLessThanOrEqual(speedBefore * 0.8 + 1e-9);
+    // ... mais nettement moins qu'un choc franc (qui retient wallSpeedRetention = 60 %).
+    expect(kart.speed).toBeGreaterThan(speedBefore * PHYSICS.wallSpeedRetention);
     const tangentHeading = headingOf(STRAIGHT.project(kart.position).sample.tangent);
     expect(Math.abs(wrapAngle(kart.heading - tangentHeading))).toBeLessThan(1e-9);
   });
@@ -808,6 +874,50 @@ describe('stepKart — haies', () => {
     expect(kart.lateral).toBeCloseTo(-WALL_LIMIT, 9);
     expect(kart.speed).toBeCloseTo(20 - PHYSICS.coastDeceleration * FIXED_DT, 9);
     expect(events).toEqual([]);
+  });
+
+  describe('frottement prolongé', () => {
+    /** Amène le kart au contact de la haie extérieure (droite), comme le choc rasant ci-dessus. */
+    function grazeIntoWall(speed: number): KartState {
+      const kart = kartOn(STRAIGHT, 100, -WALL_LIMIT + 0.05, speed, -0.05);
+      for (let i = 0; i < 30 && !kart.wallContact; i++) {
+        step(kart, { throttle: true });
+      }
+      expect(kart.wallContact).toBe(true);
+      return kart;
+    }
+
+    it('gaz à fond en frottant la haie pendant 1 s : la vitesse descend sous 60 % du max et y reste', () => {
+      const kart = grazeIntoWall(TEST_TUNING.maxSpeed);
+      const cap = TEST_TUNING.maxSpeed * PHYSICS.wallRubSpeedCap;
+      let contactSteps = 0;
+      let staysUnderCapAfterHalfSecond = true;
+      // Braque vers la haie (steer +1 = droite = la haie extérieure) pour continuer à la frotter.
+      run(kart, 1, { throttle: true, steer: 1 }, {
+        observe: (t) => {
+          if (kart.wallContact) contactSteps++;
+          if (t >= 0.5 && kart.speed > cap + 1e-6) staysUnderCapAfterHalfSecond = false;
+        },
+      });
+      expect(contactSteps).toBeGreaterThan(50);
+      expect(kart.speed).toBeLessThanOrEqual(cap + 1e-6);
+      expect(staysUnderCapAfterHalfSecond).toBe(true);
+    });
+
+    it('même chose sous turbo : le plafond de frottement tient quand même', () => {
+      const kart = grazeIntoWall(TEST_TUNING.maxSpeed);
+      applyBoost(kart, 2, ITEMS.turboStrength, 'item');
+      const cap = TEST_TUNING.maxSpeed * PHYSICS.wallRubSpeedCap;
+      let staysUnderCapAfterHalfSecond = true;
+      run(kart, 1, { throttle: true, steer: 1 }, {
+        observe: (t) => {
+          if (t >= 0.5 && kart.speed > cap + 1e-6) staysUnderCapAfterHalfSecond = false;
+        },
+      });
+      expect(kart.boostTime).toBeGreaterThan(0);
+      expect(kart.speed).toBeLessThanOrEqual(cap + 1e-6);
+      expect(staysUnderCapAfterHalfSecond).toBe(true);
+    });
   });
 });
 
